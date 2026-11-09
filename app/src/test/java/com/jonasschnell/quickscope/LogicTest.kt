@@ -6,6 +6,7 @@ import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.Item
 import com.jonasschnell.quickscope.data.Projection
 import com.jonasschnell.quickscope.logic.AttemptQueue
+import com.jonasschnell.quickscope.SessionPhase as P
 import com.jonasschnell.quickscope.logic.MatchResult
 import com.jonasschnell.quickscope.logic.MoreEntry as M
 import com.jonasschnell.quickscope.logic.MatchState
@@ -327,5 +328,23 @@ class LogicTest {
         // ohne Lektionen, Plan und Serie bleibt nur das Noetigste
         assertEquals(listOf(M.Used, M.Material, M.Settings), com.jonasschnell.quickscope.logic.moreEntries(false, false, null))
         assertEquals(listOf(M.Used, M.Material, M.Settings), com.jonasschnell.quickscope.logic.moreEntries(false, false, 0))
+    }
+
+    @Test fun doubleStartAndDoubleTapAreDiscarded() {
+        // Start nur, wenn keine Runde laeuft oder laedt (auch kein Start waehrend Gate/Done)
+        assertTrue(com.jonasschnell.quickscope.logic.canStartSession(P.Closed))
+        assertTrue(com.jonasschnell.quickscope.logic.canStartSession(P.Empty))   // "Noch eine Runde"
+        assertTrue(com.jonasschnell.quickscope.logic.canStartSession(P.Error))   // "Nochmal"
+        assertFalse(com.jonasschnell.quickscope.logic.canStartSession(P.Loading))
+        assertFalse(com.jonasschnell.quickscope.logic.canStartSession(P.Running))
+        assertFalse(com.jonasschnell.quickscope.logic.canStartSession(P.Done))
+        // Hoerbuch: eine Wiedergabe zur Zeit
+        assertTrue(com.jonasschnell.quickscope.logic.canStartBook("Closed"))
+        assertFalse(com.jonasschnell.quickscope.logic.canStartBook("Loading"))
+        assertFalse(com.jonasschnell.quickscope.logic.canStartBook("Playing"))
+        // Mehrfach-Tap-Schutz fuer Schliessen und Navigation
+        assertTrue(com.jonasschnell.quickscope.logic.acceptClick(0, 100))
+        assertFalse(com.jonasschnell.quickscope.logic.acceptClick(1_000, 1_300))
+        assertTrue(com.jonasschnell.quickscope.logic.acceptClick(1_000, 1_500))
     }
 }

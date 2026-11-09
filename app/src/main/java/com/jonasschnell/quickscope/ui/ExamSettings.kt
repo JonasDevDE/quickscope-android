@@ -49,7 +49,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Material, Description, Name, Kind, When, Daily, Prior, Regenerate, Reset, Delete }
+enum class ExamSetting { Material, Description, Name, Kind, When, Daily, Prior, Reset, Delete }
 
 /** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
 @Composable
@@ -72,7 +72,6 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
             SectionTitle("Mehr", Modifier.padding(top = 8.dp))
             SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
-            SettingsRow("Aufgaben neu erzeugen", null, { sub = ExamSetting.Regenerate }) {}
             SettingsRow("Von vorn beginnen", null, { sub = ExamSetting.Reset }) {}
             SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
         }
@@ -83,16 +82,6 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         ExamSetting.Kind -> KindSheet(vm, exam) { sub = null }
         ExamSetting.Daily -> DailySheet(state, vm, exam) { sub = null }
         ExamSetting.Prior -> PriorSheet(vm, exam) { sub = null }
-        ExamSetting.Regenerate -> AlertDialog(
-            onDismissRequest = { sub = null },
-            containerColor = Card,
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCFCFD4),
-            title = { Text("Aufgaben neu erzeugen?") },
-            text = { LightSystemIcons(); Text("Dein Fortschritt bleibt erhalten, nur neue Aufgaben werden angepasst.") },
-            confirmButton = { HapticTextButton(onClick = { vm.regenerateItems(exam.id); onDismiss() }) { Text("Neu erzeugen", color = Accent) } },
-            dismissButton = { HapticTextButton(onClick = { sub = null }) { Text("Abbrechen", color = Color.White) } },
-        )
         ExamSetting.Reset -> TwoStepConfirm(
             "Von vorn beginnen?", "Lernstand und Aufgaben dieser Prüfung werden neu aufgebaut.",
             "Wirklich von vorn beginnen?", "Letzte Bestätigung: Der Lernstand wird jetzt gelöscht.",
@@ -144,7 +133,6 @@ private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit
     var text by remember { mutableStateOf(exam.description.orEmpty()) }
     val saved = AutoSave(text.trim(), true) { v, fail -> vm.updateExam(exam.id, ExamUpdate(description = v), fail) }
     QuickscopeSheet(onDismiss, "Beschreibung", status = if (saved) "Gespeichert" else null) {
-        Text("Dein Fortschritt bleibt erhalten, nur neue Aufgaben werden angepasst.", color = Muted, style = MaterialTheme.typography.bodySmall)
         QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
         Text("${text.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall)
     }

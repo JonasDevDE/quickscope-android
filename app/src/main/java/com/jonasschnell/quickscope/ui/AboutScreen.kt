@@ -63,9 +63,9 @@ fun AboutScreen(state: UiState, vm: AppViewModel, onClose: () -> Unit) {
         if (loaded == null) failed = true else initial = loaded
     }
     BackHandler { onClose() }
-    Column(Modifier.fillMaxSize().background(Black).statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
+    Column(Modifier.fillMaxSize().background(Black).blockTouches().statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Zurück", color = Muted, style = MaterialTheme.typography.titleSmall, modifier = Modifier.hapticClickable(onClick = onClose).padding(vertical = 8.dp))
+            CloseButton(onClose, label = "Zurück")
         }
         Text("Profil", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 8.dp))
         val p = initial
@@ -85,11 +85,9 @@ fun AboutScreen(state: UiState, vm: AppViewModel, onClose: () -> Unit) {
 private fun ProfileEditor(state: UiState, vm: AppViewModel, initial: Profile, onClose: () -> Unit) {
     var draft by remember { mutableStateOf(draftOf(initial)) }
     var saved by remember { mutableStateOf(draftOf(initial)) }
-    var changed by remember { mutableStateOf(false) }
     val showSaved = AutoSave(draft, draftValid(draft)) { value, onFailure ->
-        if (draftNeedsSave(saved, value)) vm.saveProfile(value, onDone = { saved = value; changed = true }, onFailure = onFailure)
+        if (draftNeedsSave(saved, value)) vm.saveProfile(value, onDone = { saved = value }, onFailure = onFailure)
     }
-    val exam = state.activeExam
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.weight(1f)) {
@@ -107,11 +105,6 @@ private fun ProfileEditor(state: UiState, vm: AppViewModel, initial: Profile, on
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(if (showSaved) "Gespeichert" else "", color = Muted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
             Text(aboutCounter(draft.about), color = Muted, style = MaterialTheme.typography.labelMedium)
-        }
-        // Nach einer Aenderung: optional die Aufgaben der aktuellen Pruefung neu erzeugen; neue Pruefungen nutzen es automatisch
-        if (changed && exam != null) {
-            Text("Dein Fortschritt bleibt erhalten, nur neue Aufgaben werden angepasst.", color = Muted, style = MaterialTheme.typography.bodySmall)
-            SecondaryButton("Aufgaben jetzt neu erzeugen", { vm.regenerateItems(exam.id); changed = false })
         }
         PrimaryButton("Fertig", onClose)
     }

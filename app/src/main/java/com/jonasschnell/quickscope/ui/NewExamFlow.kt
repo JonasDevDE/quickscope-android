@@ -99,19 +99,17 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
         )
     }
 
-    Column(modifier.fillMaxSize().background(Black).navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
+    Column(modifier.fillMaxSize().background(Black).blockTouches().navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp), contentAlignment = Alignment.CenterStart) {
-                if (page > 0 || onClose != null) {
-                    Text(if (page > 0) "Zurück" else "✕", color = Muted, style = MaterialTheme.typography.titleSmall, modifier = Modifier.hapticClickable { back() }.padding(vertical = 8.dp))
-                }
+            Box(Modifier.size(width = 88.dp, height = 48.dp), contentAlignment = Alignment.CenterStart) {
+                if (page > 0 || onClose != null) CloseButton({ back() }, label = if (page > 0) "Zurück" else "✕")
             }
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center) {
                 repeat(pages.size) { i ->
                     Box(Modifier.padding(horizontal = 4.dp).size(8.dp).clip(CircleShape).background(if (i == page) Accent else CardHigh))
                 }
             }
-            Spacer(Modifier.size(48.dp))
+            Spacer(Modifier.size(88.dp))
         }
         AnimatedContent(
             page, modifier = Modifier.weight(1f).fillMaxWidth(), label = "examPage",

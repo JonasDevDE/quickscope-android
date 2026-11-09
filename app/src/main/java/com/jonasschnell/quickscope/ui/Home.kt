@@ -4,6 +4,14 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,22 +83,29 @@ fun HomePage(
     onRetryUpload: () -> Unit,
 ) {
     val exam = state.activeExam
-    Column(
-        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    // Insets beachten (Gestenleiste, Navigationsleiste, Aussparungen) plus Mindestabstand unten; der Inhalt bleibt eine kompakte,
+    // mittig sitzende Spalte (nie ueber die ganze Hoehe aufgespreizt) und scrollt nur, wenn er bei grosser Schrift nicht passt.
+    BoxWithConstraints(
+        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.displayCutout).navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
     ) {
-        if (loading || exam == null) {
-            HomeSkeleton()
-            return@Column
-        }
-        UploadCard(state, exam.id, onCancelUpload, onRetryUpload)
-        when {
-            isOver(exam, Instant.now()) -> ReviewView(exam, state.activeForecast)
-            exam.status == "processing" -> ProcessingView()
-            exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
-            exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, onStart, onOpenMore, onMore, onCheatsheet)
+        Column(
+            Modifier.fillMaxWidth().widthIn(max = 480.dp).align(Alignment.Center).heightIn(min = maxHeight).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (loading || exam == null) {
+                HomeSkeleton()
+                return@Column
+            }
+            UploadCard(state, exam.id, onCancelUpload, onRetryUpload)
+            when {
+                isOver(exam, Instant.now()) -> ReviewView(exam, state.activeForecast)
+                exam.status == "processing" -> ProcessingView()
+                exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
+                exam.status == "empty" -> EmptyExamView(exam, onMaterial)
+                else -> ReadyView(exam, state.activeForecast, onStart, onOpenMore, onMore, onCheatsheet)
+            }
         }
     }
 }
@@ -172,11 +187,12 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
 }
 
 /**
- * Heute, radikal reduziert: oben eine Zeile "in 12 Tagen", in der Mitte der Ring mit EINER Prognosezeile, unten ein grosser
- * Knopf "Los (N min)" und ein kleines "Mehr". Alles andere liegt hinter "Mehr". Kein Scrollen.
+ * Heute, radikal reduziert, als EINE kompakte Spalte mit festen Abstaenden: Countdown, Ring mit EINER Prognosezeile, Merkzettel
+ * (nur kurz vor der Pruefung), der grosse Knopf "Los (N min)" und direkt darunter "Mehr" (mindestens 48 dp, gut mit dem
+ * Daumen erreichbar). Nichts haengt am Bildschirmrand.
  */
 @Composable
-private fun ColumnScope.ReadyView(
+private fun ReadyView(
     exam: Exam,
     forecast: Forecast?,
     onStart: (Exam, Int) -> Unit,
@@ -186,40 +202,33 @@ private fun ColumnScope.ReadyView(
 ) {
     val open = isOpen(exam)
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
-    // oben: Countdown als eine Zeile (bei dauerhaftem Lernen nichts)
-    Text(
-        if (open) "" else daysUntilLabel(examStart(exam), Instant.now()),
-        color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(24.dp),
-    )
-    // Mitte: Ring und EINE Zeile
-    Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        if (forecast == null) {
-            SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
-        } else if (forecastReliable(exam, forecast)) {
-            ForecastRing(ringPercent(exam, forecast))
-            Spacer(Modifier.height(12.dp))
-            Text(
-                if (open) "Wissensstand" else projectionLine(forecast, exam.dailyMinutes),
-                color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
-            )
-        } else {
-            ForecastPlaceholder()
-        }
+    if (!open) {
+        Text(daysUntilLabel(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
     }
-    // dezent und nur kurz vor der Pruefung: EINE Zeile fuer den Merkzettel
+    if (forecast == null) {
+        SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
+    } else if (forecastReliable(exam, forecast)) {
+        ForecastRing(ringPercent(exam, forecast))
+        Text(
+            if (open) "Wissensstand" else projectionLine(forecast, exam.dailyMinutes),
+            color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
+        )
+    } else {
+        ForecastPlaceholder()
+    }
+    Spacer(Modifier.height(8.dp))
     if (forecast?.showCheatsheetSuggestion == true && !open) {
         Text(
             "Letzte Runde: Merkzettel lesen", color = Accent, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().hapticClickable { onCheatsheet(exam) }.padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).hapticClickable { onCheatsheet(exam) }.padding(vertical = 12.dp),
         )
     }
-    // unten: EIN grosser Knopf (Tagesziel erreicht: Haken mit kleinem "Noch eine Runde")
     if (forecast != null && dayGoalReached(exam.dailyMinutes, forecast.doneSecondsToday)) {
-        Text("✓ Tagesziel geschafft", color = Accent, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 14.dp))
-        HapticTextButton(onClick = { onMore(exam) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Noch eine Runde", color = Muted, style = MaterialTheme.typography.labelLarge) }
+        Text("✓ Tagesziel geschafft", color = Accent, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).padding(top = 14.dp))
+        HapticTextButton(onClick = { onMore(exam) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Noch eine Runde", color = Muted, style = MaterialTheme.typography.labelLarge) }
     } else {
         PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
-        HapticTextButton(onClick = { onOpenMore(exam) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge) }
+        HapticTextButton(onClick = { onOpenMore(exam) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge) }
     }
 }
 

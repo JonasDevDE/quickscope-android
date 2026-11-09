@@ -174,7 +174,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
     if (onboarding) OnboardingFlow(vm, state.me?.name)
     if (profileCheckFailed) {
         // Netzfehler beim Profil: nicht blockieren, nochmal versuchen oder spaeter
-        Column(Modifier.fillMaxSize().background(Black).statusBarsPadding().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxSize().background(Black).blockTouches().statusBarsPadding().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             LearnMark(56.dp)
             Spacer(Modifier.size(16.dp))
             Text("Gerade nicht erreichbar", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)

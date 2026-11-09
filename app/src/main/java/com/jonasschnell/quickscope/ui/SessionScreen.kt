@@ -72,7 +72,7 @@ import kotlinx.coroutines.launch
 fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit, onClose: () -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
     BackHandler { onClose() }
-    Box(Modifier.fillMaxSize().background(Black)) {
+    Box(Modifier.fillMaxSize().background(Black).blockTouches()) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
         when (s.phase) {
             SessionPhase.Running -> if (s.blocked) BlockedView(onRetry = vm::retryGate, onSilent = vm::continueSilent, onClose = onClose) else RunningView(s, vm, onClose)
@@ -101,7 +101,7 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit,
 @Composable
 private fun TopRow(progress: Float, streak: Int, play: (@Composable () -> Unit)?, onClose: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("✕", style = MaterialTheme.typography.titleLarge, color = Muted, modifier = Modifier.hapticClickable(onClick = onClose).padding(horizontal = 8.dp, vertical = 4.dp))
+        CloseButton(onClose)
         GlowProgress(progress, Modifier.weight(1f))
         StreakChip(streak)
         play?.invoke()

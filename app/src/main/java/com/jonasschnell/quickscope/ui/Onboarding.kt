@@ -85,7 +85,7 @@ fun OnboardingFlow(vm: AppViewModel, name: String?) {
     BackHandler(enabled = previousPage(page) != null && step != VoiceStep.Uploading) {
         if (step == VoiceStep.Idle) previousPage(page)?.let { page = it }
     }
-    Column(Modifier.fillMaxSize().background(Black).statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
+    Column(Modifier.fillMaxSize().background(Black).blockTouches().statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.Center) {
             OnboardingPage.entries.forEach { p ->
                 Box(Modifier.padding(horizontal = 4.dp).size(8.dp).clip(CircleShape).background(if (p == page) Accent else CardHigh))

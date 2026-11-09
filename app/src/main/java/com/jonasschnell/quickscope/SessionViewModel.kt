@@ -11,6 +11,7 @@ import com.jonasschnell.quickscope.data.HeardRequest
 import com.jonasschnell.quickscope.data.SessionLesson
 import com.jonasschnell.quickscope.logic.FeedbackTracker
 import com.jonasschnell.quickscope.logic.WarmTarget
+import com.jonasschnell.quickscope.logic.canStartSession
 import com.jonasschnell.quickscope.logic.gateTarget
 import com.jonasschnell.quickscope.logic.warmPlan
 import com.jonasschnell.quickscope.logic.StartMode
@@ -114,11 +115,18 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private var pendingEnter: (() -> Unit)? = null
     private var pendingTarget: WarmTarget? = null
     private var gateJob: Job? = null
+    private var startJob: Job? = null
 
     /** [minutes] null = Rest des Tagesbudgets (leer, wenn das Tagesziel geschafft ist); sonst der ausdrueckliche Wunsch. */
     fun start(examId: String, minutes: Int?, scoreBefore: Int?, questionsOnly: Boolean = false) {
+        // genau eine aktive Runde: Doppeltipp, doppelte Aufrufe oder ein Start waehrend einer laufenden Runde werden verworfen
+        if (!canStartSession(_state.value.phase)) return
+        startJob?.cancel()
+        gateJob?.cancel()
+        pendingEnter = null
+        pendingTarget = null
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore) }
-        viewModelScope.launch {
+        startJob = viewModelScope.launch {
             try {
                 app.audioCache.clearing?.join() // Aufraeumen der letzten Runde abwarten
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
@@ -339,6 +347,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     /** Schliesst die Runde (Abbruch oder "Fertig"); bereits gegebene Antworten bleiben und werden nachgesendet. */
     fun close() {
         val id = _state.value.examId
+        // laufendes Laden und Gate beenden, damit eine geschlossene Runde nicht von selbst wieder auftaucht
+        startJob?.cancel()
+        gateJob?.cancel()
+        pendingEnter = null
+        pendingTarget = null
         _state.value = SessionUi()
         app.audioCache.clearing = viewModelScope.launch { app.audioCache.clear() }
         if (id.isNotEmpty()) viewModelScope.launch { sync.flush(id) }

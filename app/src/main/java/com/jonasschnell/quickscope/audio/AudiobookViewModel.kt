@@ -61,6 +61,7 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
     private var queue = AudiobookQueue(emptyList())
 
     fun start(examId: String, minutes: Int?, repeat: Boolean = false) {
+        if (!com.jonasschnell.quickscope.logic.canStartBook(_state.value.phase.name)) return // nur eine Wiedergabe gleichzeitig
         this.examId = examId
         _state.value = BookUi(phase = BookPhase.Loading)
         viewModelScope.launch {

@@ -58,9 +58,9 @@ fun AudiobookScreen(examId: String, onQuestions: () -> Unit, onClose: () -> Unit
     }
     val close = { vm.close(); onClose() }
     BackHandler { close() }
-    Column(Modifier.fillMaxSize().background(Black).statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
+    Column(Modifier.fillMaxSize().background(Black).blockTouches().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("✕", style = MaterialTheme.typography.titleLarge, color = Muted, modifier = Modifier.hapticClickable(onClick = close).padding(horizontal = 8.dp, vertical = 4.dp))
+            CloseButton(close)
             Text(s.chapterLabel, color = Muted, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
         }
         when (s.phase) {
