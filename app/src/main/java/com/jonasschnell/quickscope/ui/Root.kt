@@ -198,9 +198,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             Overlay.Me -> MeSheet(state, vm, onAbout = { if (online) overlay = Overlay.About else vm.needInternet() }, onSettings = { overlay = Overlay.SettingsMain }, onDismiss = dismiss)
             Overlay.SettingsMain -> SettingsMain(state, vm, onLegal = { overlay = null; legal = it }, onDismiss = dismiss)
             Overlay.About -> AboutScreen(state, vm, onClose = dismiss)
-            Overlay.Exams -> ExamsSheet(state, vm, onNew = { if (online) overlay = Overlay.NewExam else vm.needInternet() }, onEdit = { overlay = Overlay.Settings(it) },
-                onMaterial = { if (online) overlay = Overlay.Settings(it, ExamSetting.Material) else vm.needInternet() },
-                onDelete = { overlay = Overlay.Settings(it, ExamSetting.Delete) }, onDismiss = dismiss)
+            Overlay.Exams -> ExamsSheet(state, vm, onNew = { if (online) overlay = Overlay.NewExam else vm.needInternet() }, onEdit = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
             is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)

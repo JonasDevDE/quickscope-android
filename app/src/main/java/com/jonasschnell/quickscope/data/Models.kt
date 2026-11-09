@@ -287,7 +287,6 @@ data class ExamUpdate(
     val description: String? = null,
     val dailyMinutes: Int? = null,
     val priorKnowledge: String? = null,
-    val icon: String? = null,
 )
 
 /** Ein Wort im Vorlesetext: [start]/[end] sind Zeichenindizes (UTF-16, end exklusiv), Zeiten in Inhaltszeit der Audiodatei. */

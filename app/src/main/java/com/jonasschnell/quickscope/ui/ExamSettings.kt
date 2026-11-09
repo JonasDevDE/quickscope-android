@@ -54,7 +54,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Icon, Material, Description, Name, Kind, Daily, Prior, Reset, Delete }
+enum class ExamSetting { Material, Description, Name, Kind, Daily, Prior, Reset, Delete }
 
 /**
  * Thema-Seite im Stil der Profilseite: Name, Termin, Material, Beschreibung, Lernzeit, Vorwissen und am Ende der Gefahrenbereich.
@@ -73,8 +73,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
     // Die Seite bleibt immer sichtbar; Unterthemen kommen als kleine Sheets darueber.
     PageScaffold("Thema", onDismiss) {
         QuickscopeField(name, { name = it.take(80) }, "Name")
-        SettingsRow("Icon", null, { sub = ExamSetting.Icon }) { TopicIcon(exam.icon, 28.dp) }
-        SettingsRow("Termin", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Ohne Termin" else formatExamWhen(exam.date, exam.time)) }
+        SettingsRow("Prüfungsdatum", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Kein Prüfungsdatum" else formatExamWhen(exam.date, exam.time)) }
         SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value(if (exam.materialCount == 1L) "1 Datei" else "${exam.materialCount} Dateien") }
         SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(exam.description?.takeIf { it.isNotBlank() } ?: "–") }
         SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
@@ -86,7 +85,6 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
     }
     when (sub) {
         null -> Unit
-        ExamSetting.Icon -> IconSheet(vm, exam) { sub = null }
         ExamSetting.Material -> MaterialSheet(state, vm, exam) { sub = null }
         ExamSetting.Description -> DescriptionSheet(vm, exam) { sub = null }
         ExamSetting.Name -> Unit
@@ -140,29 +138,7 @@ private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit
     }
 }
 
-/** Icon waehlen: Raster der festen Sammlung (5 Spalten, grosse Treffer); setzt sofort. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun IconSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
-    val current = com.jonasschnell.quickscope.logic.normalizeIcon(exam.icon)
-    QuickscopeSheet(onDismiss, "Icon") {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 5) {
-            com.jonasschnell.quickscope.logic.TOPIC_ICON_KEYS.forEach { key ->
-                val selected = key == current
-                Box(
-                    Modifier.size(56.dp).clip(RoundedCornerShape(16.dp))
-                        .then(if (selected) Modifier.background(CardHigh).border(1.dp, com.jonasschnell.quickscope.ui.theme.Outline, RoundedCornerShape(16.dp)) else Modifier)
-                        .hapticClickable { vm.updateExam(exam.id, ExamUpdate(icon = key)); onDismiss() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    TopicIcon(key, 28.dp, tint = if (selected) Color.White else Muted)
-                }
-            }
-        }
-    }
-}
-
-/** Termin: "Mit Termin" (Datum und Uhrzeit des Pruefungstermins) oder "Ohne Termin" (dauerhaft lernen). */
+/** Termin: "Mit Prüfungsdatum" (Datum und Uhrzeit des Pruefungstermins) oder "Kein Prüfungsdatum" (dauerhaft lernen). */
 @Composable
 private fun KindSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     val wasExam = !isOpen(exam)
@@ -173,9 +149,9 @@ private fun KindSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     AutoSave(date to time, wasExam && wantsExam && date != null && !past, instantKey = date to time) { (d, t), fail ->
         vm.updateExam(exam.id, ExamUpdate(date = d.toString(), time = "%02d:%02d".format(t.hour, t.minute)), fail)
     }
-    QuickscopeSheet(onDismiss, "Termin") {
-        if (wantsExam) PrimaryButton("Mit Termin", {}) else SecondaryButton("Mit Termin", { wantsExam = true })
-        if (!wantsExam) PrimaryButton("Ohne Termin", {}) else SecondaryButton("Ohne Termin", {
+    QuickscopeSheet(onDismiss, "Prüfungsdatum") {
+        if (wantsExam) PrimaryButton("Mit Prüfungsdatum", {}) else SecondaryButton("Mit Prüfungsdatum", { wantsExam = true })
+        if (!wantsExam) PrimaryButton("Kein Prüfungsdatum", {}) else SecondaryButton("Kein Prüfungsdatum", {
             vm.updateExam(exam.id, ExamUpdate(mode = "open"))
             onDismiss()
         })

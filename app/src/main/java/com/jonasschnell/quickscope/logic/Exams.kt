@@ -115,9 +115,9 @@ fun Forecast.scoreOrNull(): Int? = if (mode == "open") knowledgePercent else if 
 fun ringPercent(exam: Exam, f: com.jonasschnell.quickscope.data.Forecast): Int =
     if (isOpen(exam)) f.knowledgePercent ?: 0 else f.scoreNowPercent
 
-/** Zeile in der Liste: Termin oder "∞ Dauerhaft" (bei offenem Lernen), dahinter "vorbei". */
+/** Zeile in der Liste: Termin oder "Kein Prüfungsdatum" (bei offenem Lernen), dahinter "vorbei". */
 fun examSubtitle(e: Exam, now: Instant): String =
-    if (isOpen(e)) "∞ Dauerhaft" else formatExamWhen(e.date, e.time) + if (isOver(e, now)) " · vorbei" else ""
+    if (isOpen(e)) "Kein Prüfungsdatum" else formatExamWhen(e.date, e.time) + if (isOver(e, now)) " · vorbei" else ""
 
 /** Seiten der Neu-Pruefung-Folge: bei "Dauerhaft lernen" entfaellt die Datum-/Uhrzeitseite. */
 enum class NewExamPage { Kind, Name, When, Material, Description, Prior, Daily }

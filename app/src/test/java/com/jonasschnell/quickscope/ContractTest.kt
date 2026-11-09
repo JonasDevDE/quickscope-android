@@ -571,7 +571,7 @@ class ContractTest {
         assertEquals("ready", open.status)
         assertTrue(com.jonasschnell.quickscope.logic.isOpen(open))
         assertFalse(com.jonasschnell.quickscope.logic.isOver(open, java.time.Instant.parse("2030-01-01T00:00:00Z")))
-        assertEquals("∞ Dauerhaft", com.jonasschnell.quickscope.logic.examSubtitle(open, java.time.Instant.now()))
+        assertEquals("Kein Prüfungsdatum", com.jonasschnell.quickscope.logic.examSubtitle(open, java.time.Instant.now()))
         val created = parse("exam-open-created.json", Exam.serializer())
         assertEquals("open", created.kind)
         assertEquals("processing", created.status)
@@ -661,8 +661,8 @@ class ContractTest {
         assertEquals("graduation", com.jonasschnell.quickscope.logic.normalizeIcon(without.icon))
         assertEquals("graduation", com.jonasschnell.quickscope.logic.normalizeIcon("unbekannt"))
         assertEquals(59, com.jonasschnell.quickscope.logic.TOPIC_ICON_KEYS.toSet().size)
-        val body = AppJson.encodeToString(com.jonasschnell.quickscope.data.ExamUpdate.serializer(), com.jonasschnell.quickscope.data.ExamUpdate(icon = "rocket"))
-        assertEquals("""{"icon":"rocket"}""", body)
+        // das Icon waehlt nur die KI: der Client sendet es nie
+        assertTrue(com.jonasschnell.quickscope.data.ExamUpdate::class.java.declaredFields.none { it.name == "icon" })
     }
 
     @Test fun everyTaskTypeIsRenderedAsItsOwnTaskNotAsCard() {

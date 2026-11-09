@@ -18,8 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.border
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.Color
 import com.jonasschnell.quickscope.ui.theme.Outline
 import com.jonasschnell.quickscope.ui.theme.Danger
@@ -54,34 +52,26 @@ fun ExamPill(name: String, loading: Boolean, onClick: () -> Unit, icon: String? 
     }
 }
 
-/** "Meine Themen": Zeile waehlt, Drei-Punkte oeffnen das Menue (Bearbeiten, Material, Löschen); unten "Neues Thema". */
+/** "Meine Themen": Zeile waehlt, Drei-Punkte oeffnen direkt die Thema-Seite; unten "Neues Thema". */
 @Composable
 fun ExamsSheet(
-    state: UiState, vm: AppViewModel, onNew: () -> Unit, onEdit: (String) -> Unit, onMaterial: (String) -> Unit, onDelete: (String) -> Unit, onDismiss: () -> Unit,
+    state: UiState, vm: AppViewModel, onNew: () -> Unit, onEdit: (String) -> Unit, onDismiss: () -> Unit,
 ) {
     val now = Instant.now()
     val active = state.activeExam?.id
     QuickscopeSheet(onDismiss, "Meine Themen") {
         sortExams(state.exams, now).forEach { e ->
             androidx.compose.runtime.key(e.id) {
-                var menu by remember { mutableStateOf(false) }
                 RowCard({ vm.selectExam(e.id); onDismiss() }) {
                     TopicIcon(e.icon, 24.dp)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(e.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = if (e.id == active) FontWeight.Bold else FontWeight.Normal), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(examSubtitle(e, now), color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
-                    Box {
-                        Text(
-                            "⋮", style = MaterialTheme.typography.titleLarge, color = Color.White,
-                            modifier = Modifier.hapticClickable { menu = true }.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                        DropdownMenu(menu, { menu = false }, modifier = Modifier.background(CardHigh).border(1.dp, Outline, RoundedCornerShape(12.dp))) {
-                            DropdownMenuItem(text = { Text("Bearbeiten") }, onClick = { menu = false; onEdit(e.id) })
-                            DropdownMenuItem(text = { Text("Material") }, onClick = { menu = false; onMaterial(e.id) })
-                            DropdownMenuItem(text = { Text("Löschen", color = Danger) }, onClick = { menu = false; onDelete(e.id) })
-                        }
-                    }
+                    Text(
+                        "⋮", style = MaterialTheme.typography.titleLarge, color = Color.White,
+                        modifier = Modifier.hapticClickable { onDismiss(); onEdit(e.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
                 }
             }
         }

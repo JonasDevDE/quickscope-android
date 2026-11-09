@@ -121,9 +121,9 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when (pages.getOrElse(p) { NewExamPage.Daily }) {
                     NewExamPage.Kind -> {
-                        PageTitle("Mit oder ohne Termin?")
-                        PrimaryButton("Mit Termin", { isOpen = false; page = p + 1 })
-                        SecondaryButton("Ohne Termin", { isOpen = true; page = p + 1 })
+                        PageTitle("Gibt es ein Prüfungsdatum?")
+                        PrimaryButton("Mit Prüfungsdatum", { isOpen = false; page = p + 1 })
+                        SecondaryButton("Kein Prüfungsdatum", { isOpen = true; page = p + 1 })
                     }
                     NewExamPage.Name -> {
                         PageTitle("Wie heißt das Thema?")
