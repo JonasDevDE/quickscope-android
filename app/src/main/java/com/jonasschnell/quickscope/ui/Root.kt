@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,7 +75,7 @@ private sealed interface Overlay {
     data object About : Overlay
     data object Exams : Overlay
     data object NewExam : Overlay
-    data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
+    data class Settings(val examId: String, val start: ExamSetting? = null, val page: ExamPage = ExamPage.Exam) : Overlay
     data class Cheat(val examId: String) : Overlay
     data class Audiobook(val examId: String) : Overlay
     data class More(val examId: String) : Overlay
@@ -192,11 +193,11 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
         val dismiss = { overlay = null }
         when (val o = overlay) {
             null -> Unit
-            Overlay.Me -> MeSheet(state, vm, onAbout = { overlay = Overlay.About }, onDismiss = dismiss)
+            Overlay.Me -> SettingsMain(state, vm, onProfile = { overlay = Overlay.About }, onExam = { id, pg -> overlay = Overlay.Settings(id, null, pg) }, onDismiss = dismiss)
             Overlay.About -> AboutScreen(state, vm, onClose = dismiss)
             Overlay.Exams -> ExamsSheet(state, vm, onNew = { overlay = Overlay.NewExam }, onSettings = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
-            is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)
+            is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, o.page, dismiss)
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
             is Overlay.More -> {
                 val exam = state.exams.firstOrNull { it.id == o.examId }
@@ -205,7 +206,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                     onQuestionsOnly = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
                     onListen = { overlay = Overlay.Audiobook(exam.id) },
                     onMaterial = { overlay = Overlay.Settings(exam.id, ExamSetting.Material) },
-                    onSettings = { overlay = Overlay.Settings(exam.id) },
+                    onSettings = { overlay = Overlay.Me },
                     onDismiss = dismiss,
                 )
             }
@@ -250,6 +251,11 @@ private fun LoginSheet(state: UiState, vm: AppViewModel) {
             { activity?.let(vm::signIn) },
             enabled = !state.loginBusy && activity != null,
         )
+        val ctx = LocalContext.current
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.Center) {
+            HapticTextButton(onClick = { openLegal(ctx, privacyUrl()) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Datenschutz", color = Muted, style = MaterialTheme.typography.labelMedium) }
+            HapticTextButton(onClick = { openLegal(ctx, termsUrl()) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("AGB", color = Muted, style = MaterialTheme.typography.labelMedium) }
+        }
     }
 }
 

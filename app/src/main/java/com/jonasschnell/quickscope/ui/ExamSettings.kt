@@ -49,11 +49,14 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Material, Description, Name, Kind, When, Daily, Prior, Reset, Delete }
+/** Unterseite der Pruefungs-Einstellungen: Lernen (Zeit, Vorwissen, Beschreibung) oder Pruefung (Material, Name, Art, Datum, Mehr). */
+enum class ExamPage { Learn, Exam }
+
+enum class ExamSetting { More, Material, Description, Name, Kind, When, Daily, Prior, Reset, Delete }
 
 /** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
 @Composable
-fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt: ExamSetting? = null, onDismiss: () -> Unit) {
+fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt: ExamSetting? = null, page: ExamPage = ExamPage.Exam, onDismiss: () -> Unit) {
     var sub by remember { mutableStateOf(startAt) }
     val exam = state.exams.firstOrNull { it.id == examId }
     if (exam == null) {
@@ -61,17 +64,18 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         return
     }
     when (sub) {
-        null -> QuickscopeSheet(onDismiss, exam.name) {
-            SectionTitle("Inhalt")
-            SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value("${exam.materialCount}") }
-            SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(if (exam.description.isNullOrBlank()) "–" else "gesetzt") }
+        null -> if (page == ExamPage.Learn) QuickscopeSheet(onDismiss, "Lernen") {
+            SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
             SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
-            SectionTitle("Zeit", Modifier.padding(top = 8.dp))
+            SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(if (exam.description.isNullOrBlank()) "–" else "gesetzt") }
+        } else QuickscopeSheet(onDismiss, "Prüfung") {
+            SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value("${exam.materialCount}") }
+            SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
             SettingsRow("Art", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Dauerhaft" else "Prüfung") }
             if (!isOpen(exam)) SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
-            SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
-            SectionTitle("Mehr", Modifier.padding(top = 8.dp))
-            SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
+            SettingsRow("Mehr", null, { sub = ExamSetting.More }) {}
+        }
+        ExamSetting.More -> QuickscopeSheet({ sub = null }, "Mehr") {
             SettingsRow("Von vorn beginnen", null, { sub = ExamSetting.Reset }) {}
             SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
         }

@@ -248,22 +248,38 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Eigene Daten abrufen und als Datei bereitstellen (zum Teilen/Speichern); 404/405 und andere Fehler ruhig. */
-    fun exportData(onFile: (java.io.File) -> Unit) {
+    /** Datenexport direkt in die vom Nutzer gewaehlte Datei (Speichern-Dialog); danach "Gespeichert" mit optionalem "Teilen". */
+    fun exportTo(uri: android.net.Uri, onShare: (android.net.Uri) -> Unit) {
         viewModelScope.launch {
+            var bytes: Long? = null
             try {
                 val body = api.export()
-                val dir = java.io.File(getApplication<Application>().cacheDir, "exports").apply { mkdirs() }
-                val file = java.io.File(dir, "quickscope-export.json")
-                body.byteStream().use { input -> file.outputStream().use { input.copyTo(it) } }
-                onFile(file)
+                bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    body.use { b ->
+                        val out = getApplication<Application>().contentResolver.openOutputStream(uri, "w") ?: throw IOException("Kein Ziel")
+                        out.use { com.jonasschnell.quickscope.logic.copyExport(b.byteStream(), it) }
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                say("Gerade nicht verfügbar.")
+                com.jonasschnell.quickscope.data.AppLog.w("Export", com.jonasschnell.quickscope.logic.exportFailureReason(e), e)
+            }
+            when (com.jonasschnell.quickscope.logic.exportOutcome(bytes)) {
+                com.jonasschnell.quickscope.logic.ExportOutcome.Saved -> say("Gespeichert", "Teilen") { onShare(uri) }
+                com.jonasschnell.quickscope.logic.ExportOutcome.Failed -> say("Gerade nicht verfügbar.")
             }
         }
     }
+
+    /** Vorlesen an/aus: lokal sofort wirksam (bei aus keine Audio-Aufrufe mehr), im Profil gespeichert. */
+    fun setAudioEnabled(on: Boolean, onFailure: () -> Unit = {}) {
+        store.audioEnabled = on
+        if (!on) app.voice.stop()
+        run("Speichern fehlgeschlagen", onFailure) { api.putProfile(com.jonasschnell.quickscope.data.ProfileUpdate(audioEnabled = on)) }
+    }
+
+    val audioEnabled: Boolean get() = store.audioEnabled
 
     /** Loescht das Konto auf dem Server, danach wie Abmelden. Fehler erscheinen als Snackbar. */
     fun deleteAccount() {
@@ -305,7 +321,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val me = api.me()
                 val exams = api.exams()
-                val gate = com.jonasschnell.quickscope.logic.gateFor(try { api.profile() } catch (e: CancellationException) { throw e } catch (_: Exception) { null })
+                val profile = try { api.profile() } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
+                profile?.audioEnabled?.let { store.audioEnabled = it }
+                val gate = com.jonasschnell.quickscope.logic.gateFor(profile)
                 _state.update { it.copy(phase = Phase.Ready, me = me, failure = null, serverStarting = false, exams = exams, examsLoaded = true, chosenExamId = store.chosenExamId, onboarding = gate) }
                 viewModelScope.launch {
                     loadForecast()

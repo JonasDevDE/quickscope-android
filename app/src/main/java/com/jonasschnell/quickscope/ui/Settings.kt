@@ -3,6 +3,8 @@ package com.jonasschnell.quickscope.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,10 +15,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,29 +40,72 @@ import com.jonasschnell.quickscope.ui.theme.CardHigh
 import com.jonasschnell.quickscope.ui.theme.Danger
 import com.jonasschnell.quickscope.ui.theme.Muted
 
-/** Privat: Konto (Name, E-Mail), Version mit Update-Zeile, Abmelden und der kleine Link "Konto löschen" (zweistufig bestaetigt). */
-@Composable
-fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onDismiss: () -> Unit) {
-    var accountStep by remember { mutableIntStateOf(0) }
-    val me = state.me
+private enum class SettingsPage { Sound, Account }
 
-    QuickscopeSheet(onDismiss, "Privat") {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            UserAvatar(me?.pictureUrl ?: vm.signInPictureUrl, me?.name ?: me?.email ?: "?", 56.dp)
-            Column(Modifier.padding(start = 14.dp)) {
-                Text(me?.name ?: me?.email ?: " ", maxLines = 1, style = MaterialTheme.typography.titleMedium)
-                if (me?.name != null && me.email != null) Text(me.email, maxLines = 1, color = Muted, style = MaterialTheme.typography.bodySmall)
+/**
+ * Einstellungen, radikal einfach: fuenf grosse Zeilen (Lernen, Ton, Profil, Prüfung, Konto), jede oeffnet eine kleine Seite.
+ * Lernen/Prüfung/Profil nutzen die bestehenden Seiten; Ton und Konto liegen hier. Gespeichert wird automatisch.
+ */
+@Composable
+fun SettingsMain(
+    state: UiState, vm: AppViewModel, onProfile: () -> Unit, onExam: (String, ExamPage) -> Unit, onDismiss: () -> Unit,
+) {
+    var page by remember { mutableStateOf<SettingsPage?>(null) }
+    val me = state.me
+    val exam = state.activeExam
+    when (page) {
+        null -> QuickscopeSheet(onDismiss, "Einstellungen") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                UserAvatar(me?.pictureUrl ?: vm.signInPictureUrl, me?.name ?: me?.email ?: "?", 48.dp)
+                Column(Modifier.padding(start = 14.dp)) {
+                    Text(me?.name ?: me?.email ?: " ", maxLines = 1, style = MaterialTheme.typography.titleMedium)
+                    if (me?.name != null && me.email != null) Text(me.email, maxLines = 1, color = Muted, style = MaterialTheme.typography.bodySmall)
+                }
             }
+            if (exam != null) SettingsRow("Lernen", null, { onExam(exam.id, ExamPage.Learn) }) { Chevron("${exam.dailyMinutes} min") }
+            SettingsRow("Ton", null, { page = SettingsPage.Sound }) { Chevron(if (vm.audioEnabled) "An" else "Aus") }
+            SettingsRow("Profil", null, onProfile) { Chevron(null) }
+            if (exam != null) SettingsRow("Prüfung", null, { onExam(exam.id, ExamPage.Exam) }) { Chevron(null) }
+            SettingsRow("Konto", null, { page = SettingsPage.Account }) { Chevron(null) }
         }
-        SettingsRow("Über mich", null, onAbout) {}
-        val context = androidx.compose.ui.platform.LocalContext.current
-        SettingsRow("Meine Daten exportieren", null, {
-            vm.exportData { file ->
-                val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
-        }) {}
+        SettingsPage.Sound -> SoundPage(vm) { page = null }
+        SettingsPage.Account -> AccountPage(state, vm) { page = null }
+    }
+}
+
+@Composable
+private fun Chevron(value: String?) {
+    Text((value?.let { "$it  " } ?: "") + "›", color = Muted, style = MaterialTheme.typography.titleMedium)
+}
+
+@Composable
+private fun SoundPage(vm: AppViewModel, onDismiss: () -> Unit) {
+    var on by remember { mutableStateOf(vm.audioEnabled) }
+    val saved = AutoSave(on, true, instantKey = on) { v, fail -> vm.setAudioEnabled(v, fail) }
+    QuickscopeSheet(onDismiss, "Ton", status = if (saved) "Gespeichert" else null) {
+        SettingsRow("Vorlesen", null, { on = !on }) {
+            Switch(
+                checked = on, onCheckedChange = { on = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = Accent, checkedThumbColor = Color.White, uncheckedTrackColor = CardHigh, uncheckedThumbColor = Muted, uncheckedBorderColor = CardHigh),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountPage(state: UiState, vm: AppViewModel, onDismiss: () -> Unit) {
+    var accountStep by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) vm.exportTo(uri) { u ->
+            val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, u).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+    QuickscopeSheet(onDismiss, "Konto") {
+        SettingsRow("Meine Daten exportieren", null, { exportLauncher.launch("quickscope-export.json") }) {}
+        SettingsRow("Datenschutzerklärung", null, { openLegal(context, privacyUrl()) }) {}
+        SettingsRow("AGB", null, { openLegal(context, termsUrl()) }) {}
         UpdateRow(state, vm)
         Column(
             Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -100,6 +148,14 @@ fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onDismiss: ()
             dismissButton = { HapticTextButton(onClick = { accountStep = 0 }) { Text("Abbrechen", color = Color.White) } },
         )
     }
+}
+
+internal fun privacyUrl() = com.jonasschnell.quickscope.logic.legalUrl(BuildConfig.BASE_URL, com.jonasschnell.quickscope.logic.LEGAL_PRIVACY, BuildConfig.LEGAL_PRIVACY_URL)
+internal fun termsUrl() = com.jonasschnell.quickscope.logic.legalUrl(BuildConfig.BASE_URL, com.jonasschnell.quickscope.logic.LEGAL_TERMS, BuildConfig.LEGAL_TERMS_URL)
+
+/** Rechtliche Seite im Browser oeffnen (kein WebView). */
+internal fun openLegal(context: android.content.Context, url: String) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
 
 /** Ruhige Einstellungszeile: Titel, optionaler Untertitel, Aktion rechts. */
