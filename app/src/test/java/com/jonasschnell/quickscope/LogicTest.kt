@@ -568,67 +568,69 @@ class LogicTest {
         assertTrue(com.jonasschnell.quickscope.logic.OrderState.of(order).shuffled != listOf("a", "b", "c"))
     }
 
-    // --- Bucket und Build ---
+    // --- Bucket und Build (Vertrag: payload.categories[].label, items[].categoryId, tokens[], solution/solutions) ---
 
     private fun jsonItem(type: String, payload: String) =
         com.jonasschnell.quickscope.data.AppJson.decodeFromString(com.jonasschnell.quickscope.data.Item.serializer(), """{"id":"x1","type":"$type","question":"q","answer":"a","payload":$payload}""")
 
     @Test fun bucketParsesAndScoresPerAssignment() {
-        val payload = """{"categories":[{"id":"c1","title":"Aktiv"},{"id":"c2","title":"Passiv"}],"items":[{"id":"i1","text":"Kasse","categoryId":"c1"},{"id":"i2","text":"Kredit","categoryId":"c2"},{"id":"i3","text":"Bank","categoryId":"c1"},{"id":"i4","text":"Eigenkapital","categoryId":"c2"}]}"""
+        val payload = """{"categories":[{"id":"c1","label":"Aktiv"},{"id":"c2","label":"Passiv"}],"items":[{"id":"i1","text":"Kasse","categoryId":"c1"},{"id":"i2","text":"Kredit","categoryId":"c2"},{"id":"i3","text":"Bank","categoryId":"c1"},{"id":"i4","text":"Eigenkapital","categoryId":"c2"}]}"""
         val task = com.jonasschnell.quickscope.logic.parseTask(jsonItem("bucket", payload)) as com.jonasschnell.quickscope.logic.Task.Bucket
-        assertEquals(2, task.categories.size)
+        assertEquals(listOf("Aktiv", "Passiv"), task.categories.map { it.second })
+        assertEquals(listOf("i1", "i2", "i3", "i4"), com.jonasschnell.quickscope.logic.BucketState.of(task).entries.map { it.id })   // Reihenfolge vom Backend
         val state = com.jonasschnell.quickscope.logic.BucketState.of(task)
-        // alle richtig
         while (!state.done) assertEquals(com.jonasschnell.quickscope.logic.BucketResult.Right, state.tap(state.current!!.categoryId))
         assertTrue(state.known)
-        assertEquals(4, state.placed.size)
-        // ein Fehler, dann richtig: nicht "known"
+        assertEquals("""{"assignments":{"i1":"c1","i2":"c2","i3":"c1","i4":"c2"}}""", com.jonasschnell.quickscope.logic.bucketAnswer(state).toString())
+        // ein Fehler, dann richtig: nicht "known", Antwort wird trotzdem gesendet (der Server wertet nach)
         val s2 = com.jonasschnell.quickscope.logic.BucketState.of(task)
         val wrong = task.categories.first { it.first != s2.current!!.categoryId }.first
         assertEquals(com.jonasschnell.quickscope.logic.BucketResult.Wrong, s2.tap(wrong))
         assertEquals(1, s2.mistakes)
-        // zwei Fehlversuche bei demselben Element: richtige Zuordnung wird gezeigt und es geht weiter
+        assertEquals(null, com.jonasschnell.quickscope.logic.bucketAnswer(s2))   // noch nicht fertig
+        // zwei Fehlversuche bei einem Element: Zuordnung wird gezeigt, danach keine Antwort mehr
         val first = s2.current!!
         assertEquals(com.jonasschnell.quickscope.logic.BucketResult.Revealed, s2.tap(wrong))
         assertEquals(first.categoryId, s2.placed[first.id])
-        assertTrue(s2.current?.id != first.id)
         assertFalse(s2.known)
-        // "Weiss nicht"
-        s2.revealAll()
-        assertTrue(s2.done)
-        assertEquals(4, s2.placed.size)
-        // kaputte Payload: Karte
-        assertTrue(com.jonasschnell.quickscope.logic.parseTask(jsonItem("bucket", """{"categories":[{"id":"c1","title":"A"}],"items":[]}""")) is com.jonasschnell.quickscope.logic.Task.Card)
+        while (!s2.done) s2.tap(s2.current!!.categoryId)
+        assertEquals(null, com.jonasschnell.quickscope.logic.bucketAnswer(s2))   // nach Aufdecken kein answer
+        val s3 = com.jonasschnell.quickscope.logic.BucketState.of(task)
+        s3.revealAll()                                                          // "Weiss nicht"
+        assertTrue(s3.done)
+        assertEquals(null, com.jonasschnell.quickscope.logic.bucketAnswer(s3))
+        // kaputte Payload (Altannahme "title" gilt nicht mehr): Karte
+        assertTrue(com.jonasschnell.quickscope.logic.parseTask(jsonItem("bucket", """{"categories":[{"id":"c1","title":"A"},{"id":"c2","title":"B"}],"items":[]}""")) is com.jonasschnell.quickscope.logic.Task.Card)
     }
 
-    @Test fun buildParsesAndChecksTheRow() {
-        val payload = """{"tokens":[{"id":"t1","text":"Eigen"},{"id":"t2","text":"kapital"},{"id":"t3","text":"quote"}],"order":["t1","t2","t3"]}"""
+    @Test fun buildChecksAgainstAllSolutions() {
+        val payload = """{"tokens":[{"id":"t2","text":"kapital"},{"id":"t1","text":"Eigen"},{"id":"t3","text":"quote"}],"solution":["t1","t2","t3"],"solutions":[["t1","t2","t3"],["t3","t1","t2"]]}"""
         val task = com.jonasschnell.quickscope.logic.parseTask(jsonItem("build", payload)) as com.jonasschnell.quickscope.logic.Task.Build
+        assertEquals(2, task.solutions.size)
         val state = com.jonasschnell.quickscope.logic.BuildState.of(task)
-        assertTrue(state.shuffled.map { it.first } != listOf("t1", "t2", "t3"))   // nicht in Loesungsreihenfolge
+        assertEquals(listOf("t2", "t1", "t3"), state.shuffled.map { it.first })   // Reihenfolge vom Backend
         assertEquals(null, state.check())                                          // unvollstaendig
         state.tapChip("t2"); state.tapChip("t1"); state.tapChip("t3")
         state.tapRow(0)                                                            // Tipp in der Zeile nimmt zurueck
         assertEquals(listOf("t1", "t3"), state.row)
         state.tapChip("t2")
-        assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Wrong, state.check())   // t1 t3 t2
+        assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Wrong, state.check())   // t1 t3 t2: keine gueltige Reihenfolge
         assertEquals(1, state.mistakes)
-        assertFalse(state.done)
-        // zweiter Versuch falsch: Loesung wird gezeigt
         assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Revealed, state.check())
         assertEquals(listOf("t1", "t2", "t3"), state.row)
-        assertEquals(listOf("t1", "t3", "t2"), state.answerOrder())   // abgegebene Reihenfolge fuer das Backend
         assertFalse(state.known)
-        // richtig im ersten Versuch
+        assertEquals(null, com.jonasschnell.quickscope.logic.buildAnswer(state))   // nach Aufdecken kein answer
+        // die zweite gueltige Reihenfolge zaehlt ebenfalls
         val s2 = com.jonasschnell.quickscope.logic.BuildState.of(task)
-        listOf("t1", "t2", "t3").forEach { s2.tapChip(it) }
+        listOf("t3", "t1", "t2").forEach { s2.tapChip(it) }
         assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Right, s2.check())
         assertTrue(s2.known)
-        assertEquals(listOf("t1", "t2", "t3"), s2.answerOrder())
-        // Antwort-Payload im Versand
-        val body = com.jonasschnell.quickscope.data.AppJson.encodeToString(com.jonasschnell.quickscope.data.AttemptRequest.serializer(), com.jonasschnell.quickscope.data.AttemptRequest("x1", "right", 900, null, "u", kotlinx.serialization.json.JsonArray(s2.answerOrder().map { kotlinx.serialization.json.JsonPrimitive(it) })))
-        assertTrue(body.contains("\"answer\":[\"t1\",\"t2\",\"t3\"]"))
-        assertTrue(com.jonasschnell.quickscope.logic.parseTask(jsonItem("build", """{"tokens":["a"],"order":["0"]}""")) is com.jonasschnell.quickscope.logic.Task.Card)
+        assertEquals("""{"order":["t3","t1","t2"]}""", com.jonasschnell.quickscope.logic.buildAnswer(s2).toString())
+        // Antwort im Versand
+        val body = com.jonasschnell.quickscope.data.AppJson.encodeToString(com.jonasschnell.quickscope.data.AttemptRequest.serializer(), com.jonasschnell.quickscope.data.AttemptRequest("x1", "right", 900, null, "u", com.jonasschnell.quickscope.logic.buildAnswer(s2)))
+        assertTrue(body.contains("\"answer\":{\"order\":[\"t3\",\"t1\",\"t2\"]}"))
+        // Altannahme (Tokens als Texte, order) gilt nicht mehr
+        assertTrue(com.jonasschnell.quickscope.logic.parseTask(jsonItem("build", """{"tokens":["a","b"],"order":["0","1"]}""")) is com.jonasschnell.quickscope.logic.Task.Card)
     }
 
     // --- Gemischte Runde: Lektionen zwischendurch ---

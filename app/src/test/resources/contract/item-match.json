@@ -1,0 +1,55 @@
+{
+  "id" : "i-match",
+  "examId" : "e-ready",
+  "topicId" : "6af24a55d03b3622c7d83475",
+  "type" : "match",
+  "question" : "Zuordnen:",
+  "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
+  "payload" : {
+    "pairs" : [ {
+      "left" : "Selbstkosten",
+      "right" : "Herstellkosten + Verwaltung"
+    }, {
+      "left" : "Listenpreis",
+      "right" : "Preis vor Rabatt"
+    }, {
+      "left" : "Zielpreis",
+      "right" : "Preis vor Skonto"
+    } ],
+    "left" : [ {
+      "id" : "l1",
+      "text" : "Selbstkosten"
+    }, {
+      "id" : "l2",
+      "text" : "Listenpreis"
+    }, {
+      "id" : "l3",
+      "text" : "Zielpreis"
+    } ],
+    "right" : [ {
+      "id" : "r2",
+      "text" : "Preis vor Rabatt"
+    }, {
+      "id" : "r3",
+      "text" : "Preis vor Skonto"
+    }, {
+      "id" : "r1",
+      "text" : "Herstellkosten + Verwaltung"
+    } ],
+    "solution" : {
+      "l1" : "r1",
+      "l2" : "r2",
+      "l3" : "r3"
+    }
+  },
+  "difficulty" : 3,
+  "estSeconds" : 19,
+  "source" : {
+    "materialId" : "m-pdf"
+  },
+  "sourceType" : "material",
+  "fromExam" : false,
+  "aiSolution" : false,
+  "lesson" : false,
+  "ttsText" : "Zuordnen:"
+}

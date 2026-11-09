@@ -197,7 +197,7 @@ private val PairColors = arrayOf(
  * wird das richtige Paar gezeigt. Alles passt ohne Scrollen und ohne Layoutsprung.
  */
 @Composable
-fun MatchTask(task: Task.Match, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
+fun MatchTask(task: Task.Match, revealed: Boolean, onAnswer: (Boolean, kotlinx.serialization.json.JsonElement?) -> Unit) {
     val state = remember { MatchState.of(task) }
     var version by remember { mutableIntStateOf(0) }
     val haptics = LocalHaptics.current
@@ -242,7 +242,7 @@ fun MatchTask(task: Task.Match, revealed: Boolean, onAnswer: (Boolean) -> Unit) 
                             MatchResult.None -> Unit
                         }
                         version++
-                        if (state.done) onAnswer(state.known)
+                        if (state.done) onAnswer(state.known, com.jonasschnell.quickscope.logic.matchAnswer(task, state))
                     }
                 }
             }
@@ -272,7 +272,7 @@ private fun MatchCell(text: String, pairColor: Color?, selected: Boolean, wrong:
 
 /** Reihenfolge per Tippen: die Schritte der Reihe nach antippen. */
 @Composable
-fun OrderTask(task: Task.Order, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
+fun OrderTask(task: Task.Order, revealed: Boolean, onAnswer: (Boolean, kotlinx.serialization.json.JsonElement?) -> Unit) {
     val state = remember { OrderState.of(task) }
     var version by remember { mutableIntStateOf(0) }
     val haptics = LocalHaptics.current
@@ -288,7 +288,7 @@ fun OrderTask(task: Task.Order, revealed: Boolean, onAnswer: (Boolean) -> Unit) 
                     .hapticClickable(enabled = !taken && !state.done) {
                         if (state.tap(step)) haptics.tick() else haptics.reject()
                         version++
-                        if (state.done) onAnswer(state.mistakes == 0)
+                        if (state.done) onAnswer(state.mistakes == 0, com.jonasschnell.quickscope.logic.orderAnswer(task, state))
                     }.padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -312,7 +312,7 @@ fun BucketTask(task: Task.Bucket, revealed: Boolean, onAnswer: (Boolean, kotlinx
     val shake = remember { Animatable(0f) }
     var wrongCategory by remember { mutableStateOf<String?>(null) }
     var wrongTick by remember { mutableIntStateOf(0) }
-    fun payload() = kotlinx.serialization.json.JsonObject(state.placed.mapValues { kotlinx.serialization.json.JsonPrimitive(it.value) })
+    fun payload() = com.jonasschnell.quickscope.logic.bucketAnswer(state)
     LaunchedEffect(revealed) { if (revealed) { state.revealAll(); version++ } }
     LaunchedEffect(wrongTick) {
         if (wrongTick == 0) return@LaunchedEffect
@@ -398,7 +398,7 @@ fun BuildTask(task: Task.Build, revealed: Boolean, onAnswer: (Boolean, kotlinx.s
                 com.jonasschnell.quickscope.logic.BuildResult.Wrong -> { haptics.tick(); wrongTick++ }
             }
             version++
-            if (state.done) onAnswer(state.known, kotlinx.serialization.json.JsonArray(state.answerOrder().map { kotlinx.serialization.json.JsonPrimitive(it) }))
+            if (state.done) onAnswer(state.known, com.jonasschnell.quickscope.logic.buildAnswer(state))
         }, enabled = state.complete && !state.done)
     }
 }

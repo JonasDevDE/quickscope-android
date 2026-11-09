@@ -1,0 +1,48 @@
+{
+  "id" : "i-bucket",
+  "examId" : "e-ready",
+  "topicId" : "6af24a55d03b3622c7d83473",
+  "type" : "bucket",
+  "question" : "Was gehört wohin?",
+  "answer" : "Kosten: Kreditzins, Gebühr, Tilgung; Ertrag: Sparzins, Divi…",
+  "payload" : {
+    "categories" : [ {
+      "id" : "c1",
+      "label" : "Kosten"
+    }, {
+      "id" : "c2",
+      "label" : "Ertrag"
+    } ],
+    "items" : [ {
+      "id" : "b4",
+      "text" : "Dividende",
+      "categoryId" : "c2"
+    }, {
+      "id" : "b3",
+      "text" : "Sparzins",
+      "categoryId" : "c2"
+    }, {
+      "id" : "b1",
+      "text" : "Kreditzins",
+      "categoryId" : "c1"
+    }, {
+      "id" : "b5",
+      "text" : "Tilgung",
+      "categoryId" : "c1"
+    }, {
+      "id" : "b2",
+      "text" : "Gebühr",
+      "categoryId" : "c1"
+    } ]
+  },
+  "difficulty" : 3,
+  "estSeconds" : 24,
+  "source" : {
+    "materialId" : "m-pdf"
+  },
+  "sourceType" : "material",
+  "fromExam" : false,
+  "aiSolution" : false,
+  "lesson" : false,
+  "ttsText" : "Was gehört wohin?"
+}

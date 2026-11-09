@@ -261,8 +261,8 @@ private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: S
         is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
         is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
         is Task.Spot -> SpotTask(task, revealed, onAnswer)
-        is Task.Match -> MatchTask(task, revealed, onAnswer)
-        is Task.Order -> OrderTask(task, revealed, onAnswer)
+        is Task.Match -> MatchTask(task, revealed) { ok, payload -> vm.answer(ok, payload) }
+        is Task.Order -> OrderTask(task, revealed) { ok, payload -> vm.answer(ok, payload) }
         is Task.Bucket -> BucketTask(task, revealed) { ok, payload -> vm.answer(ok, payload) }
         is Task.Build -> BuildTask(task, revealed) { ok, payload -> vm.answer(ok, payload) }
     }

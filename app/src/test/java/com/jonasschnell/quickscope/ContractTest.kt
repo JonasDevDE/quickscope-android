@@ -685,4 +685,69 @@ class ContractTest {
         assertTrue(task("order", """{"steps":["a"]}""") is com.jonasschnell.quickscope.logic.Task.Card)
         assertTrue(task("neuertyp", "{}") is com.jonasschnell.quickscope.logic.Task.Card)
     }
+
+    @Test fun arrangementItemsFollowTheRealSamples() {
+        // match: left/right/solution vom Backend, rechts gemischt
+        val match = com.jonasschnell.quickscope.logic.parseTask(parse("item-match.json", com.jonasschnell.quickscope.data.Item.serializer())) as com.jonasschnell.quickscope.logic.Task.Match
+        assertEquals(listOf("Selbstkosten", "Listenpreis", "Zielpreis"), match.leftOrder)
+        assertEquals(listOf("Preis vor Rabatt", "Preis vor Skonto", "Herstellkosten + Verwaltung"), match.rightOrder)
+        assertEquals(listOf("Selbstkosten" to "Herstellkosten + Verwaltung", "Listenpreis" to "Preis vor Rabatt", "Zielpreis" to "Preis vor Skonto"), match.pairs)
+        val ms = com.jonasschnell.quickscope.logic.MatchState.of(match)
+        assertEquals(match.leftOrder, ms.lefts)                       // Backend-Spalten bevorzugt
+        assertEquals(match.rightOrder, ms.rights)
+        ms.lefts.forEach { l -> ms.tapLeft(l); ms.tapRight(match.pairs.first { it.first == l }.second) }
+        assertTrue(ms.done)
+        assertEquals("""{"pairs":{"l1":"r1","l2":"r2","l3":"r3"}}""", com.jonasschnell.quickscope.logic.matchAnswer(match, ms).toString())
+        // order: items gemischt, solution als ids
+        val order = com.jonasschnell.quickscope.logic.parseTask(parse("item-order.json", com.jonasschnell.quickscope.data.Item.serializer())) as com.jonasschnell.quickscope.logic.Task.Order
+        assertEquals(listOf("Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis"), order.steps)
+        assertEquals(listOf("Barverkaufspreis", "Listenpreis", "Gewinnzuschlag", "Selbstkosten"), order.shown)
+        assertEquals(listOf("s1", "s2", "s3", "s4"), order.ids)
+        val os = com.jonasschnell.quickscope.logic.OrderState.of(order)
+        assertEquals(order.shown, os.shuffled)
+        order.steps.forEach { os.tap(it) }
+        assertTrue(os.done)
+        assertEquals("""{"order":["s1","s2","s3","s4"]}""", com.jonasschnell.quickscope.logic.orderAnswer(order, os).toString())
+        // bucket
+        val bucket = com.jonasschnell.quickscope.logic.parseTask(parse("item-bucket.json", com.jonasschnell.quickscope.data.Item.serializer())) as com.jonasschnell.quickscope.logic.Task.Bucket
+        assertEquals(listOf("c1" to "Kosten", "c2" to "Ertrag"), bucket.categories)
+        assertEquals(listOf("b4", "b3", "b1", "b5", "b2"), bucket.entries.map { it.id })
+        assertEquals("c2", bucket.entries.first { it.id == "b4" }.categoryId)
+        val bs = com.jonasschnell.quickscope.logic.BucketState.of(bucket)
+        while (!bs.done) bs.tap(bs.current!!.categoryId)
+        assertEquals("""{"assignments":{"b4":"c2","b3":"c2","b1":"c1","b5":"c1","b2":"c1"}}""", com.jonasschnell.quickscope.logic.bucketAnswer(bs).toString())
+        // build
+        val build = com.jonasschnell.quickscope.logic.parseTask(parse("item-build.json", com.jonasschnell.quickscope.data.Item.serializer())) as com.jonasschnell.quickscope.logic.Task.Build
+        assertEquals(listOf("p", "K", "/", "Z", "100", "=", "×").sorted(), build.tokens.map { it.second }.sorted())
+        assertEquals(7, build.tokens.size)
+        assertEquals(listOf("t1", "t2", "t3", "t4", "t5", "t6", "t7"), build.solution)
+        assertEquals(listOf(listOf("t1", "t2", "t3", "t4", "t5", "t6", "t7")), build.solutions)
+        assertEquals("t5", build.tokens.first().first)               // gemischt wie geliefert
+        // Antwortformat laut attempts-bucket-build.json: Forecast + doneSecondsToday
+        val resp = parse("attempts-bucket-build.json", com.jonasschnell.quickscope.data.AttemptsResponse.serializer())
+        assertEquals(50, resp.forecast.scoreNowPercent)
+        assertEquals(0, resp.doneSecondsToday)
+    }
+
+    @Test fun mixedSessionParsesInOrderAndRendersEveryType() {
+        val s = parse("session-mixed.json", LearnSession.serializer())
+        val tasks = s.items.mapNotNull { com.jonasschnell.quickscope.logic.taskOf(it) }
+        assertEquals(s.items.size, tasks.size)
+        val kinds = tasks.map { it::class.simpleName }
+        assertEquals("Teach", kinds.first())                                        // Lektion zuerst
+        assertEquals(3, kinds.count { it == "Teach" })                              // Lektion -> Fragen -> Wiederholung, drei Lektionen
+        assertTrue(tasks.any { it is com.jonasschnell.quickscope.logic.Task.Order && it.ids != null })
+        assertTrue(tasks.any { it is com.jonasschnell.quickscope.logic.Task.Match && it.leftIds != null })
+        assertTrue(tasks.any { it is com.jonasschnell.quickscope.logic.Task.Build })
+        assertTrue(tasks.any { it is com.jonasschnell.quickscope.logic.Task.Bucket })
+        assertTrue(tasks.any { it is com.jonasschnell.quickscope.logic.Task.Spot })
+        assertTrue(tasks.any { it is com.jonasschnell.quickscope.logic.Task.Cloze })
+        // nach jeder Lektion folgt direkt eine Aufgabe (kein Zwischenbildschirm); "Weiter zum Test" nur davor
+        tasks.forEachIndexed { i, t ->
+            if (t is com.jonasschnell.quickscope.logic.Task.Teach) {
+                val next = tasks.getOrNull(i + 1)
+                assertEquals(if (next != null && next !is com.jonasschnell.quickscope.logic.Task.Teach) "Weiter zum Test" else "Weiter", com.jonasschnell.quickscope.logic.teachButtonLabel(next))
+            }
+        }
+    }
 }

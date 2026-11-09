@@ -1,0 +1,44 @@
+{
+  "id" : "i-build",
+  "examId" : "e-ready",
+  "topicId" : "6af24a55d03b3622c7d83473",
+  "type" : "build",
+  "question" : "Bau die Zinsformel.",
+  "answer" : "Z = K × p / 100",
+  "payload" : {
+    "tokens" : [ {
+      "id" : "t5",
+      "text" : "p"
+    }, {
+      "id" : "t3",
+      "text" : "K"
+    }, {
+      "id" : "t6",
+      "text" : "/"
+    }, {
+      "id" : "t1",
+      "text" : "Z"
+    }, {
+      "id" : "t2",
+      "text" : "="
+    }, {
+      "id" : "t7",
+      "text" : "100"
+    }, {
+      "id" : "t4",
+      "text" : "×"
+    } ],
+    "solution" : [ "t1", "t2", "t3", "t4", "t5", "t6", "t7" ],
+    "solutions" : [ [ "t1", "t2", "t3", "t4", "t5", "t6", "t7" ] ]
+  },
+  "difficulty" : 3,
+  "estSeconds" : 21,
+  "source" : {
+    "materialId" : "m-pdf"
+  },
+  "sourceType" : "material",
+  "fromExam" : false,
+  "aiSolution" : false,
+  "lesson" : false,
+  "ttsText" : "Bau die Zinsformel."
+}

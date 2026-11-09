@@ -1,0 +1,470 @@
+{
+  "items" : [ {
+    "type" : "lesson",
+    "lesson" : {
+      "id" : "6af24a55d03b3622c7d83478",
+      "title" : "Zinsen verstehen",
+      "keyPoints" : [ "Zins = Preis für Geld", "Kapital, Satz, Zeit", "Zinsformel", "Zinseszins" ],
+      "ttsText" : "Zinsen sind der Preis für geliehenes Geld. Wer Geld verleiht, bekommt Zinsen. Wer sich Geld leiht, zahlt sie. Drei Dinge bestimmen die Höhe: das Kapital, der Zinssatz und die Zeit. Das Kapital ist der Betrag, um den es geht. Der Zinssatz sagt, wie viel Prozent pro Jahr dazukommen. Ein Beispiel: Tausend Euro bei drei Prozent bringen nach einem Jahr dreißig Euro Zinsen. Die Formel dafür lautet Kapital mal Zinssatz geteilt durch hundert. Bleiben die Zinsen auf dem Konto, werden sie im nächsten Jahr mitverzinst. Das nennt man Zinseszins. Merk dir: Zins ist die Miete für Geld. Je mehr Geld und je länger, desto höher die Miete.",
+      "mnemonic" : "Zins = Miete für Geld",
+      "estSeconds" : 48,
+      "chapterId" : "6af24a55d03b3622c7d83474",
+      "chapterTitle" : "Rechnen",
+      "chapterOrder" : 1,
+      "chapterCount" : 2,
+      "lessonIndexInChapter" : 1,
+      "lessonCountInChapter" : 2
+    }
+  }, {
+    "id" : "i-card",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "card",
+    "question" : "Zinsen?",
+    "answer" : "Preis für Kapital",
+    "explanation" : "Steigen mit Betrag, Laufzeit.",
+    "mnemonic" : "Zins = Miete für Geld",
+    "difficulty" : 1,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf",
+      "page" : 2
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zinsen?"
+  }, {
+    "id" : "i-aisol",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "number",
+    "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
+    "answer" : "1.081,60 €",
+    "payload" : {
+      "options" : [ "1.040 €", "1.081,60 €", "1.160 €", "1.080 €" ],
+      "correctIndex" : 1
+    },
+    "solutionSteps" : [ "1000 × 1,04", "× 1,04", "= 1081,60" ],
+    "trick" : "Faktor zweimal",
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam",
+      "page" : 1
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : true,
+    "patternId" : "p-1",
+    "lesson" : false,
+    "ttsText" : "1.000 € zu 4 %, 2 Jahre Zinseszins?"
+  }, {
+    "id" : "i-mc",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "mc",
+    "question" : "Jahreszins-Formel?",
+    "answer" : "K × p / 100",
+    "options" : [ "K × p / 100", "p × 100", "K / p", "K + p" ],
+    "correctIndex" : 0,
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Jahreszins-Formel?"
+  }, {
+    "id" : "i-number",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "number",
+    "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
+    "answer" : "30 €",
+    "payload" : {
+      "options" : [ "30 €", "300 €", "0,3 €", "3 €" ],
+      "correctIndex" : 0
+    },
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zins: 1.000 € bei 3 %, 1 Jahr?"
+  }, {
+    "type" : "lesson",
+    "lesson" : {
+      "id" : "6af24a55d03b3622c7d83479",
+      "title" : "Preis kalkulieren",
+      "keyPoints" : [ "Kosten, dann Gewinn", "Selbstkosten", "Skonto, Rabatt einrechnen" ],
+      "ttsText" : "Kalkulation heißt: Du rechnest aus, zu welchem Preis du etwas verkaufen musst. Du startest bei den Kosten. Zuerst kommen die Herstellkosten, also Material und Arbeit. Dazu kommen die Verwaltungs und Vertriebskosten. Das zusammen sind die Selbstkosten. Auf die Selbstkosten schlägst du den Gewinn auf. So entsteht der Barverkaufspreis. Dann geben Kunden meist Skonto und Rabatt. Beides musst du schon vorher einrechnen, sonst bleibt dir weniger Gewinn. Der Preis im Katalog ist der Listenpreis. Ein Beispiel: Hundert Euro Selbstkosten und zehn Prozent Gewinn ergeben hundertzehn Euro. Merk dir die Reihenfolge: Kosten, Gewinn, Skonto, Rabatt.",
+      "mnemonic" : "Kosten, Gewinn, Skonto, Rabatt",
+      "estSeconds" : 42,
+      "chapterId" : "6af24a55d03b3622c7d83474",
+      "chapterTitle" : "Rechnen",
+      "chapterOrder" : 1,
+      "chapterCount" : 2,
+      "lessonIndexInChapter" : 2,
+      "lessonCountInChapter" : 2
+    }
+  }, {
+    "id" : "i-cloze",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83475",
+    "type" : "cloze",
+    "question" : "Selbstkosten + ___ = Verkaufspreis.",
+    "answer" : "Gewinn",
+    "payload" : {
+      "text" : "Selbstkosten + ___ = Verkaufspreis.",
+      "bank" : [ "Gewinn", "Skonto", "Rabatt" ],
+      "answer" : "Gewinn"
+    },
+    "difficulty" : 3,
+    "estSeconds" : 12,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Selbstkosten + – = Verkaufspreis."
+  }, {
+    "id" : "i-order",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83475",
+    "type" : "order",
+    "question" : "Kalkulation, Reihenfolge:",
+    "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
+    "payload" : {
+      "steps" : [ "Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis" ],
+      "items" : [ {
+        "id" : "s3",
+        "text" : "Barverkaufspreis"
+      }, {
+        "id" : "s4",
+        "text" : "Listenpreis"
+      }, {
+        "id" : "s2",
+        "text" : "Gewinnzuschlag"
+      }, {
+        "id" : "s1",
+        "text" : "Selbstkosten"
+      } ],
+      "solution" : [ "s1", "s2", "s3", "s4" ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 18,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Kalkulation, Reihenfolge:"
+  }, {
+    "id" : "i-match",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83475",
+    "type" : "match",
+    "question" : "Zuordnen:",
+    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
+    "payload" : {
+      "pairs" : [ {
+        "left" : "Selbstkosten",
+        "right" : "Herstellkosten + Verwaltung"
+      }, {
+        "left" : "Listenpreis",
+        "right" : "Preis vor Rabatt"
+      }, {
+        "left" : "Zielpreis",
+        "right" : "Preis vor Skonto"
+      } ],
+      "left" : [ {
+        "id" : "l1",
+        "text" : "Selbstkosten"
+      }, {
+        "id" : "l2",
+        "text" : "Listenpreis"
+      }, {
+        "id" : "l3",
+        "text" : "Zielpreis"
+      } ],
+      "right" : [ {
+        "id" : "r2",
+        "text" : "Preis vor Rabatt"
+      }, {
+        "id" : "r3",
+        "text" : "Preis vor Skonto"
+      }, {
+        "id" : "r1",
+        "text" : "Herstellkosten + Verwaltung"
+      } ],
+      "solution" : {
+        "l1" : "r1",
+        "l2" : "r2",
+        "l3" : "r3"
+      }
+    },
+    "difficulty" : 3,
+    "estSeconds" : 19,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zuordnen:"
+  }, {
+    "type" : "lesson",
+    "lesson" : {
+      "id" : "6af24a55d03b3622c7d8347a",
+      "title" : "Vertrag entsteht",
+      "keyPoints" : [ "Angebot plus Annahme", "Mündlich gültig", "Schriftform bei Grundstück", "Geschäftsfähigkeit" ],
+      "ttsText" : "Ein Vertrag entsteht, wenn zwei Seiten sich einig sind. Eine Seite macht ein Angebot, die andere nimmt es an. Das sind zwei übereinstimmende Willenserklärungen. Ein mündlicher Vertrag ist grundsätzlich gültig, nur manche Verträge brauchen Schriftform, zum Beispiel ein Grundstückskauf. Wichtig ist auch, wer geschäftsfähig ist. Kinder unter sieben Jahren können keine Verträge schließen. Zwischen sieben und achtzehn Jahren braucht es meist die Zustimmung der Eltern. Ein Beispiel: Du bestellst online ein Buch. Dein Klick ist das Angebot, die Bestätigung des Shops ist die Annahme. Merk dir: Angebot plus Annahme gleich Vertrag.",
+      "mnemonic" : "Angebot + Annahme = Vertrag",
+      "estSeconds" : 41,
+      "chapterId" : "6af24a55d03b3622c7d83476",
+      "chapterTitle" : "Vertragsrecht",
+      "chapterOrder" : 2,
+      "chapterCount" : 2,
+      "lessonIndexInChapter" : 1,
+      "lessonCountInChapter" : 1
+    }
+  }, {
+    "id" : "i-choice2",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83476",
+    "type" : "choice2",
+    "question" : "Transportrisiko: Käufer oder Verkäufer?",
+    "answer" : "Käufer",
+    "payload" : {
+      "options" : [ "Verkäufer", "Käufer" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 7,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Transportrisiko: Käufer oder Verkäufer?"
+  }, {
+    "id" : "i-tf",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83476",
+    "type" : "truefalse",
+    "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
+    "answer" : "wahr",
+    "difficulty" : 3,
+    "estSeconds" : 7,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Mündlicher Vertrag: grundsätzlich gültig."
+  }, {
+    "id" : "i-ai",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83476",
+    "type" : "card",
+    "question" : "Verbrauchsgüterkauf?",
+    "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "sourceType" : "ai_knowledge",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Verbrauchsgüterkauf?"
+  }, {
+    "id" : "i-spot",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83476",
+    "type" : "spot",
+    "question" : "Fehler finden:",
+    "answer" : "Verträge: immer Schriftform.",
+    "payload" : {
+      "statements" : [ "Verträge: immer Schriftform.", "Angebot: verbindlich.", "Schweigen: meist keine Zustimmung." ],
+      "falseIndex" : 0
+    },
+    "difficulty" : 3,
+    "estSeconds" : 16,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Fehler finden:"
+  }, {
+    "id" : "i-lesson",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "card",
+    "question" : "So geht: Zinseszins berechnen",
+    "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
+    "solutionSteps" : [ "Faktor: 1 + p/100", "Faktor hoch Laufzeit", "Mal Kapital" ],
+    "trick" : "Faktor 1,0x merken",
+    "difficulty" : 2,
+    "estSeconds" : 20,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "lesson" : true,
+    "ttsText" : "So geht: Zinseszins berechnen"
+  }, {
+    "id" : "i-build",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "build",
+    "question" : "Bau die Zinsformel.",
+    "answer" : "Z = K × p / 100",
+    "payload" : {
+      "tokens" : [ {
+        "id" : "t5",
+        "text" : "p"
+      }, {
+        "id" : "t3",
+        "text" : "K"
+      }, {
+        "id" : "t6",
+        "text" : "/"
+      }, {
+        "id" : "t1",
+        "text" : "Z"
+      }, {
+        "id" : "t2",
+        "text" : "="
+      }, {
+        "id" : "t7",
+        "text" : "100"
+      }, {
+        "id" : "t4",
+        "text" : "×"
+      } ],
+      "solution" : [ "t1", "t2", "t3", "t4", "t5", "t6", "t7" ],
+      "solutions" : [ [ "t1", "t2", "t3", "t4", "t5", "t6", "t7" ] ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 21,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Bau die Zinsformel."
+  }, {
+    "id" : "i-bucket",
+    "examId" : "e-ready",
+    "topicId" : "6af24a55d03b3622c7d83473",
+    "type" : "bucket",
+    "question" : "Was gehört wohin?",
+    "answer" : "Kosten: Kreditzins, Gebühr, Tilgung; Ertrag: Sparzins, Divi…",
+    "payload" : {
+      "categories" : [ {
+        "id" : "c1",
+        "label" : "Kosten"
+      }, {
+        "id" : "c2",
+        "label" : "Ertrag"
+      } ],
+      "items" : [ {
+        "id" : "b4",
+        "text" : "Dividende",
+        "categoryId" : "c2"
+      }, {
+        "id" : "b3",
+        "text" : "Sparzins",
+        "categoryId" : "c2"
+      }, {
+        "id" : "b1",
+        "text" : "Kreditzins",
+        "categoryId" : "c1"
+      }, {
+        "id" : "b5",
+        "text" : "Tilgung",
+        "categoryId" : "c1"
+      }, {
+        "id" : "b2",
+        "text" : "Gebühr",
+        "categoryId" : "c1"
+      } ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 24,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Was gehört wohin?"
+  } ],
+  "plannedSeconds" : 325,
+  "kind" : "daily",
+  "reason" : "3 Lektionen im Wechsel mit Fragen.",
+  "forecast" : {
+    "daysLeft" : 20,
+    "hoursLeft" : 464,
+    "doneSecondsToday" : 0,
+    "streakDays" : 0,
+    "bestStreakDays" : 0,
+    "weakTopics" : [ {
+      "topicId" : "6af24a55d03b3622c7d83473",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af24a55d03b3622c7d83476",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af24a55d03b3622c7d83475",
+      "title" : "Kalkulation",
+      "mastery" : 0.1
+    } ],
+    "confidence" : "none",
+    "mode" : "marathon",
+    "coveragePercent" : 0,
+    "plan" : {
+      "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
+      "chaptersTotal" : 2,
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 6
+    },
+    "showCheatsheetSuggestion" : false,
+    "note" : "Schätzung, keine Garantie"
+  },
+  "showCheatsheetSuggestion" : false,
+  "finalRoundStart" : null,
+  "budget" : {
+    "dailyMinutes" : 30,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 30
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id" : "i-order",
+  "examId" : "e-ready",
+  "topicId" : "6af24a55d03b3622c7d83475",
+  "type" : "order",
+  "question" : "Kalkulation, Reihenfolge:",
+  "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
+  "payload" : {
+    "steps" : [ "Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis" ],
+    "items" : [ {
+      "id" : "s3",
+      "text" : "Barverkaufspreis"
+    }, {
+      "id" : "s4",
+      "text" : "Listenpreis"
+    }, {
+      "id" : "s2",
+      "text" : "Gewinnzuschlag"
+    }, {
+      "id" : "s1",
+      "text" : "Selbstkosten"
+    } ],
+    "solution" : [ "s1", "s2", "s3", "s4" ]
+  },
+  "difficulty" : 3,
+  "estSeconds" : 18,
+  "source" : {
+    "materialId" : "m-pdf"
+  },
+  "sourceType" : "material",
+  "fromExam" : false,
+  "aiSolution" : false,
+  "lesson" : false,
+  "ttsText" : "Kalkulation, Reihenfolge:"
+}
