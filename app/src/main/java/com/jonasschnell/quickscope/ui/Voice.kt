@@ -22,7 +22,10 @@ import com.jonasschnell.quickscope.QuickscopeApp
 import com.jonasschnell.quickscope.data.AudioTimings
 import com.jonasschnell.quickscope.data.WordTiming
 import com.jonasschnell.quickscope.logic.PlayState
-import com.jonasschnell.quickscope.logic.STREAM_START_TIMEOUT_MS
+import com.jonasschnell.quickscope.logic.AudioHealth
+import com.jonasschnell.quickscope.logic.retryDelayMs
+import com.jonasschnell.quickscope.logic.audioErrorCode
+import com.jonasschnell.quickscope.logic.streamStartTimeoutMs
 import com.jonasschnell.quickscope.logic.PlaybackMachine
 import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.VoicePart
@@ -74,9 +77,18 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
         player?.let { p -> if (machine.state == PlayState.Paused) { p.start(); machine.resume(g); sync() } }
     }
 
-    /** Der Stream der aktuellen Karte ist nicht gestartet oder ausgefallen: dann zeigt die Runde kein Ton-Symbol. */
-    var failed by mutableStateOf(false)
+    /** Ausfall-Erkennung fuer die ganze Runde; der Knopf haengt nur an diesem stabilen Zustand, nie an loading/failed je Versuch. */
+    private val health = AudioHealth()
+
+    /** Sichtbarkeit des Play/Pause-Knopfs (nur bei Ereignissen neu gesetzt, nie pro Frame). */
+    var buttonVisible by mutableStateOf(true)
         private set
+
+    /** Neue Runde: Knopf wieder sichtbar, Fehlerzaehler zurueck. */
+    fun resetHealth() {
+        health.reset()
+        buttonVisible = true
+    }
 
     /** Live-Hervorhebung des gerade gesprochenen Wortes (leer, wenn nichts zu markieren ist). */
     var highlight by mutableStateOf(Highlight())
@@ -90,75 +102,130 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
 
     /** Liest die Frage per Live-Streaming vor. [displayText]: nur wenn er exakt zu den Wortzeiten passt, wird hervorgehoben. */
     suspend fun speak(examId: String, itemId: String, displayText: String?): Boolean =
-        play("Frage $itemId", client.itemUri(examId, itemId), if (displayText != null) ({ client.timings(examId, itemId) }) else null, displayText)
+        play("Frage $itemId", client.itemUri(examId, itemId), if (displayText != null) ({ client.timings(examId, itemId) }) else null, displayText, lesson = false)
 
     /** Streamt eine Lektion (Session-Lektionskarte). */
     suspend fun speakLesson(examId: String, lessonId: String): Boolean =
-        play("Lektion $lessonId", client.lessonUri(examId, lessonId), null, null)
+        play("Lektion $lessonId", client.lessonUri(examId, lessonId), null, null, lesson = true)
 
     /**
-     * Streamt und spielt. Startet der Stream nicht innerhalb von [STREAM_START_TIMEOUT_MS] oder faellt er aus, bleibt diese Karte still
+     * Streamt und spielt. Startet der Stream nicht innerhalb von 12 s (Frage) bzw. 35 s (Lektion) oder faellt er aus, bleibt diese Karte still
      * (kein Fehler, kein Text); die naechste Karte versucht es neu. Liefert true, wenn bis zum Ende gespielt wurde.
      */
-    private suspend fun play(label: String, uri: android.net.Uri, timings: (suspend () -> AudioTimings?)?, displayText: String?): Boolean {
+    private sealed interface Attempt {
+        data object Played : Attempt
+        data object Timeout : Attempt
+        data class Error(val code: String, val started: Boolean) : Attempt
+    }
+
+    private fun codeOf(e: Throwable): String = e.message?.takeIf { it.startsWith("player_error") } ?: "error:${e.javaClass.simpleName}"
+
+    private suspend fun play(label: String, uri: android.net.Uri, timings: (suspend () -> AudioTimings?)?, displayText: String?, lesson: Boolean): Boolean {
         val gen = machine.begin() // alles Vorherige ist damit ungueltig
-        failed = false
         sync()
         releasePlayer()
         highlight = Highlight()
         val t0 = SystemClock.elapsedRealtime()
+        val total = streamStartTimeoutMs(lesson)
+        var outcome: Attempt
         try {
-            val result = coroutineScope {
-                val started = kotlinx.coroutines.CompletableDeferred<Unit>()
-                val playJob = async { playStream(gen, uri, started) }
-                val ok = try {
-                    withTimeoutOrNull(STREAM_START_TIMEOUT_MS) { started.await(); true } ?: false
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    false
-                }
-                if (!ok) {
-                    com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream nicht gestartet, Karte bleibt still")
-                    playJob.cancel()
-                    failed = true
-                    return@coroutineScope false
-                }
-                com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream laeuft nach ${SystemClock.elapsedRealtime() - t0} ms")
-                // Wortzeiten live parallel holen; passen sie nicht exakt zum angezeigten Text, wird nicht hervorgehoben
-                val ticker = if (timings != null && displayText != null) launch {
-                    val t = runCatching { timings() }.getOrNull()?.takeIf { timingsMatch(displayText, it) } ?: return@launch
-                    highlight = Highlight(t.text, t.words, 0, -1)
-                    while (isActive) {
-                        val p = player
-                        val pos = if (p != null && machine.isCurrent(gen) && runCatching { p.isPlaying }.getOrDefault(false)) wordPosAt(t.words, runCatching { p.currentPosition.toLong() }.getOrDefault(0L)) else null
-                        if (pos != null && (pos.spoken != highlight.spoken || pos.active != highlight.active)) highlight = highlight.copy(spoken = pos.spoken, active = pos.active)
-                        delay(40)
+            var attempt = 0
+            while (true) {
+                val left = total - (SystemClock.elapsedRealtime() - t0)
+                outcome = if (left <= 0) Attempt.Timeout else attemptOnce(gen, uri, timings, displayText, label, left, t0)
+                val e = outcome as? Attempt.Error
+                // stille Wiederholung mit Backoff, solange die Karte aktuell ist und Zeit bleibt; keine Aenderung in der Oberflaeche
+                if (e != null && !e.started && attempt < 2 && machine.isCurrent(gen)) {
+                    val wait = retryDelayMs(attempt)
+                    attempt++
+                    if (total - (SystemClock.elapsedRealtime() - t0) > wait + 1_000) {
+                        scope.launch { client.report(e.code, "retry $attempt after ${SystemClock.elapsedRealtime() - t0} ms", lesson) }
+                        delay(wait)
+                        if (!machine.isCurrent(gen)) break
+                        continue
                     }
-                } else null
-                try {
-                    playJob.await()
-                    true
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Stream abgebrochen", e)
-                    failed = true
-                    false
-                } finally {
-                    ticker?.cancel()
                 }
+                break
             }
             val stillCurrent = machine.isCurrent(gen)
             releasePlayer()
             val ended = machine.finish(gen)
             sync()
-            if (result && ended && highlight.words.isNotEmpty()) highlight = highlight.copy(spoken = highlight.words.size, active = -1)
-            return result && stillCurrent && ended
+            if (stillCurrent) {
+                val now = SystemClock.elapsedRealtime()
+                when (val o = outcome) {
+                    Attempt.Played -> health.success(now)
+                    Attempt.Timeout -> { health.failure(now); reportFailure(audioErrorCode(timeout = true), uri, lesson, now - t0) }
+                    is Attempt.Error -> { health.failure(now); reportFailure(o.code, uri, lesson, now - t0) }
+                }
+                buttonVisible = health.visible
+            }
+            if (outcome == Attempt.Played && ended && highlight.words.isNotEmpty()) highlight = highlight.copy(spoken = highlight.words.size, active = -1)
+            return outcome == Attempt.Played && stillCurrent && ended
         } catch (e: CancellationException) {
             if (machine.isCurrent(gen)) { machine.stop(); releasePlayer() }
             sync()
             throw e
+        }
+    }
+
+    /** Meldet einen endgueltigen Fehlschlag (mit HTTP-Status/Content-Type aus einem kleinen Diagnose-Request, wenn moeglich). */
+    private fun reportFailure(code: String, uri: android.net.Uri, lesson: Boolean, elapsedMs: Long) {
+        scope.launch {
+            val diagnosed = client.diagnose(app.network.streamClient, uri)
+            client.report(diagnosed ?: code, "$code after $elapsedMs ms", lesson)
+        }
+    }
+
+    private suspend fun attemptOnce(
+        gen: Long, uri: android.net.Uri, timings: (suspend () -> AudioTimings?)?, displayText: String?, label: String, timeoutMs: Long, t0: Long,
+    ): Attempt = coroutineScope {
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        // Fehler des Players werden als Wert zurueckgegeben, nie als Ausnahme, die die Karte oder die App abbricht
+        val playJob = async {
+            try {
+                playStream(gen, uri, started)
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e
+            }
+        }
+        var startError: Exception? = null
+        val ok = try {
+            withTimeoutOrNull(timeoutMs) { started.await(); true } ?: false
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            startError = e
+            false
+        }
+        if (!ok) {
+            playJob.cancel()
+            com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream nicht gestartet (${startError?.let { codeOf(it) } ?: "timeout"})")
+            return@coroutineScope startError?.let { Attempt.Error(codeOf(it), false) } ?: Attempt.Timeout
+        }
+        com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream laeuft nach ${SystemClock.elapsedRealtime() - t0} ms")
+        // Wortzeiten live parallel holen; passen sie nicht exakt zum angezeigten Text, wird nicht hervorgehoben
+        val ticker = if (timings != null && displayText != null) launch {
+            val t = runCatching { timings() }.getOrNull()?.takeIf { timingsMatch(displayText, it) } ?: return@launch
+            highlight = Highlight(t.text, t.words, 0, -1)
+            while (isActive) {
+                val p = player
+                val pos = if (p != null && machine.isCurrent(gen) && runCatching { p.isPlaying }.getOrDefault(false)) wordPosAt(t.words, runCatching { p.currentPosition.toLong() }.getOrDefault(0L)) else null
+                if (pos != null && (pos.spoken != highlight.spoken || pos.active != highlight.active)) highlight = highlight.copy(spoken = pos.spoken, active = pos.active)
+                delay(40)
+            }
+        } else null
+        try {
+            val err = playJob.await()
+            if (err == null) Attempt.Played else {
+                com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Stream abgebrochen", err)
+                Attempt.Error(codeOf(err), true)
+            }
+        } finally {
+            ticker?.cancel()
         }
     }
 
@@ -225,8 +292,8 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
                 started.complete(Unit)
             }
             p.setOnCompletionListener { cleanup(); if (cont.isActive) cont.resume(Unit) }
-            p.setOnErrorListener { _, what, _ ->
-                val e = java.io.IOException("Stream-Fehler $what")
+            p.setOnErrorListener { _, what, extra ->
+                val e = java.io.IOException("player_error:$what:$extra")
                 cleanup()
                 started.completeExceptionally(e)
                 if (cont.isActive) cont.resumeWithException(e)

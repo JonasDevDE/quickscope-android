@@ -329,3 +329,7 @@ data class Budget(val dailyMinutes: Int = 0, val usedMinutesToday: Int = 0, val 
 /** Antwort von GET audio/status: gibt es gerade eine Stimme (billig, serverseitig gecacht)? */
 @Serializable
 data class AudioStatus(val available: Boolean = true, val latencyMs: Int? = null, val reason: String? = null, val retryAfterSeconds: Int? = null)
+
+/** Fehlermeldung an das Backend (best effort, ohne Nutzertext und ohne Token). */
+@Serializable
+data class ClientLog(val kind: String, val code: String, val detail: String, val appVersion: String, val itemType: String)

@@ -122,6 +122,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         if (!canStartSession(_state.value.phase)) return
         startJob?.cancel()
         recheckJob?.cancel()
+        app.voice.resetHealth()
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore) }
         startJob = viewModelScope.launch {
             try {
@@ -301,6 +302,18 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private var prefetchJob: Job? = null
+
+    /** Naechste Karten still anstossen (Cache im Backend warm halten); nur ein Request gleichzeitig, alter Auftrag wird abgeloest. */
+    fun prefetch() {
+        val st = _state.value
+        if (!st.audio || st.phase != SessionPhase.Running) return
+        val targets = com.jonasschnell.quickscope.logic.prefetchTargets(st.tasks, st.index)
+        if (targets.isEmpty()) return
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch { targets.forEach { app.audio.prefetch(app.network.streamClient, st.examId, it) } }
+    }
+
     /** Anteil einer Lektion melden, der gehoert wurde (ab 0.8 gilt sie als gehoert); Fehler sind unkritisch. */
     fun heard(lessonId: String, fraction: Double) {
         val examId = _state.value.examId
@@ -353,7 +366,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private fun checkAudioLater() {
         recheckJob?.cancel()
         recheckJob = viewModelScope.launch {
-            val ok = withTimeoutOrNull(4_000) { app.audio.available(force = true) } ?: true
+            val ok = withTimeoutOrNull(com.jonasschnell.quickscope.logic.AUDIO_STATUS_TIMEOUT_MS) { app.audio.available(force = true) } ?: true
             lastAudioCheck = SystemClock.elapsedRealtime()
             _state.update { st ->
                 if (st.phase != SessionPhase.Running) st

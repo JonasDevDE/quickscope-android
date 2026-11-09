@@ -22,6 +22,17 @@ class Store(context: Context) : QueueStorage {
         get() = prefs.getBoolean("audioEnabled", true)
         set(value) = prefs.edit().putBoolean("audioEnabled", value).apply()
 
+    /** Drosselung der Fehlermeldungen ans Backend: Zeitpunkt der letzten, Tag und Anzahl heute. */
+    var logLastMs: Long
+        get() = prefs.getLong("logLast", 0L)
+        set(value) = prefs.edit().putLong("logLast", value).apply()
+    var logDay: String?
+        get() = prefs.getString("logDay", null)
+        set(value) = prefs.edit().putString("logDay", value).apply()
+    var logCount: Int
+        get() = prefs.getInt("logCount", 0)
+        set(value) = prefs.edit().putInt("logCount", value).apply()
+
     /** "Vorlesen" wurde offline geaendert und muss noch ins Profil geschrieben werden. */
     var audioDirty: Boolean
         get() = prefs.getBoolean("audioDirty", false)

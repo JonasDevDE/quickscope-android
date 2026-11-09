@@ -20,7 +20,8 @@ class AudioClient(
     private var lastCheck = 0L
     private var lastResult = true
     private var recheckMs = AUDIO_RECHECK_MS
-    private val STATUS_TIMEOUT_MS = 4_000L
+    private val STATUS_TIMEOUT_MS = com.jonasschnell.quickscope.logic.AUDIO_STATUS_TIMEOUT_MS
+    private val prefetchGate = kotlinx.coroutines.sync.Semaphore(1)
     private val base = Uri.parse(BuildConfig.BASE_URL)
 
     /** Ton gewuenscht (Einstellung) UND Stimme verfuegbar; [force] ignoriert den 60-s-Zwischenspeicher. */
@@ -43,6 +44,57 @@ class AudioClient(
         recheckMs = if (!lastResult) (status?.retryAfterSeconds?.times(1000L)?.coerceIn(5_000L, 300_000L) ?: AUDIO_RECHECK_MS) else AUDIO_RECHECK_MS
         lastCheck = now
         return lastResult
+    }
+
+    /**
+     * Stoesst das Audio einer kommenden Karte an, damit das Backend es im Cache hat: ein Request mit Range auf 1 Byte, nichts wird geladen
+     * oder gespeichert, hoechstens einer gleichzeitig. Nur bei "Vorlesen an" und online; Fehler sind egal.
+     */
+    suspend fun prefetch(client: okhttp3.OkHttpClient, examId: String, target: com.jonasschnell.quickscope.logic.PrefetchTarget) {
+        if (!store.audioEnabled || !connectivity.isOnline()) return
+        val uri = if (target.lesson) lessonUri(examId, target.id) else itemUri(examId, target.id)
+        prefetchGate.acquire()
+        try {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val request = okhttp3.Request.Builder().url(uri.toString()).header("Range", "bytes=0-0").build()
+                val c = client.newBuilder().callTimeout(com.jonasschnell.quickscope.logic.streamStartTimeoutMs(target.lesson), java.util.concurrent.TimeUnit.MILLISECONDS).build()
+                runCatching { c.newCall(request).execute().use { } }
+            }
+        } finally {
+            prefetchGate.release()
+        }
+    }
+
+    /** Zentrale Fehlerprotokollierung: Debug-Log immer, ans Backend gedrosselt (best effort, 404/Fehler egal). */
+    suspend fun report(code: String, detail: String, lesson: Boolean) {
+        AppLog.d("Audio", "Fehler $code (${if (lesson) "Lektion" else "Frage"}): $detail")
+        if (!connectivity.isOnline()) return
+        val now = System.currentTimeMillis()
+        val day = java.time.LocalDate.now().toString()
+        if (store.logDay != day) { store.logDay = day; store.logCount = 0 }
+        if (!com.jonasschnell.quickscope.logic.clientLogAllowed(now, store.logLastMs, store.logCount)) return
+        store.logLastMs = now
+        store.logCount = store.logCount + 1
+        try {
+            api.clientLog(ClientLog("audio", code, com.jonasschnell.quickscope.logic.clientLogDetail(detail), BuildConfig.VERSION_NAME, if (lesson) "lesson" else "question"))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Nach einem Fehlschlag: ein kleiner Range-Request zeigt HTTP-Status und Content-Type (MediaPlayer nennt sie nicht). Null = unauffaellig. */
+    suspend fun diagnose(client: okhttp3.OkHttpClient, uri: Uri): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val c = client.newBuilder().callTimeout(4, java.util.concurrent.TimeUnit.SECONDS).build()
+            val request = okhttp3.Request.Builder().url(uri.toString()).header("Range", "bytes=0-0").build()
+            c.newCall(request).execute().use { r ->
+                val code = com.jonasschnell.quickscope.logic.audioErrorCode(httpCode = r.code, contentType = r.header("Content-Type")?.substringBefore(';')?.trim())
+                code.takeIf { it != "error" }
+            }
+        } catch (e: java.io.IOException) {
+            "io:" + e.javaClass.simpleName
+        }
     }
 
     fun itemUri(examId: String, itemId: String): Uri = Uri.parse("${BuildConfig.BASE_URL}api/exams/$examId/items/$itemId/audio?part=question")

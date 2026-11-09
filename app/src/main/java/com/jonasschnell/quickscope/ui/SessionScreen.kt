@@ -141,6 +141,8 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         if (shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach) && mayAutoplay(s.autoplaySuppressedAt, s.index)) voice.speak(s.examId, task.item.id, task.item.question)
         else voice.stop()
     }
+    // naechste Karten im Backend-Cache warm halten (Range auf 1 Byte, gedrosselt)
+    LaunchedEffect(s.index, s.audio) { if (s.audio) vm.prefetch() }
     // Rueckmeldung: Ton und Haptik; richtig deutlich groesser als falsch
     LaunchedEffect(s.fx?.id) {
         val o = s.fx?.outcome ?: return@LaunchedEffect
@@ -180,7 +182,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
     val shownItems = s.tasks.filterIndexed { i, _ -> !s.isRetry.getOrElse(i) { false } }.map { it.item }
     val done = (0 until s.index).count { !s.isRetry.getOrElse(it) { false } }
-    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio || voice.failed || voice.playState == PlayState.Loading) null else ({
+    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio || !voice.buttonVisible) null else ({
         PlayPauseButton(voice.playState, {
             // Pause gilt nur fuer die aktuelle Karte; die naechste Karte startet von selbst
             when (playTap(voice.playState)) {

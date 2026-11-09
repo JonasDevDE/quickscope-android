@@ -56,6 +56,9 @@ interface QuickscopeApi {
     @GET("api/exams/{id}/audiobook") suspend fun audiobook(@Path("id") id: String, @Query("minutes") minutes: Int? = null, @Query("repeat") repeat: Boolean? = null): Audiobook
     @POST("api/exams/{id}/lessons/{lessonId}/heard") suspend fun heard(@Path("id") id: String, @Path("lessonId") lessonId: String, @Body body: HeardRequest)
 
+    /** Fehlerprotokoll der App (gedrosselt); 404 oder Fehler werden ignoriert. */
+    @POST("api/client-log") suspend fun clientLog(@Body body: ClientLog)
+
     @GET("api/audio/status") suspend fun audioStatus(): AudioStatus
     @GET("api/exams/{id}/items/{itemId}/audio/timings") suspend fun itemTimings(@Path("id") id: String, @Path("itemId") itemId: String, @Query("part") part: String = "question"): AudioTimings
 

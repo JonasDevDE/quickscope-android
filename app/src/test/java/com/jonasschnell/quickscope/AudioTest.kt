@@ -6,7 +6,6 @@ import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.FailureAction as F
 import com.jonasschnell.quickscope.logic.AudioMode
 import com.jonasschnell.quickscope.logic.AUDIO_RECHECK_MS
-import com.jonasschnell.quickscope.logic.STREAM_START_TIMEOUT_MS
 import com.jonasschnell.quickscope.logic.audioModeFor
 import com.jonasschnell.quickscope.logic.mayRequestAudio
 import com.jonasschnell.quickscope.logic.shouldRecheckAudio
@@ -169,7 +168,7 @@ class AudioTest {
         assertFalse(shouldRecheckAudio(AudioMode.Silent, true, 1_000, 1_000 + AUDIO_RECHECK_MS - 1))
         assertTrue(shouldRecheckAudio(AudioMode.Silent, true, 1_000, 1_000 + AUDIO_RECHECK_MS))
         assertFalse(shouldRecheckAudio(AudioMode.On, true, 0, 10 * AUDIO_RECHECK_MS))
-        assertTrue(STREAM_START_TIMEOUT_MS in 1_000L..15_000L)
+        assertEquals(12_000L, com.jonasschnell.quickscope.logic.streamStartTimeoutMs(lesson = false))
     }
 
     @Test fun understandIsVisibleAsSoonAsLessonsExist() {
@@ -208,5 +207,89 @@ class AudioTest {
         assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, emptySet()).map { it.lesson!!.id })
         assertEquals(listOf("L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, setOf("l:L1")).map { it.lesson!!.id })
         assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, setOf("l:L1", "l:L2")).map { it.lesson!!.id })   // alles gelesen: nochmal
+    }
+
+    @Test fun streamTimeoutsDifferForQuestionAndLesson() {
+        assertEquals(12_000L, com.jonasschnell.quickscope.logic.streamStartTimeoutMs(false))
+        assertEquals(35_000L, com.jonasschnell.quickscope.logic.streamStartTimeoutMs(true))
+        assertEquals(6_000L, com.jonasschnell.quickscope.logic.AUDIO_STATUS_TIMEOUT_MS)
+        assertTrue(com.jonasschnell.quickscope.logic.streamStartTimeoutMs(true) > com.jonasschnell.quickscope.logic.streamStartTimeoutMs(false))
+    }
+
+    @Test fun lateAudioStartsWhileCardIsCurrentButNotAfterSwipe() {
+        // Audio kommt nach 9 s: innerhalb des Fragen-Timeouts (12 s) startet es; nach 13 s nicht mehr
+        val within = { arrivalMs: Long, lesson: Boolean -> arrivalMs <= com.jonasschnell.quickscope.logic.streamStartTimeoutMs(lesson) }
+        assertTrue(within(9_000, false))
+        assertFalse(within(13_000, false))
+        assertTrue(within(16_000, true))    // Lektion braucht ~16 s und startet noch
+        // Weitergeblaettert: die Wiedergabe der alten Karte ist ungueltig (Generation), spaetes Audio startet nicht
+        val m = com.jonasschnell.quickscope.logic.PlaybackMachine()
+        val old = m.begin()
+        val next = m.begin()
+        assertFalse(m.playing(old))
+        assertTrue(m.playing(next))
+        // nach dem spaeten Eintreffen schaltet der Ton nachtraeglich zu (Preflight im Hintergrund)
+        assertTrue(com.jonasschnell.quickscope.logic.audioAfterCheck(true, true, true))
+    }
+
+    @Test fun prefetchTargetsAreTheNextTwoQuestionsOrTheNextLesson() {
+        val q = { id: String -> com.jonasschnell.quickscope.logic.parseTask(com.jonasschnell.quickscope.data.Item(id = id, type = "card")) }
+        val l = com.jonasschnell.quickscope.data.SessionLesson("L1", "T", listOf("a"), "x", null, 40)
+        val teach = com.jonasschnell.quickscope.logic.Task.Teach(com.jonasschnell.quickscope.logic.teachItem(l), l)
+        val tasks = listOf(q("a"), q("b"), q("c"), q("d"))
+        assertEquals(listOf("b", "c"), com.jonasschnell.quickscope.logic.prefetchTargets(tasks, 0).map { it.id })
+        assertEquals(listOf("d"), com.jonasschnell.quickscope.logic.prefetchTargets(tasks, 2).map { it.id })
+        assertTrue(com.jonasschnell.quickscope.logic.prefetchTargets(tasks, 3).isEmpty())
+        val withLesson = listOf(q("a"), teach, q("b"))
+        assertEquals(listOf(com.jonasschnell.quickscope.logic.PrefetchTarget("L1", true), com.jonasschnell.quickscope.logic.PrefetchTarget("b", false)), com.jonasschnell.quickscope.logic.prefetchTargets(withLesson, 0))
+        assertEquals(listOf(com.jonasschnell.quickscope.logic.PrefetchTarget("L1", true)), com.jonasschnell.quickscope.logic.prefetchTargets(withLesson, 0, count = 1))
+    }
+
+    @Test fun buttonStaysVisibleThroughLoadingAndFailedAttempts() {
+        val h = com.jonasschnell.quickscope.logic.AudioHealth()
+        // Eingabefolge je Karte: laedt -> gescheitert -> ok -> laedt -> gescheitert: kurzlebige Zustaende veraendern die Sichtbarkeit nicht
+        val seen = mutableListOf<Boolean>()
+        h.failure(1_000); seen += h.visible
+        h.success(2_000); seen += h.visible
+        h.failure(3_000); seen += h.visible
+        h.failure(4_000); seen += h.visible   // 2 in Folge: noch sichtbar
+        h.success(5_000); seen += h.visible
+        assertTrue(seen.all { it })
+    }
+
+    @Test fun buttonHidesAfterThreeFailuresInARowAndReturnsOnlyAfterHysteresis() {
+        val h = com.jonasschnell.quickscope.logic.AudioHealth()
+        h.failure(0); h.failure(1_000)
+        assertTrue(h.visible)
+        h.failure(2_000)
+        assertFalse(h.visible)                 // 3 Karten in Folge ohne Erfolg
+        h.success(30_000)                      // Erfolg innerhalb von 60 s: noch nicht wieder einblenden
+        assertFalse(h.visible)
+        h.failure(40_000)
+        assertFalse(h.visible)                 // kein Flackern
+        h.success(2_000 + 60_000)              // fruehestens nach 60 s und nur nach Erfolg
+        assertTrue(h.visible)
+        h.reset()
+        assertTrue(h.visible)
+    }
+
+    @Test fun clientLogIsThrottledAndShort() {
+        val allow = { now: Long, last: Long, n: Int -> com.jonasschnell.quickscope.logic.clientLogAllowed(now, last, n) }
+        assertTrue(allow(100_000, 0, 0))
+        assertFalse(allow(105_000, 100_000, 1))     // weniger als 10 s
+        assertTrue(allow(110_000, 100_000, 1))
+        assertFalse(allow(500_000, 100_000, 20))    // Tageslimit
+        assertEquals(120, com.jonasschnell.quickscope.logic.clientLogDetail("x".repeat(500)).length)
+        assertFalse(com.jonasschnell.quickscope.logic.clientLogDetail("a\nb").contains("\n"))
+    }
+
+    @Test fun errorCodesDescribeHttpPlayerTimeoutAndHeader() {
+        val c = { h: Int?, w: Int?, e: Int?, t: Boolean, ct: String? -> com.jonasschnell.quickscope.logic.audioErrorCode(h, w, e, t, ct) }
+        assertEquals("http_503", c(503, null, null, false, null))
+        assertEquals("http_404", c(404, null, null, false, "audio/wav"))
+        assertEquals("player_error:1:-1004", c(null, 1, -1004, false, null))
+        assertEquals("timeout", c(null, null, null, true, null))
+        assertEquals("header:text/html", c(200, null, null, false, "text/html"))
+        assertEquals("error", c(206, null, null, false, "audio/wav"))   // unauffaellig
     }
 }
