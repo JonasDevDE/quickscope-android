@@ -32,8 +32,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Zum Veroeffentlichen eines Updates: versionCode um 1 erhoehen (und versionName anpassen), dann scripts/publish.sh.
-        versionCode = 3
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.2.1"
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${config("GOOGLE_WEB_CLIENT_ID")}\"")
         // Adresse des Backends (mit abschliessendem Schraegstrich). Platzhalter, bis die echte Adresse in local.properties

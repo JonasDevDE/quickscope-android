@@ -3,7 +3,6 @@ package com.jonasschnell.quickscope.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.jonasschnell.quickscope.logic.CardFlow
 import com.jonasschnell.quickscope.logic.MatchState
 import com.jonasschnell.quickscope.logic.OrderState
 import com.jonasschnell.quickscope.logic.Task
@@ -39,31 +38,6 @@ import com.jonasschnell.quickscope.ui.theme.CardHigh
 import com.jonasschnell.quickscope.ui.theme.Danger
 import com.jonasschnell.quickscope.ui.theme.Muted
 import com.jonasschnell.quickscope.ui.theme.OnAccent
-
-/** Wisch nach links/rechts erkennen (einmal pro Geste). */
-fun Modifier.swipeable(enabled: Boolean = true, onLeft: () -> Unit, onRight: () -> Unit): Modifier =
-    if (!enabled) this else pointerInput(onLeft, onRight) {
-        var total = 0f
-        var fired = false
-        detectHorizontalDragGestures(
-            onDragStart = { total = 0f; fired = false },
-            onDragEnd = { total = 0f },
-        ) { _, delta ->
-            total += delta
-            if (!fired && kotlin.math.abs(total) > 140f) {
-                fired = true
-                if (total > 0) onRight() else onLeft()
-            }
-        }
-    }
-
-/** Kleine Herkunftshinweise unter der Frage: KI-Loesung bzw. KI-Wissen. */
-@Composable
-fun SourceNote(task: Task) {
-    val item = task.item
-    if (item.aiSolution) Text("Lösung von KI, bitte prüfen", color = Muted, style = MaterialTheme.typography.bodySmall)
-    if (item.sourceType == "ai_knowledge") Text("Aus KI-Wissen, nicht aus deinem Material", color = Muted, style = MaterialTheme.typography.bodySmall)
-}
 
 @Composable
 private fun QuestionText(text: String) {
@@ -89,28 +63,24 @@ private fun AnswerBox(text: String, state: Int, onClick: () -> Unit, enabled: Bo
     }
 }
 
-/** Karte: Tipp zum Aufdecken, dann zwei grosse Knoepfe oder Wisch (rechts = wusste ich, links = nicht gewusst). */
+/** Karte: Tipp zum Aufdecken, danach zwei grosse Knoepfe "Gewusst" / "Nicht gewusst". */
 @Composable
 fun CardTask(task: Task.Card, onAnswer: (Boolean) -> Unit, onReveal: (String) -> Unit) {
+    val flow = remember { CardFlow() }
     var shown by remember { mutableStateOf(false) }
-    Column(
-        Modifier.fillMaxWidth().swipeable(enabled = shown, onLeft = { onAnswer(false) }, onRight = { onAnswer(true) }),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         QuestionText(task.item.question)
         if (!shown) {
-            AnswerBox("Antwort zeigen", 0, { shown = true; onReveal(task.answer) })
+            AnswerBox("Aufdecken", 0, { flow.reveal(); shown = true; onReveal(task.answer) })
         } else {
             Text(task.answer, style = MaterialTheme.typography.titleLarge, color = Accent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-            task.item.mnemonic?.let { Text(it, color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
-            shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+            task.item.mnemonic?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+            shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1f)) { SecondaryButton("Nicht gewusst", { onAnswer(false) }) }
-                Box(Modifier.weight(1f)) { PrimaryButton("Wusste ich", { onAnswer(true) }) }
+                Box(Modifier.weight(1f)) { SecondaryButton("Nicht gewusst", { flow.answer(false)?.let { onAnswer(false) } }, color = Danger) }
+                Box(Modifier.weight(1f)) { PrimaryButton("Gewusst", { flow.answer(true)?.let { onAnswer(true) } }) }
             }
-            Text("oder wischen: rechts gewusst, links nicht", color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
-        SourceNote(task)
     }
 }
 
@@ -128,8 +98,7 @@ fun LessonTask(task: Task.Lesson, onDone: () -> Unit) {
             }
             task.trick?.let { Text("Merke: $it", color = Accent, style = MaterialTheme.typography.bodyMedium) }
         }
-        SourceNote(task)
-        PrimaryButton("Verstanden", onDone)
+        PrimaryButton("Weiter", onDone)
     }
 }
 
@@ -137,16 +106,12 @@ fun LessonTask(task: Task.Lesson, onDone: () -> Unit) {
 @Composable
 fun ChoiceTask(task: Task.Choice, answered: Boolean, onAnswer: (Boolean) -> Unit) {
     var chosen by remember { mutableIntStateOf(-1) }
-    val two = task.options.size == 2
     fun pick(i: Int) {
         if (answered || chosen >= 0) return
         chosen = i
         onAnswer(i == task.correct)
     }
-    Column(
-        Modifier.fillMaxWidth().swipeable(enabled = two && !answered, onLeft = { pick(1) }, onRight = { pick(0) }),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         QuestionText(task.item.question)
         task.options.forEachIndexed { i, text ->
             val state = when {
@@ -157,8 +122,6 @@ fun ChoiceTask(task: Task.Choice, answered: Boolean, onAnswer: (Boolean) -> Unit
             }
             AnswerBox(text, state, { pick(i) })
         }
-        if (two) Text("oder wischen: rechts = oben, links = unten", color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        SourceNote(task)
     }
 }
 
@@ -179,7 +142,6 @@ fun ClozeTask(task: Task.Cloze, onAnswer: (Boolean) -> Unit) {
             }
             AnswerBox(word, state, { if (chosen == null) { chosen = word; onAnswer(word == task.answer) } })
         }
-        SourceNote(task)
     }
 }
 
@@ -188,7 +150,7 @@ fun ClozeTask(task: Task.Cloze, onAnswer: (Boolean) -> Unit) {
 fun SpotTask(task: Task.Spot, onAnswer: (Boolean) -> Unit) {
     var chosen by remember { mutableIntStateOf(-1) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        QuestionText(task.item.question.ifBlank { "Welche Aussage ist falsch?" })
+        QuestionText(task.item.question.ifBlank { "Was ist falsch?" })
         task.statements.forEachIndexed { i, text ->
             val state = when {
                 chosen < 0 -> 0
@@ -198,7 +160,6 @@ fun SpotTask(task: Task.Spot, onAnswer: (Boolean) -> Unit) {
             }
             AnswerBox(text, state, { if (chosen < 0) { chosen = i; onAnswer(i == task.falseIndex) } })
         }
-        SourceNote(task)
     }
 }
 
@@ -210,7 +171,7 @@ fun MatchTask(task: Task.Match, onAnswer: (Boolean) -> Unit) {
     val haptics = LocalHaptics.current
     @Suppress("UNUSED_EXPRESSION") version
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        QuestionText(task.item.question.ifBlank { "Was gehört zusammen?" })
+        QuestionText(task.item.question.ifBlank { "Zuordnen" })
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.lefts.forEach { left ->
@@ -239,7 +200,6 @@ fun MatchTask(task: Task.Match, onAnswer: (Boolean) -> Unit) {
                 }
             }
         }
-        SourceNote(task)
     }
 }
 
@@ -265,8 +225,7 @@ fun OrderTask(task: Task.Order, onAnswer: (Boolean) -> Unit) {
     val haptics = LocalHaptics.current
     @Suppress("UNUSED_EXPRESSION") version
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        QuestionText(task.item.question.ifBlank { "In welcher Reihenfolge?" })
-        Text("Tippe die Schritte der Reihe nach an.", color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        QuestionText(task.item.question.ifBlank { "Reihenfolge" })
         state.shuffled.forEach { step ->
             val taken = state.isTaken(step)
             val number = if (taken) state.steps.indexOf(step) + 1 else null
@@ -283,24 +242,20 @@ fun OrderTask(task: Task.Order, onAnswer: (Boolean) -> Unit) {
                 Text(step, style = MaterialTheme.typography.titleMedium, color = if (taken) OnAccent else Color.White)
             }
         }
-        SourceNote(task)
     }
 }
 
-/** Sofortiges Feedback: richtig/falsch in einem Satz, richtige Antwort, hoechstens 2 Saetze Erklaerung, Eselsbruecke. */
+/** Sofortiges Feedback: "Richtig" bzw. "Falsch" + richtige Antwort kurz; Erklaerung nur wenn vorhanden, klein; ein Knopf "Weiter". */
 @Composable
 fun FeedbackPanel(task: Task, correct: Boolean, onNext: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onNext).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(if (correct) "Richtig" else "Nicht ganz", color = if (correct) Accent else Danger, style = MaterialTheme.typography.titleMedium)
-        if (!correct) Text("Richtig: ${correctText(task)}", style = MaterialTheme.typography.bodyLarge)
-        shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium) }
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(if (correct) "Richtig" else "Falsch", color = if (correct) Accent else Danger, style = MaterialTheme.typography.titleMedium)
+        if (!correct) Text(correctText(task), style = MaterialTheme.typography.bodyLarge)
+        shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall) }
         // Loesungsweg (hoechstens 3 kurze Schritte) und Merkregel, wenn die Aufgabe einen mitbringt
-        lessonSteps(task.item).forEachIndexed { i, step -> Text("${i + 1}. $step", style = MaterialTheme.typography.bodyMedium) }
-        task.item.trick?.let { Text("Merke: $it", color = Accent, style = MaterialTheme.typography.bodyMedium) }
-        task.item.mnemonic?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodyMedium) }
-        Text("Tippen oder wischen für weiter", color = Muted, style = MaterialTheme.typography.bodySmall)
+        lessonSteps(task.item).forEachIndexed { i, step -> Text("${i + 1}. $step", color = Muted, style = MaterialTheme.typography.bodySmall) }
+        task.item.trick?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodySmall) }
+        task.item.mnemonic?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodySmall) }
+        PrimaryButton("Weiter", onNext, Modifier.padding(top = 6.dp))
     }
 }

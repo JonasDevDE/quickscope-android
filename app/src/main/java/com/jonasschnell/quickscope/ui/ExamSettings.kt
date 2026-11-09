@@ -45,7 +45,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Material, Description, Name, When, Target, Daily, Reset, Delete }
+enum class ExamSetting { Material, Description, Name, When, Target, Daily, Regenerate, Reset, Delete }
 
 /** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
 @Composable
@@ -64,6 +64,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
             SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
             SettingsRow("Ziel", null, { sub = ExamSetting.Target }) { Value("${exam.targetPercent} %") }
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
+            SettingsRow("Aufgaben neu erzeugen", null, { sub = ExamSetting.Regenerate }) {}
             SettingsRow("Fortschritt zurücksetzen", null, { sub = ExamSetting.Reset }) {}
             SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
         }
@@ -73,6 +74,16 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         ExamSetting.When -> WhenSheet(vm, exam) { sub = null }
         ExamSetting.Target -> ChoiceSheet("Ziel", exam.targetPercent, TARGET_CHOICES, "%", "Das ist ein Ziel und eine Schätzung, keine Garantie.", { vm.updateExam(exam.id, ExamUpdate(targetPercent = it)) }) { sub = null }
         ExamSetting.Daily -> ChoiceSheet("Lernzeit pro Tag", exam.dailyMinutes, DAILY_MINUTE_CHOICES, "min", null, { vm.updateExam(exam.id, ExamUpdate(dailyMinutes = it)) }) { sub = null }
+        ExamSetting.Regenerate -> AlertDialog(
+            onDismissRequest = { sub = null },
+            containerColor = Card,
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCFCFD4),
+            title = { Text("Aufgaben neu erzeugen?") },
+            text = { LightSystemIcons(); Text("Dein Lernstand wird zurückgesetzt.") },
+            confirmButton = { HapticTextButton(onClick = { vm.regenerateItems(exam.id); onDismiss() }) { Text("Neu erzeugen", color = Accent) } },
+            dismissButton = { HapticTextButton(onClick = { sub = null }) { Text("Abbrechen", color = Color.White) } },
+        )
         ExamSetting.Reset -> TwoStepConfirm(
             "Fortschritt zurücksetzen?", "Dein Lernstand wird gelöscht. Material und Aufgaben bleiben.",
             "Wirklich zurücksetzen?", "Letzte Bestätigung: Der Lernstand dieser Prüfung wird jetzt zurückgesetzt.",
@@ -124,7 +135,7 @@ private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit
     var text by remember { mutableStateOf(exam.description.orEmpty()) }
     val saved = AutoSave(text.trim(), true) { v, fail -> vm.updateExam(exam.id, ExamUpdate(description = v), fail) }
     QuickscopeSheet(onDismiss, "Beschreibung", status = if (saved) "Gespeichert" else null) {
-        Text("Ohne Material ergänzt die KI aus eigenem Wissen.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+        Text("Ohne Material: allgemeines Wissen.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
         Text("${text.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall)
     }
@@ -187,6 +198,7 @@ private fun MaterialSheet(state: UiState, vm: AppViewModel, exam: Exam, onDismis
             SkeletonCard(70.dp)
         } else if (list.isEmpty()) {
             EmptyHint("Noch kein Material")
+            if (!exam.description.isNullOrBlank()) Text("Ohne Material, Inhalte aus allgemeinem Wissen.", color = Muted, style = MaterialTheme.typography.bodySmall)
         } else {
             list.forEach { m ->
                 Column(

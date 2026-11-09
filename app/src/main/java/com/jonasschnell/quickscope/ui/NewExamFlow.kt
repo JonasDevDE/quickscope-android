@@ -126,7 +126,7 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                     }
                     2 -> {
                         PageTitle("Material hinzufügen")
-                        Text("Optional. Foto, Galerie oder Dateien.", color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        Text("Optional.", color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         MaterialAddButtons(onJobs = { jobs = jobs + it })
                         jobs.forEachIndexed { i, job ->
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -140,13 +140,13 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                     else -> {
                         PageTitle("Kurz beschreiben?")
                         Text(
-                            "Optional. Ohne Material ergänzt die KI aus eigenem Wissen.",
+                            "Optional. Ohne Material: allgemeines Wissen.",
                             color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
                         )
                         QuickscopeField(description, { description = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
                         Text("${description.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.End))
                         if (jobs.isEmpty() && description.isBlank()) {
-                            Text("Ohne Material und Beschreibung hat die KI nichts zum Vorbereiten. Du kannst beides später ergänzen.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                            Text("Ohne beides gibt es nichts zu lernen. Später ergänzbar.", color = Muted, style = MaterialTheme.typography.bodySmall)
                         }
                         Spacer(Modifier.height(8.dp))
                         PrimaryButton(if (busy) "Einen Moment" else "Los", { finish() }, enabled = !busy)

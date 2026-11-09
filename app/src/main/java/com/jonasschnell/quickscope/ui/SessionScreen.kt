@@ -12,6 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.jonasschnell.quickscope.logic.SPEEDS
+import com.jonasschnell.quickscope.logic.VoicePart
+import com.jonasschnell.quickscope.logic.speedLabel
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +50,7 @@ import com.jonasschnell.quickscope.ui.theme.CardHigh
 import com.jonasschnell.quickscope.ui.theme.Danger
 import com.jonasschnell.quickscope.ui.theme.Muted
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Lernrunde im Vollbild: eine Aufgabe pro Bildschirm, Zeitbalken oben, Abbrechen jederzeit. */
 @Composable
@@ -97,39 +105,54 @@ private fun MessageView(title: String, text: String, primary: String, onPrimary:
 @Composable
 private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose: () -> Unit) {
     val task = s.current ?: return
-    val speaker = if (s.audio) rememberSpeaker() else null
+    val voice = if (s.audio) rememberVoice(s.speed) else null
     val haptics = LocalHaptics.current
+    val ids = remember(s.tasks) { s.tasks.map { it.item.id } }
 
-    // Audio-Modus: neue Aufgabe vorlesen
+    // Audio-Modus: naechste Aufgaben vorab laden
     LaunchedEffect(s.index, s.audio) {
-        if (s.audio && s.feedback == null) speaker?.speak(audioPrompt(task)) else if (!s.audio) speaker?.stop()
+        if (s.audio) voice?.prefetch(s.examId, ids, s.index)
     }
-    // Feedback: haptisch, im Audio-Modus vorlesen, nach kurzer Zeit automatisch weiter
+    // Audio-Modus: Frage vorlesen; sobald geantwortet ist, Antwort (mit Kurzerklaerung) vorlesen und danach weiter.
+    LaunchedEffect(s.index, s.audio, s.feedback != null) {
+        val fb = s.feedback
+        if (voice == null) return@LaunchedEffect
+        if (fb == null) {
+            voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task))
+        } else {
+            voice.speak(s.examId, task.item.id, VoicePart.Answer, audioFeedback(task, fb))
+            delay(500)
+            vm.next()
+        }
+    }
+    // Feedback: Haptik, ohne Audio nach kurzer Zeit automatisch weiter
     LaunchedEffect(s.feedback, s.index) {
         val fb = s.feedback ?: return@LaunchedEffect
         if (fb) haptics.confirm() else haptics.reject()
-        if (s.audio) speaker?.speak(audioFeedback(task, fb))
-        val wait = when {
-            s.audio -> 4500L
-            lessonSteps(task.item).isNotEmpty() -> 4500L
-            fb && task.item.explanation.isNullOrBlank() && task.item.mnemonic.isNullOrBlank() -> 1100L
-            fb -> 2600L
-            else -> 3600L
-        }
-        delay(wait)
+        if (s.audio) return@LaunchedEffect
+        delay(
+            when {
+                lessonSteps(task.item).isNotEmpty() -> 4500L
+                fb && task.item.explanation.isNullOrBlank() && task.item.mnemonic.isNullOrBlank() -> 1000L
+                fb -> 2400L
+                else -> 3200L
+            },
+        )
         vm.next()
     }
 
     TopRow(sessionProgress(s.tasks.map { it.item }, s.index), s.audio, vm::setAudio, onClose)
+    if (voice != null) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SPEEDS.forEach { sp -> Pill(speedLabel(sp), voice.speed == sp, { voice.selectSpeed(sp); vm.setSpeed(sp) }) }
+            if (voice.loading) SkeletonBox(Modifier.size(10.dp), CircleShape)
+            if (voice.usingDevice) Text("Gerätestimme", color = Muted, style = MaterialTheme.typography.bodySmall)
+        }
+    }
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
-    Column(
-        Modifier.weight(1f).fillMaxWidth()
-            .swipeable(enabled = s.feedback != null, onLeft = { vm.next() }, onRight = { vm.next() })
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center,
-    ) {
+    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
         key(s.index) {
-            TaskBody(task, s.feedback, speaker, vm)
+            TaskBody(task, s.feedback, voice, s.examId, vm)
             s.feedback?.let { Spacer(Modifier.height(16.dp)); FeedbackPanel(task, it, vm::next) }
         }
     }
@@ -137,11 +160,12 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
 /** Die Aufgabe je Typ. Karten und Loesungswege gehen direkt weiter, alle anderen zeigen erst das Feedback. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, speaker: Speaker?, vm: SessionViewModel) {
+private fun TaskBody(task: Task, feedback: Boolean?, voice: Voice?, examId: String, vm: SessionViewModel) {
+    val scope = rememberCoroutineScope()
     val answered = feedback != null
     val onAnswer: (Boolean) -> Unit = { ok -> vm.answer(ok) }
     when (task) {
-        is Task.Card -> CardTask(task, { ok -> vm.answer(ok); vm.next() }, { speaker?.speak(it) })
+        is Task.Card -> CardTask(task, { ok -> vm.answer(ok); vm.next() }, { ans -> if (voice != null) scope.launch { voice.speak(examId, task.item.id, VoicePart.Answer, ans) } })
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
         is Task.Choice -> ChoiceTask(task, answered, onAnswer)
         is Task.Cloze -> ClozeTask(task, onAnswer)

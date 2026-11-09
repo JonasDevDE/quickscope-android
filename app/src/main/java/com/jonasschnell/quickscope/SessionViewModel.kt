@@ -8,6 +8,7 @@ import com.jonasschnell.quickscope.data.AttemptRequest
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.backendMessage
 import com.jonasschnell.quickscope.logic.Task
+import com.jonasschnell.quickscope.logic.normalizeSpeed
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.parseTask
 import kotlinx.coroutines.CancellationException
@@ -36,6 +37,7 @@ data class SessionUi(
     val message: String? = null,
     val feedback: Boolean? = null,
     val audio: Boolean = false,
+    val speed: Float = 1.15f,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val inFinalRound: Boolean get() = finalRoundStart?.let { index >= it } == true
@@ -48,13 +50,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private val sync = app.attemptSync
     private val store = app.store
 
-    private val _state = MutableStateFlow(SessionUi(audio = store.audioMode))
+    private val _state = MutableStateFlow(SessionUi(audio = store.audioMode, speed = normalizeSpeed(store.audioSpeed)))
     val state: StateFlow<SessionUi> = _state.asStateFlow()
 
     private var shownAt = 0L
 
     fun start(examId: String, minutes: Int, scoreBefore: Int?) {
-        _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode) }
+        _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode, speed = normalizeSpeed(store.audioSpeed)) }
         viewModelScope.launch {
             try {
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
@@ -107,10 +109,16 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(audio = on) }
     }
 
+    fun setSpeed(value: Float) {
+        store.audioSpeed = value
+        _state.update { it.copy(speed = value) }
+    }
+
     /** Schliesst die Runde (Abbruch oder "Fertig"); bereits gegebene Antworten bleiben und werden nachgesendet. */
     fun close() {
         val id = _state.value.examId
-        _state.value = SessionUi(audio = store.audioMode)
+        _state.value = SessionUi(audio = store.audioMode, speed = normalizeSpeed(store.audioSpeed))
+        viewModelScope.launch { app.audioCache.clear() }
         if (id.isNotEmpty()) viewModelScope.launch { sync.flush(id) }
     }
 

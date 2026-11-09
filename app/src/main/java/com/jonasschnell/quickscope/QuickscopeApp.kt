@@ -13,6 +13,7 @@ import okio.Path.Companion.toOkioPath
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.jonasschnell.quickscope.data.AttemptSync
+import com.jonasschnell.quickscope.data.AudioCache
 import com.jonasschnell.quickscope.data.AuthManager
 import com.jonasschnell.quickscope.data.MaterialPreview
 import com.jonasschnell.quickscope.logic.AttemptQueue
@@ -26,6 +27,7 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     val network by lazy { Network(auth, store) }
 
     val attemptSync by lazy { AttemptSync(network.api, AttemptQueue(store)) }
+    val audioCache by lazy { AudioCache(this, network.client, network.api) }
     val preview by lazy { MaterialPreview(this, network.client) }
 
     val updater by lazy { Updater(this, network.client, network.api) }

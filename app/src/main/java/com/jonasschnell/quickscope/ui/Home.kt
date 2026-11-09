@@ -49,7 +49,6 @@ import com.jonasschnell.quickscope.logic.projectionArrow
 import com.jonasschnell.quickscope.logic.projectionLine
 import com.jonasschnell.quickscope.logic.remainingMinutes
 import com.jonasschnell.quickscope.logic.startLabel
-import com.jonasschnell.quickscope.logic.DAILY_MINUTE_CHOICES
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Card
 import com.jonasschnell.quickscope.ui.theme.CardHigh
@@ -63,7 +62,6 @@ fun HomePage(
     state: UiState,
     loading: Boolean,
     onStart: (Exam, Int) -> Unit,
-    onDaily: (Exam, Int) -> Unit,
     onMaterial: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
     onRetry: () -> Unit,
@@ -86,7 +84,7 @@ fun HomePage(
             exam.status == "processing" -> ProcessingView()
             exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
             exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, onStart, onDaily, onCheatsheet)
+            else -> ReadyView(exam, state.activeForecast, onStart, onCheatsheet)
         }
     }
 }
@@ -123,8 +121,7 @@ fun UploadCard(state: UiState, examId: String, onCancel: () -> Unit, onRetry: ()
 
 @Composable
 private fun ProcessingView() {
-    Text("Die KI liest dein Material …", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 24.dp))
-    Text("Das dauert ein paar Minuten. Du kannst die App schließen.", color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    Text("Liest Material …", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 24.dp))
     SkeletonCard(140.dp)
     SkeletonCard(70.dp)
     SkeletonCard(70.dp)
@@ -134,9 +131,9 @@ private fun ProcessingView() {
 @Composable
 private fun FailedExamView(exam: Exam, onMaterial: (Exam) -> Unit, onRetry: () -> Unit) {
     val text = when {
-        exam.error?.contains("Limit", ignoreCase = true) == true -> "Die KI ist heute ausgelastet. Bitte später nochmal."
-        exam.error?.contains("nicht eingerichtet", ignoreCase = true) == true -> "Die KI ist noch nicht eingerichtet."
-        else -> exam.error ?: "Das Material konnte nicht gelesen werden."
+        exam.error?.contains("Limit", ignoreCase = true) == true -> "Gerade ausgelastet. Später nochmal."
+        exam.error?.contains("nicht eingerichtet", ignoreCase = true) == true -> "Noch nicht eingerichtet."
+        else -> exam.error ?: "Material nicht lesbar."
     }
     Spacer(Modifier.height(24.dp))
     LearnMark(56.dp)
@@ -151,7 +148,6 @@ private fun EmptyExamView(exam: Exam, onMaterial: (Exam) -> Unit) {
     Spacer(Modifier.height(24.dp))
     LearnMark(56.dp)
     Text("Noch kein Material", style = MaterialTheme.typography.headlineSmall)
-    Text("Foto, Datei oder eine kurze Beschreibung reicht.", color = Muted, textAlign = TextAlign.Center)
     PrimaryButton("Material hinzufügen", { onMaterial(exam) })
 }
 
@@ -174,7 +170,6 @@ private fun ReadyView(
     exam: Exam,
     forecast: Forecast?,
     onStart: (Exam, Int) -> Unit,
-    onDaily: (Exam, Int) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
     var picked by remember { mutableStateOf<String?>(null) }
@@ -196,10 +191,6 @@ private fun ReadyView(
         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
     )
     PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-        DAILY_MINUTE_CHOICES.forEach { m -> Pill("$m", exam.dailyMinutes == m, { onDaily(exam, m) }) }
-    }
-    Text("Minuten pro Tag", color = Muted, style = MaterialTheme.typography.bodySmall)
     if (forecast != null && forecast.weakTopics.isNotEmpty()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
             forecast.weakTopics.take(3).forEach { t ->

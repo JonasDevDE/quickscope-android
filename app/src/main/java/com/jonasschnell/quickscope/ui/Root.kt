@@ -49,7 +49,6 @@ import com.jonasschnell.quickscope.Phase
 import com.jonasschnell.quickscope.SessionPhase
 import com.jonasschnell.quickscope.SessionViewModel
 import com.jonasschnell.quickscope.UiState
-import com.jonasschnell.quickscope.data.ExamUpdate
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Black
 import com.jonasschnell.quickscope.ui.theme.CardHigh
@@ -151,7 +150,6 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                     HomePage(
                         state, loading = !ready || !state.examsLoaded,
                         onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreNowPercent) },
-                        onDaily = { exam, m -> vm.updateExam(exam.id, ExamUpdate(dailyMinutes = m)) },
                         onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
                         onRetry = vm::refreshExamsNow,

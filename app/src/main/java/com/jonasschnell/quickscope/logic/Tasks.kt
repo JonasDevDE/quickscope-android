@@ -196,6 +196,19 @@ fun audioPrompt(task: Task): String = when (task) {
     else -> speechText(task.item)
 }
 
-/** Vorlesetext fuer das Feedback im Audio-Modus. */
+/** Vorlesetext fuer das Feedback (Rueckfall auf die Geraetestimme): richtig/falsch, richtige Antwort, Erklaerung wenn vorhanden. */
 fun audioFeedback(task: Task, correct: Boolean): String =
-    if (correct) "Richtig." else "Nicht ganz. Richtig ist: ${correctText(task)}."
+    listOfNotNull(if (correct) "Richtig." else "Falsch. ${correctText(task)}.", shortExplanation(task.item.explanation)).joinToString(" ")
+
+/** Ablauf einer Karte ohne Wisch: erst aufdecken, dann "gewusst"/"nicht gewusst"; vorher gibt es kein Ergebnis. */
+class CardFlow {
+    var revealed = false
+        private set
+
+    fun reveal() {
+        revealed = true
+    }
+
+    /** Ergebnis fuer das Backend ("known"/"unknown") oder null, solange die Karte nicht aufgedeckt ist. */
+    fun answer(known: Boolean): String? = if (!revealed) null else if (known) "known" else "unknown"
+}

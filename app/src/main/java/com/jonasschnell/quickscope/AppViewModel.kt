@@ -429,6 +429,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Aufgaben neu erzeugen: Lernstand wird zurueckgesetzt, die Pruefung zeigt danach wieder "Liest Material ...". */
+    fun regenerateItems(id: String) {
+        run("Neu erzeugen fehlgeschlagen") {
+            api.regenerate(id)
+            buzz(HapticKind.Confirm)
+            loadExams()
+        }
+    }
+
     fun deleteMaterial(examId: String, materialId: String) {
         run("Entfernen fehlgeschlagen") {
             api.deleteMaterial(examId, materialId)
