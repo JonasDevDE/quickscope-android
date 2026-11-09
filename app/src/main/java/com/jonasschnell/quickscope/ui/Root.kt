@@ -50,6 +50,7 @@ import com.jonasschnell.quickscope.Phase
 import com.jonasschnell.quickscope.SessionPhase
 import com.jonasschnell.quickscope.SessionViewModel
 import com.jonasschnell.quickscope.UiState
+import com.jonasschnell.quickscope.logic.EXTRA_MINUTES
 import com.jonasschnell.quickscope.logic.scoreOrNull
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Black
@@ -155,9 +156,10 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                 } else {
                     HomePage(
                         state, loading = !ready || !state.examsLoaded,
-                        onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreOrNull()) },
+                        onStart = { exam, _ -> sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull()) },
                         onListen = { overlay = Overlay.Audiobook(it.id) },
-                        onQuestionsOnly = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
+                        onQuestionsOnly = { exam, _ -> sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
+                        onMore = { exam -> sessionVm.start(exam.id, EXTRA_MINUTES, state.activeForecast?.scoreOrNull()) },
                         onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
                         onRetry = vm::refreshExamsNow,
@@ -200,10 +202,10 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             is Overlay.Audiobook -> {
                 val exam = state.exams.firstOrNull { it.id == o.examId }
                 AudiobookScreen(
-                    o.examId, exam?.dailyMinutes ?: 20,
+                    o.examId,
                     onQuestions = {
                         overlay = null
-                        exam?.let { e -> sessionVm.start(e.id, com.jonasschnell.quickscope.logic.remainingMinutes(e.dailyMinutes, state.activeForecast?.doneSecondsToday ?: 0), state.activeForecast?.scoreOrNull()) }
+                        exam?.let { e -> sessionVm.start(e.id, null, state.activeForecast?.scoreOrNull()) }
                     },
                     onClose = dismiss,
                 )
@@ -213,7 +215,8 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             val exam = state.exams.firstOrNull { it.id == session.examId }
             SessionScreen(
                 sessionVm,
-                onRetry = { exam?.let { e -> sessionVm.start(e.id, com.jonasschnell.quickscope.logic.remainingMinutes(e.dailyMinutes, state.activeForecast?.doneSecondsToday ?: 0), session.scoreBefore) } },
+                onRetry = { exam?.let { e -> sessionVm.start(e.id, null, session.scoreBefore) } },
+                onMore = { exam?.let { e -> sessionVm.start(e.id, EXTRA_MINUTES, session.scoreBefore) } },
                 onClose = { sessionVm.close(); vm.refreshExamsNow() },
             )
         }

@@ -1,23 +1,28 @@
 {
   "items" : [ {
-    "lessonId" : "6af1feee0a3988896a5fce77",
-    "chapterId" : "6af1feed0a3988896a5fce72",
+    "lessonId" : "6af20dd6375be45253b442d5",
+    "chapterId" : "6af20dd6375be45253b442d0",
     "chapterTitle" : "Rechnen",
     "title" : "Preis kalkulieren",
     "estSeconds" : 42
   }, {
-    "lessonId" : "6af1feee0a3988896a5fce78",
-    "chapterId" : "6af1feed0a3988896a5fce74",
+    "lessonId" : "6af20dd6375be45253b442d6",
+    "chapterId" : "6af20dd6375be45253b442d2",
     "chapterTitle" : "Vertragsrecht",
     "title" : "Vertrag entsteht",
     "estSeconds" : 41
   }, {
-    "lessonId" : "6af1feee0a3988896a5fce76",
-    "chapterId" : "6af1feed0a3988896a5fce72",
+    "lessonId" : "6af20dd6375be45253b442d4",
+    "chapterId" : "6af20dd6375be45253b442d0",
     "chapterTitle" : "Rechnen",
     "title" : "Zinsen verstehen",
     "estSeconds" : 48
   } ],
   "totalSeconds" : 131,
-  "reason" : "Zuhören: 3 Lektionen, 2 Min."
+  "reason" : "Zuhören: 3 Lektionen, 2 Min.",
+  "budget" : {
+    "dailyMinutes" : 30,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 30
+  }
 }

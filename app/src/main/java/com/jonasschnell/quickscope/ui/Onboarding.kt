@@ -50,6 +50,9 @@ import com.jonasschnell.quickscope.logic.AGE_DEFAULT
 import com.jonasschnell.quickscope.logic.EDUCATION
 import com.jonasschnell.quickscope.logic.OnboardingPage
 import com.jonasschnell.quickscope.logic.RECORD_MAX_SECONDS
+import com.jonasschnell.quickscope.logic.VOICE_FILE_EXT
+import com.jonasschnell.quickscope.logic.VoiceOutcome
+import com.jonasschnell.quickscope.logic.voiceOutcomeMessage
 import com.jonasschnell.quickscope.logic.aboutCounter
 import com.jonasschnell.quickscope.logic.clampAbout
 import com.jonasschnell.quickscope.logic.clampAge
@@ -149,6 +152,7 @@ private fun ColumnScope.VoicePage(vm: AppViewModel, step: VoiceStep, about: Stri
     val context = LocalContext.current
     var seconds by remember { mutableIntStateOf(0) }
     var recorder by remember { mutableStateOf<VoiceRecorder?>(null) }
+    var hint by remember { mutableStateOf<String?>(null) }
 
     fun finishRecording() {
         val file = recorder?.stop()
@@ -158,9 +162,13 @@ private fun ColumnScope.VoicePage(vm: AppViewModel, step: VoiceStep, about: Stri
             return
         }
         onStep(VoiceStep.Uploading)
-        vm.uploadVoice(file) { text ->
-            if (text != null) onAbout(text)
-            onStep(if (text != null) VoiceStep.Review else VoiceStep.Idle)
+        vm.uploadVoice(file) { outcome ->
+            hint = voiceOutcomeMessage(outcome)
+            when (outcome) {
+                is VoiceOutcome.Text -> { onAbout(outcome.about); onStep(VoiceStep.Review) }
+                VoiceOutcome.Unavailable -> onStep(VoiceStep.Review) // Text selbst tippen als Weg
+                else -> onStep(VoiceStep.Idle)                          // nochmal aufnehmen
+            }
         }
     }
     fun startRecording() {
@@ -181,6 +189,7 @@ private fun ColumnScope.VoicePage(vm: AppViewModel, step: VoiceStep, about: Stri
     DisposableEffect(Unit) { onDispose { recorder?.cancel() } } // nie eine Aufnahme behalten
 
     Title("Wer bist du?")
+    hint?.let { Text(it, color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
     when (step) {
         VoiceStep.Idle -> {
             Text("Erzähl kurz, wer du bist: Hobbys, Beruf, was dir wichtig ist.", color = Muted, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -211,17 +220,17 @@ private fun ColumnScope.VoicePage(vm: AppViewModel, step: VoiceStep, about: Stri
     }
 }
 
-/** Nimmt AAC/m4a auf (hoechstens 60 s) in eine Cache-Datei; die Datei wird nach dem Upload geloescht. */
+/** Nimmt AAC (ADTS, .aac) auf (hoechstens 60 s) in eine Cache-Datei; die Datei wird nach dem Upload geloescht. */
 class VoiceRecorder(private val context: Context, private val onMax: () -> Unit) {
     private var recorder: MediaRecorder? = null
     private var file: File? = null
     private var startedAt = 0L
 
     fun start(): Boolean = try {
-        val f = File(context.cacheDir, "voice_${System.currentTimeMillis()}.m4a")
+        val f = File(context.cacheDir, "voice_${System.currentTimeMillis()}.$VOICE_FILE_EXT")
         val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
         r.setAudioSource(MediaRecorder.AudioSource.MIC)
-        r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        r.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS)
         r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         r.setAudioSamplingRate(44100)
         r.setAudioEncodingBitRate(64_000)

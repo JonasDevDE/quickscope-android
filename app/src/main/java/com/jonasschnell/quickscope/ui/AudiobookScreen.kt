@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jonasschnell.quickscope.audio.AudiobookViewModel
 import com.jonasschnell.quickscope.audio.BookPhase
 import com.jonasschnell.quickscope.audio.BookUi
+import com.jonasschnell.quickscope.logic.EXTRA_MINUTES
 import com.jonasschnell.quickscope.logic.activeKeyPoint
 import com.jonasschnell.quickscope.logic.showMnemonic
 import com.jonasschnell.quickscope.ui.theme.Accent
@@ -45,14 +46,14 @@ import com.jonasschnell.quickscope.ui.theme.Muted
  * Es laeuft von selbst weiter (auch bei ausgeschaltetem Bildschirm, ueber den Dienst); drei grosse Knoepfe: Zurueck, Pause, Weiter.
  */
 @Composable
-fun AudiobookScreen(examId: String, minutes: Int, onQuestions: () -> Unit, onClose: () -> Unit) {
+fun AudiobookScreen(examId: String, onQuestions: () -> Unit, onClose: () -> Unit) {
     val vm: AudiobookViewModel = viewModel()
     val s by vm.state.collectAsStateWithLifecycle()
     // Ab Android 13 fragt die App einmal nach der Benachrichtigung (Steuerung auf dem Sperrbildschirm); Abbruch blockiert nichts.
     val notify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(examId) {
         if (Build.VERSION.SDK_INT >= 33) notify.launch(Manifest.permission.POST_NOTIFICATIONS)
-        vm.start(examId, minutes)
+        vm.start(examId, null) // Standard: Rest des heutigen Budgets
     }
     val close = { vm.close(); onClose() }
     BackHandler { close() }
@@ -64,8 +65,8 @@ fun AudiobookScreen(examId: String, minutes: Int, onQuestions: () -> Unit, onClo
         when (s.phase) {
             BookPhase.Playing -> PlayingView(s, vm)
             BookPhase.Finished -> EndView("Fertig. Jetzt Fragen dazu?", "Zu den Fragen", { vm.close(); onQuestions() }, "Schließen", close)
-            BookPhase.Empty -> EndView(s.message ?: "Nichts Neues zu hören.", "Nochmal hören", { vm.start(examId, minutes, repeat = true) }, "Schließen", close)
-            BookPhase.Error -> EndView(s.message ?: "Das hat nicht geklappt", "Nochmal", { vm.start(examId, minutes) }, "Schließen", close)
+            BookPhase.Empty -> EndView(s.message ?: "Nichts Neues zu hören.", "Mehr zuhören", { vm.start(examId, EXTRA_MINUTES, repeat = true) }, "Schließen", close)
+            BookPhase.Error -> EndView(s.message ?: "Das hat nicht geklappt", "Nochmal", { vm.start(examId, null) }, "Schließen", close)
             else -> {
                 SkeletonCard(70.dp)
                 Spacer(Modifier.height(12.dp))

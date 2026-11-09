@@ -306,7 +306,7 @@ class ContractTest {
         assertTrue(msg("error-415-legacy-format.json", 415)!!.contains(".docx"))
         assertEquals("Die Prüfung ist vorbei", msg("error-409-attempt-over.json", 409))
         assertEquals("Höchstens 20 Prüfungen je Nutzer", msg("error-409-exam-limit.json", 409))
-        assertTrue(msg("error-400-validation.json", 400)!!.startsWith("name"))
+        assertTrue(msg("error-400-validation.json", 400)!!.contains(":"))
         assertNotNull(msg("error-400-time.json", 400))
         assertNotNull(msg("error-400-attempt-outcome.json", 400))
         assertNotNull(msg("error-400-broken-pdf.json", 400))
@@ -473,26 +473,99 @@ class ContractTest {
     }
 
     @Test fun profileContract() {
-        val p = parse("me-profile.json", com.jonasschnell.quickscope.data.Profile.serializer())
-        assertEquals("Ich bin Snowboarder, arbeite im Marketing und mag Autos.", p.about)
-        assertEquals(24, p.age)
-        assertEquals("ausbildung", p.educationLevel)
-        assertTrue(p.onboardingDone)
-        assertTrue(com.jonasschnell.quickscope.logic.aboutValid(p.about))
-        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Done, com.jonasschnell.quickscope.logic.gateFor(p))
+        val done = parse("profile-get-done.json", com.jonasschnell.quickscope.data.Profile.serializer())
+        assertEquals("Ich bin Snowboarder, arbeite im Marketing und interessiere mich fuer Autos.", done.about)
+        assertEquals(17, done.age)
+        assertEquals("realschule", done.educationLevel)
+        assertTrue(done.onboardingDone)
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Done, com.jonasschnell.quickscope.logic.gateFor(done))
+        assertTrue(com.jonasschnell.quickscope.logic.aboutValid(done.about))
         // frisches Profil: age und educationLevel fehlen, onboardingDone false -> Onboarding laeuft
-        val fresh = parse("me-profile-new.json", com.jonasschnell.quickscope.data.Profile.serializer())
+        val fresh = parse("profile-get-new.json", com.jonasschnell.quickscope.data.Profile.serializer())
+        assertEquals("", fresh.about)
         assertNull(fresh.age)
         assertNull(fresh.educationLevel)
         assertFalse(fresh.onboardingDone)
         assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Needed, com.jonasschnell.quickscope.logic.gateFor(fresh))
-        assertEquals("", AppJson.decodeFromString(com.jonasschnell.quickscope.data.Profile.serializer(), "{}").about)
+        assertEquals(done, parse("profile-put-done.json", com.jonasschnell.quickscope.data.Profile.serializer()))
+        val partial = parse("profile-put-partial.json", com.jonasschnell.quickscope.data.Profile.serializer())
+        assertEquals(17, partial.age)
+        assertNull(partial.educationLevel)
+        assertFalse(partial.onboardingDone)
         // Sprachnachricht: nur die Zusammenfassung
-        val v = parse("me-profile-voice.json", com.jonasschnell.quickscope.data.VoiceSummary.serializer())
-        assertEquals("Snowboarder, arbeitet im Marketing, mag Autos.", v.about)
+        val v = parse("profile-voice-response.json", com.jonasschnell.quickscope.data.VoiceSummary.serializer())
+        assertEquals("Ich bin Snowboarder und arbeite im Marketing. Ich interessiere mich fuer Autos.", v.about)
         assertTrue(com.jonasschnell.quickscope.logic.aboutValid(v.about))
-        // Teil-Aenderung sendet nur gesetzte Felder
-        val up = AppJson.encodeToString(com.jonasschnell.quickscope.data.ProfileUpdate.serializer(), com.jonasschnell.quickscope.data.ProfileUpdate(age = 20, onboardingDone = true))
-        assertEquals("""{"age":20,"onboardingDone":true}""", up)
+        // Einstellungen senden nie onboardingDone (nur das Onboarding beim Abschluss)
+        val settings = AppJson.encodeToString(com.jonasschnell.quickscope.data.ProfileUpdate.serializer(), com.jonasschnell.quickscope.data.ProfileUpdate(about = "x", age = 20, educationLevel = "abitur"))
+        assertFalse(settings.contains("onboardingDone"))
+        assertEquals("""{"about":"x","age":20,"educationLevel":"abitur"}""", settings)
+        val finish = AppJson.encodeToString(com.jonasschnell.quickscope.data.ProfileUpdate.serializer(), com.jonasschnell.quickscope.data.ProfileUpdate(age = 20, onboardingDone = true))
+        assertEquals("""{"age":20,"onboardingDone":true}""", finish)
+    }
+
+    @Test fun profileErrorsAndVoiceOutcomes() {
+        fun msg(file: String, code: Int): String? {
+            val body = raw(file).toResponseBody("application/json".toMediaType())
+            return backendMessage(HttpException(Response.error<Any>(code, body)))
+        }
+        assertEquals("age: 10 bis 99", msg("error-400-profile-age.json", 400))
+        assertEquals("onboardingDone: nur von false auf true", msg("error-400-profile-onboarding.json", 400))
+        assertNotNull(msg("error-400-profile-about.json", 400))
+        assertNotNull(msg("error-400-profile-education.json", 400))
+        assertTrue(msg("error-400-profile-voice-format.json", 400)!!.startsWith("file:"))
+        assertEquals("Gerade nicht verfügbar.", msg("error-503-profile-voice.json", 503)) // keine KI-Hinweise in der App
+        val o = com.jonasschnell.quickscope.logic.voiceOutcomeForStatus(422)
+        assertEquals(com.jonasschnell.quickscope.logic.VoiceOutcome.NothingHeard, o)
+        assertEquals("Nichts verstanden. Nochmal aufnehmen?", com.jonasschnell.quickscope.logic.voiceOutcomeMessage(o))
+        assertEquals(com.jonasschnell.quickscope.logic.VoiceOutcome.Unavailable, com.jonasschnell.quickscope.logic.voiceOutcomeForStatus(503))
+        assertEquals("Gerade nicht verfügbar. Du kannst auch tippen.", com.jonasschnell.quickscope.logic.voiceOutcomeMessage(com.jonasschnell.quickscope.logic.VoiceOutcome.Unavailable))
+        assertNull(com.jonasschnell.quickscope.logic.voiceOutcomeMessage(com.jonasschnell.quickscope.logic.VoiceOutcome.Text("x")))
+        assertEquals("aac", com.jonasschnell.quickscope.logic.VOICE_FILE_EXT)
+        assertEquals("audio/aac", com.jonasschnell.quickscope.logic.VOICE_MIME)
+    }
+
+    @Test fun questionsOnlySessionBudgetPlanAndPrefetch() {
+        val s = parse("session-questions-only.json", LearnSession.serializer())
+        assertEquals(12, s.items.size)
+        assertEquals(12, s.quiz.size)
+        assertTrue(s.items.none { it.lesson != null })      // lessons=false: keine Lektionen
+        assertEquals("Heute: 12 neue Fragen, 3 Themen.", s.reason)
+        assertEquals(149, s.plannedSeconds)
+        assertEquals(30, s.budget?.dailyMinutes)
+        assertEquals(0, s.budget?.usedMinutesToday)
+        assertEquals(30, s.budget?.remainingMinutes)
+        // das Filtern bleibt als Rueckfall: gleiche Eintraege ohne Lektionen
+        val mixed = parse("session-lesson.json", LearnSession.serializer())
+        assertNotNull(mixed.budget)
+        val filtered = com.jonasschnell.quickscope.logic.filterForMode(mixed.items, { it.lesson != null }, com.jonasschnell.quickscope.logic.StartMode.QuestionsOnly)
+        assertEquals(mixed.quiz.size, filtered.size)
+        val plan = parse("forecast-far.json", Forecast.serializer()).plan!!
+        assertEquals(5, plan.plannedMinutes)
+        assertEquals(listOf("Rechnen", "Vertragsrecht"), plan.todayChapters)
+        val book = parse("audiobook-default.json", Audiobook.serializer())
+        assertEquals(2, book.items.size)
+        assertEquals(83, book.totalSeconds)
+        assertNotNull(book.budget)
+        val pre = parse("audio-prefetch.json", com.jonasschnell.quickscope.data.PrefetchResponse.serializer())
+        assertEquals(2, pre.queued)
+        assertEquals(2, pre.ready)
+        assertEquals(0, pre.pending)
+        assertEquals(0, pre.failed)
+        assertEquals(listOf("i-number:question", "i-number:answer"), pre.items.map { it.id })
+        assertTrue(pre.items.all { it.status == "ready" })
+        // pending ist kein Fehler
+        val p = AppJson.decodeFromString(com.jonasschnell.quickscope.data.PrefetchResponse.serializer(), """{"queued":2,"ready":1,"pending":1,"failed":0,"items":[{"id":"a","status":"ready"},{"id":"b","status":"pending"}]}""")
+        assertEquals(1, p.pending)
+        assertEquals(0, p.failed)
+    }
+
+    @Test fun dayGoalAndBudgetLine() {
+        assertTrue(com.jonasschnell.quickscope.logic.dayGoalReached(20, 20 * 60))
+        assertTrue(com.jonasschnell.quickscope.logic.dayGoalReached(20, 20 * 60 - 44))
+        assertFalse(com.jonasschnell.quickscope.logic.dayGoalReached(20, 20 * 60 - 45))
+        assertFalse(com.jonasschnell.quickscope.logic.dayGoalReached(20, 0))
+        assertEquals("Heute: 12 von 30 min", com.jonasschnell.quickscope.logic.budgetLine(30, 12 * 60 + 59))
+        assertEquals(10, com.jonasschnell.quickscope.logic.EXTRA_MINUTES)
     }
 }

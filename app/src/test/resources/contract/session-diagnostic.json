@@ -2,7 +2,7 @@
   "items" : [ {
     "id" : "i-card",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "card",
     "question" : "Zinsen?",
     "answer" : "Preis für Kapital",
@@ -22,7 +22,7 @@
   }, {
     "id" : "i-cloze",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "type" : "cloze",
     "question" : "Selbstkosten + ___ = Verkaufspreis.",
     "answer" : "Gewinn",
@@ -44,7 +44,7 @@
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -58,7 +58,7 @@
   }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -83,20 +83,20 @@
   }, {
     "id" : "i-match",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "type" : "match",
     "question" : "Zuordnen:",
     "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
     "payload" : {
       "pairs" : [ {
-        "left" : "Selbstkosten",
-        "right" : "Herstellkosten + Verwaltung"
+        "right" : "Herstellkosten + Verwaltung",
+        "left" : "Selbstkosten"
       }, {
-        "left" : "Listenpreis",
-        "right" : "Preis vor Rabatt"
+        "right" : "Preis vor Rabatt",
+        "left" : "Listenpreis"
       }, {
-        "left" : "Zielpreis",
-        "right" : "Preis vor Skonto"
+        "right" : "Preis vor Skonto",
+        "left" : "Zielpreis"
       } ]
     },
     "difficulty" : 3,
@@ -112,7 +112,7 @@
   }, {
     "id" : "i-choice2",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "choice2",
     "question" : "Transportrisiko: Käufer oder Verkäufer?",
     "answer" : "Käufer",
@@ -133,7 +133,7 @@
   }, {
     "id" : "i-mc",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "mc",
     "question" : "Jahreszins-Formel?",
     "answer" : "K × p / 100",
@@ -152,7 +152,7 @@
   }, {
     "id" : "i-tf",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "truefalse",
     "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
     "answer" : "wahr",
@@ -172,20 +172,20 @@
   "reason" : "Einstufung: 8 Fragen, 3 Themen.",
   "forecast" : {
     "daysLeft" : 21,
-    "hoursLeft" : 493,
+    "hoursLeft" : 492,
     "doneSecondsToday" : 0,
     "streakDays" : 3,
     "bestStreakDays" : 3,
     "weakTopics" : [ {
-      "topicId" : "6af1feed0a3988896a5fce74",
+      "topicId" : "6af20dd6375be45253b442d2",
       "title" : "Vertragsrecht",
       "mastery" : 0.1
     }, {
-      "topicId" : "6af1feed0a3988896a5fce71",
+      "topicId" : "6af20dd6375be45253b442cf",
       "title" : "Zinsrechnung",
       "mastery" : 0.3
     }, {
-      "topicId" : "6af1feed0a3988896a5fce73",
+      "topicId" : "6af20dd6375be45253b442d1",
       "title" : "Kalkulation",
       "mastery" : 0.1
     } ],
@@ -195,11 +195,17 @@
     "plan" : {
       "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
       "chaptersTotal" : 2,
-      "chaptersHeard" : 0
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 4
     },
     "showCheatsheetSuggestion" : false,
     "note" : "Schätzung, keine Garantie"
   },
   "showCheatsheetSuggestion" : false,
-  "finalRoundStart" : null
+  "finalRoundStart" : null,
+  "budget" : {
+    "dailyMinutes" : 30,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 30
+  }
 }

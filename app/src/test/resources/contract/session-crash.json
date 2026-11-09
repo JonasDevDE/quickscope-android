@@ -2,7 +2,7 @@
   "items" : [ {
     "id" : "i-lesson",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "card",
     "question" : "So geht: Zinseszins berechnen",
     "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
@@ -22,7 +22,7 @@
   }, {
     "id" : "i-variant",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "number",
     "question" : "500 € zu 2 %, 3 Jahre Zinseszins?",
     "answer" : "530,60 €",
@@ -46,7 +46,7 @@
   }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -71,7 +71,7 @@
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -85,7 +85,7 @@
   }, {
     "id" : "i-order",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "type" : "order",
     "question" : "Kalkulation, Reihenfolge:",
     "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
@@ -105,7 +105,7 @@
   }, {
     "id" : "i-number",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "number",
     "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
     "answer" : "30 €",
@@ -126,7 +126,7 @@
   }, {
     "id" : "i-spot",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "spot",
     "question" : "Fehler finden:",
     "answer" : "Verträge: immer Schriftform.",
@@ -173,15 +173,15 @@
     "streakDays" : 0,
     "bestStreakDays" : 0,
     "weakTopics" : [ {
-      "topicId" : "6af1feed0a3988896a5fce71",
+      "topicId" : "6af20dd6375be45253b442cf",
       "title" : "Zinsrechnung",
       "mastery" : 0.45
     }, {
-      "topicId" : "6af1feed0a3988896a5fce74",
+      "topicId" : "6af20dd6375be45253b442d2",
       "title" : "Vertragsrecht",
       "mastery" : 0.54
     }, {
-      "topicId" : "6af1feed0a3988896a5fce73",
+      "topicId" : "6af20dd6375be45253b442d1",
       "title" : "Kalkulation",
       "mastery" : 0.68
     } ],
@@ -192,11 +192,17 @@
     "plan" : {
       "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
       "chaptersTotal" : 2,
-      "chaptersHeard" : 0
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 3
     },
     "showCheatsheetSuggestion" : true,
     "note" : "Schätzung, keine Garantie"
   },
   "showCheatsheetSuggestion" : true,
-  "finalRoundStart" : 4
+  "finalRoundStart" : 4,
+  "budget" : {
+    "dailyMinutes" : 20,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 20
+  }
 }

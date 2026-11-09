@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T18:15:51.433Z",
+  "status" : 400,
+  "error" : "Bad Request",
+  "message" : "age: 10 bis 99",
+  "path" : "/api/me/profile"
+}

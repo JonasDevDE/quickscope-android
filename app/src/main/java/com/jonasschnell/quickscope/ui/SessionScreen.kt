@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
 
 /** Lernrunde im Vollbild: eine Aufgabe pro Bildschirm, Zeitbalken oben, Abbrechen jederzeit. */
 @Composable
-fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit) {
+fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit, onClose: () -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
     BackHandler { onClose() }
     Box(Modifier.fillMaxSize().background(Black)) {
@@ -85,7 +85,7 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit
                     SkeletonCard(56.dp)
                 }
             }
-            SessionPhase.Empty -> MessageView("Gerade nichts zu lernen", s.reason.ifBlank { "Komm später wieder." }, "Fertig", onClose, null, null)
+            SessionPhase.Empty -> MessageView(if (s.reason.contains("Tagesziel")) "Tagesziel geschafft" else "Gerade nichts zu lernen", s.reason.ifBlank { "Komm später wieder." }, "Noch eine Runde", onMore, "Fertig", onClose)
             SessionPhase.Error -> MessageView("Das hat nicht geklappt", s.message ?: "Unbekannter Fehler", "Nochmal", onRetry, "Schließen", onClose)
         }
     }

@@ -1,7 +1,7 @@
 {
-  "timestamp" : "2026-11-09T17:12:17.068Z",
+  "timestamp" : "2026-11-09T18:15:52.906Z",
   "status" : 400,
   "error" : "Bad Request",
   "message" : "fraction: 0 bis 1",
-  "path" : "/api/exams/e-ready/lessons/6af1feee0a3988896a5fce77/heard"
+  "path" : "/api/exams/e-ready/lessons/6af20dd6375be45253b442d5/heard"
 }

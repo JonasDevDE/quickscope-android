@@ -436,18 +436,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Sprachnachricht hochladen; die Datei wird danach immer geloescht. [onResult] bekommt die Zusammenfassung oder null. */
-    fun uploadVoice(file: java.io.File, onResult: (String?) -> Unit) {
+    /** Sprachnachricht (AAC/ADTS) hochladen; die Datei wird danach immer geloescht. [onResult] bekommt Text oder den ruhigen Fehlerausgang. */
+    fun uploadVoice(file: java.io.File, onResult: (com.jonasschnell.quickscope.logic.VoiceOutcome) -> Unit) {
         viewModelScope.launch {
             val result = try {
-                val part = okhttp3.MultipartBody.Part.createFormData("file", "voice.m4a", okhttp3.RequestBody.create("audio/mp4".toMediaTypeOrNull(), file))
-                api.profileVoice(part).about
+                val part = okhttp3.MultipartBody.Part.createFormData(
+                    "file", "voice.${com.jonasschnell.quickscope.logic.VOICE_FILE_EXT}",
+                    okhttp3.RequestBody.create(com.jonasschnell.quickscope.logic.VOICE_MIME.toMediaTypeOrNull(), file),
+                )
+                com.jonasschnell.quickscope.logic.VoiceOutcome.Text(api.profileVoice(part).about)
             } catch (e: CancellationException) {
                 file.delete()
                 throw e
             } catch (e: Exception) {
-                say(if (e is HttpException) (backendMessage(e) ?: "Aufnahme konnte nicht verarbeitet werden.") else "Keine Verbindung zum Server.")
-                null
+                com.jonasschnell.quickscope.logic.voiceOutcomeForStatus((e as? HttpException)?.code())
             }
             file.delete() // Aufnahme nie lokal behalten
             onResult(result)

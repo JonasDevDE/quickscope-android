@@ -1,3 +1,13 @@
 {
-  "queued" : 2
+  "pending" : 0,
+  "queued" : 2,
+  "ready" : 2,
+  "items" : [ {
+    "status" : "ready",
+    "id" : "i-number:question"
+  }, {
+    "status" : "ready",
+    "id" : "i-number:answer"
+  } ],
+  "failed" : 0
 }

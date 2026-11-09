@@ -49,12 +49,12 @@ interface QuickscopeApi {
     @POST("api/exams/{id}/lessons/{lessonId}/heard") suspend fun heard(@Path("id") id: String, @Path("lessonId") lessonId: String, @Body body: HeardRequest)
 
     @GET("api/exams/{id}/topics") suspend fun topics(@Path("id") id: String): List<Topic>
-    @GET("api/exams/{id}/session") suspend fun session(@Path("id") id: String, @Query("minutes") minutes: Int? = null): LearnSession
+    @GET("api/exams/{id}/session") suspend fun session(@Path("id") id: String, @Query("minutes") minutes: Int? = null, @Query("lessons") lessons: Boolean? = null): LearnSession
     @POST("api/exams/{id}/attempts") suspend fun attempts(@Path("id") id: String, @Body body: List<AttemptRequest>): AttemptsResponse
     @GET("api/exams/{id}/forecast") suspend fun forecast(@Path("id") id: String): Forecast
     @GET("api/exams/{id}/cheatsheet") suspend fun cheatsheet(@Path("id") id: String, @Query("minutes") minutes: Int = 5): CheatSheet
     @POST("api/exams/{id}/reset-progress") suspend fun resetProgress(@Path("id") id: String)
     /** Aufgaben neu erzeugen (202); der Lernstand wird zurueckgesetzt, die Pruefung ist danach wieder "processing". */
     @POST("api/exams/{id}/regenerate") suspend fun regenerate(@Path("id") id: String)
-    @POST("api/exams/{id}/audio/prefetch") suspend fun audioPrefetch(@Path("id") id: String, @Body body: AudioPrefetch)
+    @POST("api/exams/{id}/audio/prefetch") suspend fun audioPrefetch(@Path("id") id: String, @Body body: AudioPrefetch): PrefetchResponse
 }

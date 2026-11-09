@@ -2,7 +2,7 @@
   "items" : [ {
     "type" : "lesson",
     "lesson" : {
-      "id" : "6af1feee0a3988896a5fce76",
+      "id" : "6af20dd6375be45253b442d4",
       "title" : "Zinsen verstehen",
       "keyPoints" : [ "Zins = Preis für Geld", "Kapital, Satz, Zeit", "Zinsformel", "Zinseszins" ],
       "ttsText" : "Zinsen sind der Preis für geliehenes Geld. Wer Geld verleiht, bekommt Zinsen. Wer sich Geld leiht, zahlt sie. Drei Dinge bestimmen die Höhe: das Kapital, der Zinssatz und die Zeit. Das Kapital ist der Betrag, um den es geht. Der Zinssatz sagt, wie viel Prozent pro Jahr dazukommen. Ein Beispiel: Tausend Euro bei drei Prozent bringen nach einem Jahr dreißig Euro Zinsen. Die Formel dafür lautet Kapital mal Zinssatz geteilt durch hundert. Bleiben die Zinsen auf dem Konto, werden sie im nächsten Jahr mitverzinst. Das nennt man Zinseszins. Merk dir: Zins ist die Miete für Geld. Je mehr Geld und je länger, desto höher die Miete.",
@@ -12,7 +12,7 @@
   }, {
     "id" : "i-card",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "card",
     "question" : "Zinsen?",
     "answer" : "Preis für Kapital",
@@ -32,7 +32,7 @@
   }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -57,7 +57,7 @@
   }, {
     "id" : "i-mc",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "mc",
     "question" : "Jahreszins-Formel?",
     "answer" : "K × p / 100",
@@ -76,7 +76,7 @@
   }, {
     "id" : "i-number",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "type" : "number",
     "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
     "answer" : "30 €",
@@ -97,7 +97,7 @@
   }, {
     "type" : "lesson",
     "lesson" : {
-      "id" : "6af1feee0a3988896a5fce77",
+      "id" : "6af20dd6375be45253b442d5",
       "title" : "Preis kalkulieren",
       "keyPoints" : [ "Kosten, dann Gewinn", "Selbstkosten", "Skonto, Rabatt einrechnen" ],
       "ttsText" : "Kalkulation heißt: Du rechnest aus, zu welchem Preis du etwas verkaufen musst. Du startest bei den Kosten. Zuerst kommen die Herstellkosten, also Material und Arbeit. Dazu kommen die Verwaltungs und Vertriebskosten. Das zusammen sind die Selbstkosten. Auf die Selbstkosten schlägst du den Gewinn auf. So entsteht der Barverkaufspreis. Dann geben Kunden meist Skonto und Rabatt. Beides musst du schon vorher einrechnen, sonst bleibt dir weniger Gewinn. Der Preis im Katalog ist der Listenpreis. Ein Beispiel: Hundert Euro Selbstkosten und zehn Prozent Gewinn ergeben hundertzehn Euro. Merk dir die Reihenfolge: Kosten, Gewinn, Skonto, Rabatt.",
@@ -107,7 +107,7 @@
   }, {
     "id" : "i-cloze",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "type" : "cloze",
     "question" : "Selbstkosten + ___ = Verkaufspreis.",
     "answer" : "Gewinn",
@@ -129,20 +129,20 @@
   }, {
     "id" : "i-match",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "type" : "match",
     "question" : "Zuordnen:",
     "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
     "payload" : {
       "pairs" : [ {
-        "left" : "Selbstkosten",
-        "right" : "Herstellkosten + Verwaltung"
+        "right" : "Herstellkosten + Verwaltung",
+        "left" : "Selbstkosten"
       }, {
-        "left" : "Listenpreis",
-        "right" : "Preis vor Rabatt"
+        "right" : "Preis vor Rabatt",
+        "left" : "Listenpreis"
       }, {
-        "left" : "Zielpreis",
-        "right" : "Preis vor Skonto"
+        "right" : "Preis vor Skonto",
+        "left" : "Zielpreis"
       } ]
     },
     "difficulty" : 3,
@@ -158,7 +158,7 @@
   }, {
     "id" : "i-order",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "type" : "order",
     "question" : "Kalkulation, Reihenfolge:",
     "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
@@ -178,7 +178,7 @@
   }, {
     "type" : "lesson",
     "lesson" : {
-      "id" : "6af1feee0a3988896a5fce78",
+      "id" : "6af20dd6375be45253b442d6",
       "title" : "Vertrag entsteht",
       "keyPoints" : [ "Angebot plus Annahme", "Mündlich gültig", "Schriftform bei Grundstück", "Geschäftsfähigkeit" ],
       "ttsText" : "Ein Vertrag entsteht, wenn zwei Seiten sich einig sind. Eine Seite macht ein Angebot, die andere nimmt es an. Das sind zwei übereinstimmende Willenserklärungen. Ein mündlicher Vertrag ist grundsätzlich gültig, nur manche Verträge brauchen Schriftform, zum Beispiel ein Grundstückskauf. Wichtig ist auch, wer geschäftsfähig ist. Kinder unter sieben Jahren können keine Verträge schließen. Zwischen sieben und achtzehn Jahren braucht es meist die Zustimmung der Eltern. Ein Beispiel: Du bestellst online ein Buch. Dein Klick ist das Angebot, die Bestätigung des Shops ist die Annahme. Merk dir: Angebot plus Annahme gleich Vertrag.",
@@ -188,7 +188,7 @@
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -202,7 +202,7 @@
   }, {
     "id" : "i-choice2",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "choice2",
     "question" : "Transportrisiko: Käufer oder Verkäufer?",
     "answer" : "Käufer",
@@ -223,7 +223,7 @@
   }, {
     "id" : "i-tf",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "truefalse",
     "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
     "answer" : "wahr",
@@ -240,7 +240,7 @@
   }, {
     "id" : "i-spot",
     "examId" : "e-ready",
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "type" : "spot",
     "question" : "Fehler finden:",
     "answer" : "Verträge: immer Schriftform.",
@@ -264,20 +264,20 @@
   "reason" : "Erst hören: 3 Lektionen, dann Fragen.",
   "forecast" : {
     "daysLeft" : 20,
-    "hoursLeft" : 469,
+    "hoursLeft" : 468,
     "doneSecondsToday" : 0,
     "streakDays" : 0,
     "bestStreakDays" : 0,
     "weakTopics" : [ {
-      "topicId" : "6af1feed0a3988896a5fce71",
+      "topicId" : "6af20dd6375be45253b442cf",
       "title" : "Zinsrechnung",
       "mastery" : 0.1
     }, {
-      "topicId" : "6af1feed0a3988896a5fce74",
+      "topicId" : "6af20dd6375be45253b442d2",
       "title" : "Vertragsrecht",
       "mastery" : 0.1
     }, {
-      "topicId" : "6af1feed0a3988896a5fce73",
+      "topicId" : "6af20dd6375be45253b442d1",
       "title" : "Kalkulation",
       "mastery" : 0.1
     } ],
@@ -287,11 +287,17 @@
     "plan" : {
       "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
       "chaptersTotal" : 2,
-      "chaptersHeard" : 0
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 5
     },
     "showCheatsheetSuggestion" : false,
     "note" : "Schätzung, keine Garantie"
   },
   "showCheatsheetSuggestion" : false,
-  "finalRoundStart" : null
+  "finalRoundStart" : null,
+  "budget" : {
+    "dailyMinutes" : 30,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 30
+  }
 }

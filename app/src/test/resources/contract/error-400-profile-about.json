@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T18:15:51.466Z",
+  "status" : 400,
+  "error" : "Bad Request",
+  "message" : "about: höchstens 600 Zeichen",
+  "path" : "/api/me/profile"
+}

@@ -1,7 +1,7 @@
 {
-  "timestamp" : "2026-11-09T17:12:16.044628700Z",
+  "timestamp" : "2026-11-09T18:15:52.122763700Z",
   "status" : 400,
   "error" : "Bad Request",
-  "message" : "name: darf nicht leer sein",
+  "message" : "dailyMinutes: muss größer-gleich 5 sein",
   "path" : "/api/exams"
 }

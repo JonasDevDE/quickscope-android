@@ -2,43 +2,43 @@
   "minutes" : 5,
   "words" : 70,
   "bullets" : [ {
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "topic" : "Zinsrechnung",
     "text" : "Zinseszins berechnen: Faktor: 1 + p/100; Faktor hoch Laufzeit; Mal Kapital"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "topic" : "Zinsrechnung",
     "text" : "1.000 € zu 4 %, 2 Jahre Zinseszins: 1.081,60 €"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "topic" : "Zinsrechnung",
     "text" : "Zinsen: Preis für Kapital"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "topic" : "Zinsrechnung",
     "text" : "Jahreszins-Formel: K × p / 100"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce71",
+    "topicId" : "6af20dd6375be45253b442cf",
     "topic" : "Zinsrechnung",
     "text" : "Zins: 1.000 € bei 3 %, 1 Jahr: 30 €"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "topic" : "Vertragsrecht",
     "text" : "Transportrisiko: Käufer oder Verkäufer: Käufer"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce74",
+    "topicId" : "6af20dd6375be45253b442d2",
     "topic" : "Vertragsrecht",
     "text" : "Mündlicher Vertrag: grundsätzlich gültig."
   }, {
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "topic" : "Kalkulation",
     "text" : "Selbstkosten + Gewinn = Verkaufspreis."
   }, {
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "topic" : "Kalkulation",
     "text" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…"
   }, {
-    "topicId" : "6af1feed0a3988896a5fce73",
+    "topicId" : "6af20dd6375be45253b442d1",
     "topic" : "Kalkulation",
     "text" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…"
   } ],

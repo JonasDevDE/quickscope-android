@@ -42,6 +42,8 @@ import com.jonasschnell.quickscope.data.neutralMessage
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.logic.examStart
 import com.jonasschnell.quickscope.logic.StartMode
+import com.jonasschnell.quickscope.logic.budgetLine
+import com.jonasschnell.quickscope.logic.dayGoalReached
 import com.jonasschnell.quickscope.logic.formatRemaining
 import com.jonasschnell.quickscope.logic.secondaryModes
 import com.jonasschnell.quickscope.logic.planLine
@@ -67,6 +69,7 @@ fun HomePage(
     onStart: (Exam, Int) -> Unit,
     onListen: (Exam) -> Unit,
     onQuestionsOnly: (Exam, Int) -> Unit,
+    onMore: (Exam) -> Unit,
     onMaterial: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
     onRetry: () -> Unit,
@@ -90,7 +93,7 @@ fun HomePage(
             exam.status == "processing" -> ProcessingView()
             exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
             exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onListen, onQuestionsOnly, onCheatsheet)
+            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onListen, onQuestionsOnly, onMore, onCheatsheet)
         }
     }
 }
@@ -179,6 +182,7 @@ private fun ReadyView(
     onStart: (Exam, Int) -> Unit,
     onListen: (Exam) -> Unit,
     onQuestionsOnly: (Exam, Int) -> Unit,
+    onMore: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
@@ -196,7 +200,14 @@ private fun ReadyView(
     Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     planLine(forecast?.plan)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
     if (dayStreak != null && dayStreak > 0) Text("$dayStreak ${if (dayStreak == 1) "Tag" else "Tage"}", color = Accent, style = MaterialTheme.typography.labelLarge)
-    PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
+    if (forecast != null) Text(budgetLine(exam.dailyMinutes, forecast.doneSecondsToday), color = Muted, style = MaterialTheme.typography.bodySmall)
+    if (forecast != null && dayGoalReached(exam.dailyMinutes, forecast.doneSecondsToday)) {
+        // Tagesziel geschafft: ruhiger Abschluss, freiwillig geht mehr
+        Text("✓ Tagesziel geschafft", color = Accent, style = MaterialTheme.typography.titleMedium)
+        HapticTextButton(onClick = { onMore(exam) }) { Text("Noch eine Runde", color = Muted, style = MaterialTheme.typography.labelLarge) }
+    } else {
+        PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
+    }
     val modes = secondaryModes((forecast?.plan?.chaptersTotal ?: 0) > 0)
     if (modes.isNotEmpty()) {
         // Ablauf nur zur Info (nicht klickbar), dazu zwei kleine ruhige Textknoepfe

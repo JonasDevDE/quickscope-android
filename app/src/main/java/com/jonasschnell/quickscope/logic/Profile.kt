@@ -80,3 +80,29 @@ fun greeting(name: String?): String {
 const val RECORD_MAX_SECONDS = 60
 
 fun recordTime(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
+
+/** Ausgang einer Sprachnachricht: Text, "nichts verstanden" (422), nicht verfuegbar (503) oder sonstiger Fehler. */
+sealed interface VoiceOutcome {
+    data class Text(val about: String) : VoiceOutcome
+    data object NothingHeard : VoiceOutcome
+    data object Unavailable : VoiceOutcome
+    data object Failed : VoiceOutcome
+}
+
+fun voiceOutcomeForStatus(code: Int?): VoiceOutcome = when (code) {
+    422 -> VoiceOutcome.NothingHeard
+    503 -> VoiceOutcome.Unavailable
+    else -> VoiceOutcome.Failed
+}
+
+/** Ruhiger Hinweis zum Ausgang (ohne Technik); null bei Erfolg. */
+fun voiceOutcomeMessage(o: VoiceOutcome): String? = when (o) {
+    is VoiceOutcome.Text -> null
+    VoiceOutcome.NothingHeard -> "Nichts verstanden. Nochmal aufnehmen?"
+    VoiceOutcome.Unavailable -> "Gerade nicht verfügbar. Du kannst auch tippen."
+    VoiceOutcome.Failed -> "Das hat nicht geklappt. Nochmal versuchen?"
+}
+
+/** Aufnahme als AAC (ADTS): Dateiendung und Content-Type fuer den Upload. */
+const val VOICE_FILE_EXT = "aac"
+const val VOICE_MIME = "audio/aac"

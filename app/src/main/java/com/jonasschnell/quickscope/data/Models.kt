@@ -98,7 +98,7 @@ data class Item(
 data class WeakTopic(val topicId: String = "", val title: String = "", val mastery: Double = 0.0)
 
 @Serializable
-data class Plan(val todayChapters: List<String> = emptyList(), val chaptersTotal: Int = 0, val chaptersHeard: Int = 0)
+data class Plan(val todayChapters: List<String> = emptyList(), val chaptersTotal: Int = 0, val chaptersHeard: Int = 0, val plannedMinutes: Int? = null)
 
 @Serializable
 data class Projection(val minutes: Int = 0, val scoreAtExamPercent: Int = 0)
@@ -175,6 +175,8 @@ data class LearnSession(
     val showCheatsheetSuggestion: Boolean = false,
     /** Index, ab dem die Abschlussrunde beginnt (so, wie das Backend sie liefert). */
     val finalRoundStart: Int? = null,
+    /** Zeitbudget des Tages (additiv). */
+    val budget: Budget? = null,
 ) {
     /** Nur die Aufgaben (ohne Lektionen). */
     val quiz: List<Item> get() = items.mapNotNull { it.item }
@@ -220,7 +222,7 @@ data class AudiobookItem(
 )
 
 @Serializable
-data class Audiobook(val items: List<AudiobookItem> = emptyList(), val totalSeconds: Int = 0, val reason: String = "")
+data class Audiobook(val items: List<AudiobookItem> = emptyList(), val totalSeconds: Int = 0, val reason: String = "", val budget: Budget? = null)
 
 @Serializable
 data class HeardRequest(val fraction: Double)
@@ -300,3 +302,20 @@ data class ProfileUpdate(
 /** Antwort der Sprachnachricht: Zusammenfassung zum Pruefen (wird nicht gespeichert). */
 @Serializable
 data class VoiceSummary(val about: String = "")
+
+/** Zeitbudget des Tages: dailyMinutes ist die Gesamtzeit (Zuhoeren plus Fragen). */
+@Serializable
+data class Budget(val dailyMinutes: Int = 0, val usedMinutesToday: Int = 0, val remainingMinutes: Int = 0)
+
+/** Antwort von POST audio/prefetch: pending wird im Hintergrund fertig und ist kein Fehler. */
+@Serializable
+data class PrefetchItem(val id: String = "", val status: String = "pending")
+
+@Serializable
+data class PrefetchResponse(
+    val queued: Int = 0,
+    val ready: Int = 0,
+    val pending: Int = 0,
+    val failed: Int = 0,
+    val items: List<PrefetchItem> = emptyList(),
+)

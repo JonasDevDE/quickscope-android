@@ -1,5 +1,5 @@
 [ {
-  "chapterId" : "6af1feed0a3988896a5fce72",
+  "chapterId" : "6af20dd6375be45253b442d0",
   "title" : "Rechnen",
   "order" : 1,
   "lessonCount" : 2,
@@ -7,7 +7,7 @@
   "status" : "learning",
   "mastery" : 0.22
 }, {
-  "chapterId" : "6af1feed0a3988896a5fce74",
+  "chapterId" : "6af20dd6375be45253b442d2",
   "title" : "Vertragsrecht",
   "order" : 2,
   "lessonCount" : 1,

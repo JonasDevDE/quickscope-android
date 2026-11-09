@@ -103,13 +103,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private var topicTitles: Map<String, String> = emptyMap()
     private var lastSitsCheck = 0L
 
-    fun start(examId: String, minutes: Int, scoreBefore: Int?, questionsOnly: Boolean = false) {
+    /** [minutes] null = Rest des Tagesbudgets (leer, wenn das Tagesziel geschafft ist); sonst der ausdrueckliche Wunsch. */
+    fun start(examId: String, minutes: Int?, scoreBefore: Int?, questionsOnly: Boolean = false) {
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode) }
         viewModelScope.launch {
             try {
                 app.audioCache.clearing?.join() // Aufraeumen der letzten Runde abwarten
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
-                val s = api.session(examId, minutes)
+                val s = api.session(examId, minutes, if (questionsOnly) false else null)
                 val topicList = runCatching { api.topics(examId) }.getOrDefault(emptyList())
                 val labels = topicLabels(topicList)
                 val parents = topicList.mapNotNull { it.parentId }.toSet()

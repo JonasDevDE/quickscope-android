@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T18:15:51.498Z",
+  "status" : 400,
+  "error" : "Bad Request",
+  "message" : "onboardingDone: nur von false auf true",
+  "path" : "/api/me/profile"
+}
