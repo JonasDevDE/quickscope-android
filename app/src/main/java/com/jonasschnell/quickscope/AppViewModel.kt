@@ -71,6 +71,8 @@ data class UiState(
     val upload: UploadState? = null,
     /** Onboarding: laeuft nur bei onboardingDone == false (nach dem Login geholt). */
     val onboarding: com.jonasschnell.quickscope.logic.OnboardingGate = com.jonasschnell.quickscope.logic.OnboardingGate.Unknown,
+    /** Start ohne Netz: Pruefungen und Prognose stammen aus dem lokalen Speicher. */
+    val offline: Boolean = false,
 ) {
     val activeExam: Exam? get() = pickActiveExam(exams, chosenExamId, java.time.Instant.now())
     val activeForecast: Forecast? get() = forecast?.takeIf { forecastExamId == activeExam?.id }
@@ -87,6 +89,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val sync = app.attemptSync
 
     private val _state = MutableStateFlow(UiState())
+
+    /** Gibt es wirklich Internet? (Connectivity, validiertes Netz) */
+    val online get() = app.connectivity.online
+
+    /** Ruhiger Hinweis fuer Aktionen, die Internet brauchen. */
+    fun needInternet() {
+        buzz(HapticKind.Reject)
+        say(com.jonasschnell.quickscope.logic.NEEDS_INTERNET)
+    }
+
+    /** Tage des bereitliegenden Offline-Pakets der Pruefung (null: noch nichts geladen). */
+    fun offlineDays(examId: String): Int? = app.local.packDays(examId)
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private val messageChannel = Channel<UiMessage>(Channel.BUFFERED)
@@ -172,6 +186,34 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Netz ist wieder da: Offline-Start neu laden, sonst offene Antworten senden und das Paket auffrischen. */
+    private fun onBackOnline() {
+        if (_state.value.offline) {
+            bootstrap()
+            return
+        }
+        if (_state.value.phase != Phase.Ready) return
+        viewModelScope.launch {
+            _state.value.exams.forEach { sync.flush(it.id) }
+            com.jonasschnell.quickscope.data.PackSyncScheduler.schedule(app, replace = true)
+        }
+    }
+
+    /** Offline starten, wenn Pruefungen lokal liegen: Heute mit der gespeicherten Prognose, ohne Onboarding. */
+    private fun tryOffline(): Boolean {
+        val exams = app.local.exams() ?: return false
+        val chosen = store.chosenExamId
+        val active = com.jonasschnell.quickscope.logic.pickActiveExam(exams, chosen, java.time.Instant.now())
+        _state.update {
+            it.copy(
+                phase = Phase.Ready, me = app.local.me(), failure = null, serverStarting = false, exams = exams, examsLoaded = true,
+                chosenExamId = chosen, onboarding = com.jonasschnell.quickscope.logic.OnboardingGate.Done, offline = true,
+                forecast = active?.let { a -> app.local.forecast(a.id) }, forecastExamId = active?.id,
+            )
+        }
+        return true
+    }
+
     private fun buzz(kind: HapticKind) {
         hapticChannel.trySend(kind)
     }
@@ -182,6 +224,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { updater.forced.collect { f -> _state.update { it.copy(updateForced = f) } } }
         bootstrap()
         startLiveSync()
+        viewModelScope.launch {
+            var was = app.connectivity.isOnline()
+            app.connectivity.online.collect { now ->
+                if (now && !was) onBackOnline()
+                was = now
+            }
+        }
         viewModelScope.launch {
             auth.sessionExpired.collect {
                 buzz(HapticKind.Reject)
@@ -214,6 +263,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _state.update { it.copy(phase = Phase.Loading, failure = null) }
+            if (!app.connectivity.isOnline() && tryOffline()) return@launch
             if (auth.ensureToken()) loadSession() else _state.update { it.copy(phase = Phase.NeedsLogin) }
         }
     }
@@ -248,8 +298,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Datenexport direkt in die vom Nutzer gewaehlte Datei (Speichern-Dialog); danach "Gespeichert" mit optionalem "Teilen". */
-    fun exportTo(uri: android.net.Uri, onShare: (android.net.Uri) -> Unit) {
+    /** Datenexport direkt in die vom Nutzer gewaehlte Datei (Speichern-Dialog); Erfolg bleibt ohne Hinweis, nur ein Fehler wird gemeldet. */
+    fun exportTo(uri: android.net.Uri) {
         viewModelScope.launch {
             var bytes: Long? = null
             try {
@@ -266,7 +316,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 com.jonasschnell.quickscope.data.AppLog.w("Export", com.jonasschnell.quickscope.logic.exportFailureReason(e), e)
             }
             when (com.jonasschnell.quickscope.logic.exportOutcome(bytes)) {
-                com.jonasschnell.quickscope.logic.ExportOutcome.Saved -> say("Gespeichert", "Teilen") { onShare(uri) }
+                com.jonasschnell.quickscope.logic.ExportOutcome.Saved -> Unit // der Speichern-Dialog des Systems bestaetigt es schon
                 com.jonasschnell.quickscope.logic.ExportOutcome.Failed -> say("Gerade nicht verfügbar.")
             }
         }
@@ -276,7 +326,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setAudioEnabled(on: Boolean, onFailure: () -> Unit = {}) {
         store.audioEnabled = on
         if (!on) app.voice.stop()
-        run("Speichern fehlgeschlagen", onFailure) { api.putProfile(com.jonasschnell.quickscope.data.ProfileUpdate(audioEnabled = on)) }
+        store.audioDirty = true // bis das Profil den Wert kennt (auch offline: wird spaeter nachgeschrieben)
+        if (!app.connectivity.isOnline()) return
+        run("Speichern fehlgeschlagen", onFailure) {
+            api.putProfile(com.jonasschnell.quickscope.data.ProfileUpdate(audioEnabled = on))
+            if (store.audioEnabled == on) store.audioDirty = false
+        }
     }
 
     val audioEnabled: Boolean get() = store.audioEnabled
@@ -322,9 +377,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val me = api.me()
                 val exams = api.exams()
                 val profile = try { api.profile() } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
-                profile?.audioEnabled?.let { store.audioEnabled = it }
+                if (store.audioDirty) setAudioEnabled(store.audioEnabled) else profile?.audioEnabled?.let { store.audioEnabled = it }
                 val gate = com.jonasschnell.quickscope.logic.gateFor(profile)
-                _state.update { it.copy(phase = Phase.Ready, me = me, failure = null, serverStarting = false, exams = exams, examsLoaded = true, chosenExamId = store.chosenExamId, onboarding = gate) }
+                _state.update { it.copy(phase = Phase.Ready, me = me, failure = null, serverStarting = false, exams = exams, examsLoaded = true, chosenExamId = store.chosenExamId, onboarding = gate, offline = false) }
+                runCatching { app.local.saveMe(me); app.local.saveExams(exams) }
+                com.jonasschnell.quickscope.data.PackSyncScheduler.schedule(app)
                 viewModelScope.launch {
                     loadForecast()
                     exams.forEach { sync.flush(it.id) } // offene Antworten aus frueheren Runden nachsenden
@@ -349,6 +406,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     waitForServer()
                     continue
                 }
+                if (e is IOException && tryOffline()) return
                 buzz(HapticKind.Reject)
                 _state.update { it.copy(phase = Phase.Failed, failure = errorText(e), serverStarting = false) }
                 return
@@ -358,6 +416,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Fuehrt eine Schreibaktion aus; bei Fehlern Haptik und Snackbar mit [failure] und der Fehlerursache. */
     private fun run(failure: String, onFailure: () -> Unit = {}, block: suspend () -> Unit) {
+        if (!app.connectivity.isOnline()) {
+            onFailure()
+            needInternet()
+            return
+        }
         viewModelScope.launch {
             try {
                 writeMutex.withLock { block() }
@@ -394,7 +457,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Pruefungen und die Prognose der aktiven Pruefung still neu laden. */
     private suspend fun loadExams() {
         val exams = api.exams()
-        _state.update { it.copy(exams = exams, examsLoaded = true) }
+        runCatching { app.local.saveExams(exams) }
+        _state.update { it.copy(exams = exams, examsLoaded = true, offline = false) }
         loadForecast()
         val id = _state.value.materialsExamId
         if (id != null && exams.any { it.id == id }) loadMaterials(id)
@@ -404,10 +468,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val exam = _state.value.activeExam ?: return
         try {
             val f = api.forecast(exam.id)
+            runCatching { app.local.saveForecast(exam.id, f) }
             _state.update { it.copy(forecast = f, forecastExamId = exam.id) }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
+            // ohne Netz: die zuletzt gespeicherte Prognose zeigen
+            app.local.forecast(exam.id)?.let { f -> _state.update { it.copy(forecast = f, forecastExamId = exam.id) } }
         }
     }
 
@@ -568,6 +635,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Prognose aus einer beendeten Runde uebernehmen. */
     fun applyForecast(examId: String, forecast: Forecast) {
+        runCatching { app.local.saveForecast(examId, forecast) }
         _state.update { it.copy(forecast = forecast, forecastExamId = examId) }
     }
 
@@ -606,6 +674,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun upload(examId: String, jobs: List<UploadJob>) {
         if (jobs.isEmpty()) return
+        if (!app.connectivity.isOnline()) { needInternet(); return }
         uploadJob?.cancel()
         val tooBig = jobs.flatMap { it.files }.firstOrNull { it.size > MAX_FILE_BYTES }
         if (tooBig != null) {

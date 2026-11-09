@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.SystemClock
 import com.jonasschnell.quickscope.BuildConfig
 import com.jonasschnell.quickscope.logic.AUDIO_RECHECK_MS
+import com.jonasschnell.quickscope.logic.statusAvailable
 
 /**
  * Vorlesen per Live-Streaming: nichts wird vorgeladen oder gespeichert. Bei "Vorlesen aus" gibt es gar keine Audio-Aufrufe
@@ -17,7 +18,8 @@ class AudioClient(
     private val connectivity: Connectivity,
 ) {
     private var lastCheck = 0L
-    private var lastResult = false
+    private var lastResult = true
+    private val STATUS_TIMEOUT_MS = 4_000L
     private val base = Uri.parse(BuildConfig.BASE_URL)
 
     /** Ton gewuenscht (Einstellung) UND Stimme verfuegbar; [force] ignoriert den 60-s-Zwischenspeicher. */
@@ -26,13 +28,16 @@ class AudioClient(
         if (!connectivity.isOnline()) return false
         val now = SystemClock.elapsedRealtime()
         if (!force && lastCheck != 0L && now - lastCheck < AUDIO_RECHECK_MS) return lastResult
-        lastResult = try {
-            api.audioStatus().available
+        // Nur eine ausdrueckliche Antwort {available:false} schaltet still; 404/401/5xx/Timeout/Netzfehler heissen "unbekannt"
+        // und der Stream wird trotzdem versucht (bei Fehler bleibt nur diese Karte still).
+        val status = try {
+            kotlinx.coroutines.withTimeoutOrNull(STATUS_TIMEOUT_MS) { api.audioStatus() }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
-            false
+            null
         }
+        lastResult = statusAvailable(status)
         lastCheck = now
         return lastResult
     }

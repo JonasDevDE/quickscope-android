@@ -25,6 +25,7 @@ import com.jonasschnell.quickscope.logic.newlySitting
 import com.jonasschnell.quickscope.logic.nextDayStreak
 import com.jonasschnell.quickscope.logic.scoreOrNull
 import com.jonasschnell.quickscope.logic.retryInsertIndex
+import com.jonasschnell.quickscope.logic.nextOfflineLesson
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.topicLabels
 import kotlinx.coroutines.CancellationException
@@ -77,6 +78,8 @@ data class SessionUi(
     val autoplaySuppressedAt: Int? = null,
     /** Audiomodus der Runde (Vorlesen an UND Stimme verfuegbar UND online); sonst laeuft die Runde still, ohne Hinweis. */
     val audio: Boolean = false,
+    /** Runde aus dem lokalen Offline-Paket (ohne Ton, Antworten werden spaeter gesendet). */
+    val offline: Boolean = false,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -120,8 +123,20 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore) }
         startJob = viewModelScope.launch {
             try {
+                if (!app.connectivity.isOnline()) {
+                    startOffline(examId, minutes, questionsOnly)
+                    return@launch
+                }
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
-                val s = api.session(examId, minutes, if (questionsOnly) false else null)
+                val s = try {
+                    api.session(examId, minutes, if (questionsOnly) false else null)
+                } catch (e: IOException) {
+                    // Netz weg, obwohl es online schien: mit dem Offline-Paket weitermachen, wenn eines da ist
+                    if (app.local.pack(examId) == null) throw e
+                    app.connectivity.markOffline()
+                    startOffline(examId, minutes, questionsOnly)
+                    return@launch
+                }
                 val topicList = runCatching { api.topics(examId) }.getOrDefault(emptyList())
                 val labels = topicLabels(topicList)
                 val parents = topicList.mapNotNull { it.parentId }.toSet()
@@ -136,7 +151,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
                     // Preflight: Ton nur, wenn gewuenscht, online und die Stimme verfuegbar ist; sonst still, ohne Hinweis
-                    val audioOn = withTimeoutOrNull(4_000) { app.audio.available(force = true) } ?: false
+                    val audioOn = withTimeoutOrNull(4_000) { app.audio.available(force = true) } ?: true
                     lastAudioCheck = SystemClock.elapsedRealtime()
                     shownAt = SystemClock.elapsedRealtime()
                     startedAt = shownAt
@@ -156,6 +171,38 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Runde aus dem Offline-Paket: Reihenfolge des Pakets, ohne schon Erledigtes, still (kein Ton), Antworten bleiben in der Warteschlange. */
+    private fun startOffline(examId: String, minutes: Int?, questionsOnly: Boolean) {
+        val pack = app.local.pack(examId)
+        if (pack == null) {
+            _state.update { it.copy(phase = SessionPhase.Error, message = com.jonasschnell.quickscope.logic.NEEDS_INTERNET) }
+            return
+        }
+        val exam = app.local.exams()?.firstOrNull { it.id == examId }
+        val doneSeconds = app.local.forecast(examId)?.doneSecondsToday ?: 0
+        val m = minutes ?: com.jonasschnell.quickscope.logic.remainingMinutes(exam?.dailyMinutes ?: 20, doneSeconds)
+        val entries = com.jonasschnell.quickscope.logic.offlineRound(pack, app.local.doneKeys(examId), m * 60, questionsOnly)
+        val tasks = entries.mapNotNull(::taskOf)
+        if (tasks.isEmpty()) {
+            _state.update { it.copy(phase = SessionPhase.Empty, offline = true) }
+            return
+        }
+        val topicList = app.local.topics(examId)
+        val parents = topicList.mapNotNull { it.parentId }.toSet()
+        leafIds = topicList.filter { it.id !in parents }.map { it.id }.toSet()
+        topicTitles = topicList.associate { it.id to it.title }
+        prevMastery = topicList.filter { it.id in leafIds }.associate { it.id to it.mastery }
+        tracker = FeedbackTracker()
+        shownAt = SystemClock.elapsedRealtime()
+        startedAt = shownAt
+        _state.update {
+            it.copy(
+                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, audio = false, offline = true,
+                topics = topicLabels(topicList),
+            )
+        }
+    }
+
     /**
      * Antwort zur aktuellen Aufgabe: sofort vormerken und Feedback zeigen; gesendet wird im Hintergrund.
      * Falsche Antworten kommen nach 3 bis 5 Aufgaben als "Gleich nochmal" wieder (nur lokal, ohne erneutes Senden).
@@ -169,6 +216,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         if (task is Task.Lesson) {
             // Loesungsweg: wird als gelernt vermerkt, aber ohne Punkte und Feier
             sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, true), ms, Instant.now().toString()))
+            if (s.offline) app.local.markDone(s.examId, "q:${task.item.id}")
             _state.update { it.copy(feedback = true) }
             viewModelScope.launch { sync.flush(s.examId) }
             return
@@ -184,8 +232,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 val f = sync.flush(s.examId)
                 if (f != null) checkSits(s.examId)
             }
+            if (s.offline && correct) app.local.markDone(s.examId, "q:${task.item.id}")
             if (!correct) {
-                val at = retryInsertIndex(s.index, tasks.size, task.item.id)
+                val at = if (s.offline) com.jonasschnell.quickscope.logic.offlineRetryIndex(s.index, tasks.size, task.item.id) else retryInsertIndex(s.index, tasks.size, task.item.id)
                 tasks = tasks.toMutableList().apply { add(at, task) }
                 flags = flags.toMutableList().apply { add(at, true) }
                 if (finalStart != null && at <= finalStart) finalStart += 1
@@ -212,6 +261,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(feedback = false, neutral = true) }
         if (s.currentIsRetry) return
         sync.record(s.examId, AttemptRequest(task.item.id, dontKnowOutcome(), ms, Instant.now().toString()))
+        if (s.offline) {
+            // offline: die naechste Lektion des Pakets, falls eine da ist
+            val pack = app.local.pack(s.examId) ?: return
+            val present = s.tasks.mapNotNull { (it as? Task.Teach)?.lesson?.id }.toSet()
+            nextOfflineLesson(pack, present, app.local.doneKeys(s.examId))?.let { insertLessonCard(it) }
+            return
+        }
         viewModelScope.launch {
             val r = sync.flush(s.examId) ?: return@launch
             r.nextLessonId?.let { insertLesson(s.examId, it) }
@@ -221,7 +277,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     /** Lektion direkt nach der aktuellen Aufgabe einfuegen (nie doppelt). */
     private suspend fun insertLesson(examId: String, lessonId: String) {
         val l = runCatching { api.lessons(examId) }.getOrNull()?.firstOrNull { it.id == lessonId } ?: return
-        val card = SessionLesson(l.id, l.title, l.keyPoints, l.ttsText, l.mnemonic, l.estSeconds)
+        insertLessonCard(SessionLesson(l.id, l.title, l.keyPoints, l.ttsText, l.mnemonic, l.estSeconds))
+    }
+
+    private fun insertLessonCard(card: SessionLesson) {
+        val lessonId = card.id
         _state.update { st ->
             val at = lessonInsertIndex(st.index, st.tasks, lessonId) ?: return@update st
             val teach = Task.Teach(teachItem(card), card)
@@ -259,6 +319,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val s = _state.value
         if (s.phase != SessionPhase.Running) return
         val nextIndex = s.index + 1
+        if (s.offline) (s.current as? Task.Teach)?.let { app.local.markDone(s.examId, "l:${it.lesson.id}") }
         if (nextIndex >= s.tasks.size) {
             val today = LocalDate.now()
             val streakDays = nextDayStreak(store.lastSessionDay?.let { runCatching { LocalDate.parse(it) }.getOrNull() }, store.dayStreak, today)
@@ -268,6 +329,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             _state.update {
                 it.copy(index = nextIndex, feedback = null, neutral = false, phase = SessionPhase.Done, scoreAfter = it.scoreBefore, elapsedSeconds = seconds, dayStreak = streakDays)
             }
+            com.jonasschnell.quickscope.data.PackSyncScheduler.schedule(app, replace = true)
             viewModelScope.launch {
                 val f = sync.flush(s.examId)
                 if (f != null) _state.update { it.copy(forecastAfter = f.forecast, scoreAfter = f.forecast.scoreOrNull()) }
@@ -309,7 +371,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startJob?.cancel()
         recheckJob?.cancel()
         _state.value = SessionUi()
-        if (id.isNotEmpty()) viewModelScope.launch { sync.flush(id) }
+        if (id.isNotEmpty()) {
+            viewModelScope.launch { sync.flush(id) }
+            com.jonasschnell.quickscope.data.PackSyncScheduler.schedule(app, replace = true)
+        }
     }
 
     private fun errorText(e: Exception): String = when (e) {

@@ -22,7 +22,9 @@ class AttemptQueue(private val storage: QueueStorage) {
         storage.read(key(examId))?.let { runCatching { AppJson.decodeFromString(serializer, it) }.getOrNull() }.orEmpty()
 
     fun add(examId: String, attempt: AttemptRequest) {
-        save(examId, pending(examId) + attempt)
+        val list = pending(examId)
+        if (attempt.offlineId != null && list.any { it.offlineId == attempt.offlineId }) return // gleiche Antwort nie doppelt vormerken
+        save(examId, list + attempt)
     }
 
     /** Entfernt die ersten [count] Eintraege (die gerade erfolgreich gesendeten); spaeter Hinzugekommene bleiben. */

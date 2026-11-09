@@ -114,11 +114,14 @@ const val AUDIO_RECHECK_MS = 60_000L
 enum class AudioMode { On, Silent }
 
 /**
- * Preflight: "Vorlesen aus" -> still (ohne jeden Audio-Aufruf); offline oder Status unbekannt/nicht verfuegbar -> still;
- * nur wenn eingeschaltet, online und die Stimme gemeldet ist -> Ton.
+ * Preflight: "Vorlesen aus" -> still (ohne jeden Audio-Aufruf); offline oder ausdruecklich nicht verfuegbar -> still;
+ * eingeschaltet und online -> Ton, ausser der Status sagt ausdruecklich "nicht verfuegbar".
  */
 fun audioModeFor(enabled: Boolean, online: Boolean, available: Boolean?): AudioMode =
-    if (enabled && online && available == true) AudioMode.On else AudioMode.Silent
+    if (enabled && online && available != false) AudioMode.On else AudioMode.Silent
+
+/** Status-Antwort -> verfuegbar? Nur eine ausdrueckliche Antwort mit available=false heisst nein; fehlende Antwort (404, Fehler, Timeout) = unbekannt = versuchen. */
+fun statusAvailable(status: com.jonasschnell.quickscope.data.AudioStatus?): Boolean = status?.available ?: true
 
 /** Darf ueberhaupt eine Audio-Anfrage (Status, Stream, Wortzeiten) gestellt werden? Nur bei eingeschaltetem Vorlesen. */
 fun mayRequestAudio(enabled: Boolean): Boolean = enabled

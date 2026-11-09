@@ -235,7 +235,11 @@ data class Audiobook(val items: List<AudiobookItem> = emptyList(), val totalSeco
 data class HeardRequest(val fraction: Double)
 
 @Serializable
-data class AttemptRequest(val itemId: String, val outcome: String, val ms: Int, val at: String? = null)
+data class AttemptRequest(
+    val itemId: String, val outcome: String, val ms: Int, val at: String? = null,
+    /** Eindeutige Id je Antwort: der Server nimmt eine erneut gesendete Antwort nicht doppelt (offline-fest, idempotent). */
+    val offlineId: String? = null,
+)
 
 @Serializable
 data class AttemptsResponse(val forecast: Forecast, val doneSecondsToday: Int = 0, val nextLessonId: String? = null)
@@ -322,4 +326,4 @@ data class Budget(val dailyMinutes: Int = 0, val usedMinutesToday: Int = 0, val 
 
 /** Antwort von GET audio/status: gibt es gerade eine Stimme (billig, serverseitig gecacht)? */
 @Serializable
-data class AudioStatus(val available: Boolean = false, val latencyMs: Int? = null)
+data class AudioStatus(val available: Boolean = true, val latencyMs: Int? = null)

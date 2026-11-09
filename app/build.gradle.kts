@@ -39,9 +39,6 @@ android {
         // Adresse des Backends (mit abschliessendem Schraegstrich). Platzhalter, bis die echte Adresse in local.properties
         // oder per -PBASE_URL=... gesetzt wird; zeigt bewusst auf keinen echten Server.
         buildConfigField("String", "BASE_URL", "\"${config("BASE_URL", "https://quickscope.invalid/")}\"")
-        // Rechtliche Seiten: leer = <BASE_URL>legal/datenschutz bzw. legal/agb
-        buildConfigField("String", "LEGAL_PRIVACY_URL", "\"${config("LEGAL_PRIVACY_URL")}\"")
-        buildConfigField("String", "LEGAL_TERMS_URL", "\"${config("LEGAL_TERMS_URL")}\"")
     }
 
     signingConfigs {
@@ -113,6 +110,7 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
+    implementation(libs.work.runtime)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.retrofit)

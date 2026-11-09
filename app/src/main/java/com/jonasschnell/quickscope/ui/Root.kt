@@ -73,6 +73,7 @@ fun Context.findActivity(): Activity? {
 private sealed interface Overlay {
     data object Me : Overlay
     data object About : Overlay
+    data object SettingsMain : Overlay
     data object Exams : Overlay
     data object NewExam : Overlay
     data class Settings(val examId: String, val start: ExamSetting? = null, val page: ExamPage = ExamPage.Exam) : Overlay
@@ -94,8 +95,10 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var overlay by remember { mutableStateOf<Overlay?>(null) }
+    var legal by remember { mutableStateOf<com.jonasschnell.quickscope.logic.LegalPage?>(null) }
     val session by sessionVm.state.collectAsStateWithLifecycle()
     val forced = state.updateForced
+    val online by vm.online.collectAsStateWithLifecycle()
 
     LaunchedEffect(forced) {
         if (forced) {
@@ -161,7 +164,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                         onStart = { exam, _ -> sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull()) },
                         onOpenMore = { overlay = Overlay.More(it.id) },
                         onMore = { exam -> sessionVm.start(exam.id, EXTRA_MINUTES, state.activeForecast?.scoreOrNull()) },
-                        onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
+                        onMaterial = { if (online) overlay = Overlay.Settings(it.id, ExamSetting.Material) else vm.needInternet() },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
                         onRetry = vm::refreshExamsNow,
                         onCancelUpload = vm::cancelUpload,
@@ -188,25 +191,24 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
     if (forced) {
         // Alle Dialoge/Sheets sind weg; nur der Update-Screen bleibt (unten).
     } else if (state.phase == Phase.NeedsLogin) {
-        LoginSheet(state, vm)
+        LoginSheet(state, vm, online, onLegal = { legal = it })
     } else {
         val dismiss = { overlay = null }
         when (val o = overlay) {
             null -> Unit
-            Overlay.Me -> SettingsMain(state, vm, onProfile = { overlay = Overlay.About }, onExam = { id, pg -> overlay = Overlay.Settings(id, null, pg) }, onDismiss = dismiss)
+            Overlay.Me -> MeSheet(state, vm, onAbout = { if (online) overlay = Overlay.About else vm.needInternet() }, onSettings = { overlay = Overlay.SettingsMain }, onDismiss = dismiss)
+            Overlay.SettingsMain -> SettingsMain(state, vm, onExam = { id, pg -> overlay = Overlay.Settings(id, null, pg) }, onLegal = { legal = it }, onDismiss = dismiss)
             Overlay.About -> AboutScreen(state, vm, onClose = dismiss)
-            Overlay.Exams -> ExamsSheet(state, vm, onNew = { overlay = Overlay.NewExam }, onSettings = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
+            Overlay.Exams -> ExamsSheet(state, vm, onNew = { if (online) overlay = Overlay.NewExam else vm.needInternet() }, onSettings = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
             is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, o.page, dismiss)
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
             is Overlay.More -> {
                 val exam = state.exams.firstOrNull { it.id == o.examId }
                 if (exam != null) MoreSheet(
-                    state, exam, vm.dayStreak(),
+                    canListen = com.jonasschnell.quickscope.logic.canListen(online, vm.audioEnabled, (state.activeForecast?.plan?.chaptersTotal ?: 0) > 0),
                     onQuestionsOnly = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
                     onListen = { overlay = Overlay.Audiobook(exam.id) },
-                    onMaterial = { overlay = Overlay.Settings(exam.id, ExamSetting.Material) },
-                    onSettings = { overlay = Overlay.Me },
                     onDismiss = dismiss,
                 )
             }
@@ -232,11 +234,12 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             )
         }
     }
+    legal?.let { LegalScreen(it) { legal = null } }
     UpdateScreen(state, vm)
 }
 
 @Composable
-private fun LoginSheet(state: UiState, vm: AppViewModel) {
+private fun LoginSheet(state: UiState, vm: AppViewModel, online: Boolean, onLegal: (com.jonasschnell.quickscope.logic.LegalPage) -> Unit) {
     val activity = LocalContext.current.findActivity()
     val error = state.loginError ?: if (vm.clientIdMissing) "Google-Client-ID fehlt (GOOGLE_WEB_CLIENT_ID in local.properties). Die Anmeldung ist erst nach dem nächsten Build mit ID möglich." else null
     QuickscopeSheet(onDismiss = {}, dismissable = false) {
@@ -248,13 +251,12 @@ private fun LoginSheet(state: UiState, vm: AppViewModel) {
         if (error != null) Text(error, color = Danger, style = MaterialTheme.typography.bodyMedium)
         PrimaryButton(
             if (state.loginBusy) "Einen Moment" else "Mit Google anmelden",
-            { activity?.let(vm::signIn) },
+            { if (online) activity?.let(vm::signIn) else vm.needInternet() },
             enabled = !state.loginBusy && activity != null,
         )
-        val ctx = LocalContext.current
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.Center) {
-            HapticTextButton(onClick = { openLegal(ctx, privacyUrl()) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Datenschutz", color = Muted, style = MaterialTheme.typography.labelMedium) }
-            HapticTextButton(onClick = { openLegal(ctx, termsUrl()) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("AGB", color = Muted, style = MaterialTheme.typography.labelMedium) }
+            HapticTextButton(onClick = { onLegal(com.jonasschnell.quickscope.logic.LegalPage.Privacy) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Datenschutz", color = Muted, style = MaterialTheme.typography.labelMedium) }
+            HapticTextButton(onClick = { onLegal(com.jonasschnell.quickscope.logic.LegalPage.Terms) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("AGB", color = Muted, style = MaterialTheme.typography.labelMedium) }
         }
     }
 }

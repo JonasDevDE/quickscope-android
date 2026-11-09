@@ -27,6 +27,8 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     val network by lazy { Network(auth, store) }
 
     val attemptSync by lazy { AttemptSync(network.api, AttemptQueue(store)) }
+    val local by lazy { com.jonasschnell.quickscope.data.LocalData(File(filesDir, "offline")) }
+    val offlineSync by lazy { com.jonasschnell.quickscope.data.OfflineSync(network.api, local, attemptSync) }
     val connectivity by lazy { com.jonasschnell.quickscope.data.Connectivity(this) }
     val audio by lazy { com.jonasschnell.quickscope.data.AudioClient(network.api, auth, store, connectivity) }
     val preview by lazy { MaterialPreview(this, network.client) }
@@ -41,6 +43,8 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
 
     /** Beim Abmelden und Konto loeschen: alles lokal entfernen (Einstellungen, Warteschlange, Audio, Vorschauen, Bild-Cache, Exporte). */
     fun wipeLocalData() {
+        com.jonasschnell.quickscope.data.PackSyncScheduler.cancel(this)
+        local.clear()
         store.clearAll()
         listOf("previews", "camera", "exports", "image_cache").forEach { File(cacheDir, it).deleteRecursively() }
         cacheDir.listFiles { f -> f.name.startsWith("voice_") }?.forEach { it.delete() }
@@ -54,6 +58,7 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
         // Uebrig gebliebene Sprachaufnahmen (Abbruch, App beendet) beim Start loeschen
         cacheDir.listFiles { f -> f.name.startsWith("voice_") }?.forEach { it.delete() }
         sfx // Toene vorab erzeugen und laden
+        com.jonasschnell.quickscope.data.PackSyncScheduler.schedule(this)
         network.onUpgradeRequired = { updater.markForced() }
         // Update erst installieren, wenn die App in den Hintergrund geht (nie waehrend der Nutzer sie benutzt).
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

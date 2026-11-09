@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,36 +42,55 @@ import com.jonasschnell.quickscope.ui.theme.CardHigh
 import com.jonasschnell.quickscope.ui.theme.Danger
 import com.jonasschnell.quickscope.ui.theme.Muted
 
-private enum class SettingsPage { Sound, Account }
-
 /**
- * Einstellungen, radikal einfach: fuenf grosse Zeilen (Lernen, Ton, Profil, Prüfung, Konto), jede oeffnet eine kleine Seite.
- * Lernen/Prüfung/Profil nutzen die bestehenden Seiten; Ton und Konto liegen hier. Gespeichert wird automatisch.
+ * Avatar-Sheet, radikal einfach: Avatar, Name, E-Mail klein und hoechstens drei grosse Zeilen (Über mich, Einstellungen, Abmelden).
+ * Alles andere liegt unter Einstellungen.
  */
 @Composable
+fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onSettings: () -> Unit, onDismiss: () -> Unit) {
+    val me = state.me
+    QuickscopeSheet(onDismiss) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            UserAvatar(me?.pictureUrl ?: vm.signInPictureUrl, me?.name ?: me?.email ?: "?", 56.dp)
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(me?.name ?: me?.email ?: " ", maxLines = 1, style = MaterialTheme.typography.titleMedium)
+                if (me?.name != null && me.email != null) Text(me.email, maxLines = 1, color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        BigSettingsRow("Über mich", onAbout)
+        BigSettingsRow("Einstellungen", onSettings)
+        BigSettingsRow("Abmelden") { vm.signOut() }
+    }
+}
+
+@Composable
+private fun BigSettingsRow(title: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+private enum class SettingsPage { Sound, Account }
+
+/** Einstellungen: vier grosse Zeilen (Lernen, Ton, Prüfung, Konto), jede oeffnet eine kleine Seite; Profil und Abmelden liegen im Avatar-Sheet. */
+@Composable
 fun SettingsMain(
-    state: UiState, vm: AppViewModel, onProfile: () -> Unit, onExam: (String, ExamPage) -> Unit, onDismiss: () -> Unit,
+    state: UiState, vm: AppViewModel, onExam: (String, ExamPage) -> Unit, onLegal: (com.jonasschnell.quickscope.logic.LegalPage) -> Unit, onDismiss: () -> Unit,
 ) {
     var page by remember { mutableStateOf<SettingsPage?>(null) }
-    val me = state.me
     val exam = state.activeExam
     when (page) {
         null -> QuickscopeSheet(onDismiss, "Einstellungen") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                UserAvatar(me?.pictureUrl ?: vm.signInPictureUrl, me?.name ?: me?.email ?: "?", 48.dp)
-                Column(Modifier.padding(start = 14.dp)) {
-                    Text(me?.name ?: me?.email ?: " ", maxLines = 1, style = MaterialTheme.typography.titleMedium)
-                    if (me?.name != null && me.email != null) Text(me.email, maxLines = 1, color = Muted, style = MaterialTheme.typography.bodySmall)
-                }
-            }
             if (exam != null) SettingsRow("Lernen", null, { onExam(exam.id, ExamPage.Learn) }) { Chevron("${exam.dailyMinutes} min") }
             SettingsRow("Ton", null, { page = SettingsPage.Sound }) { Chevron(if (vm.audioEnabled) "An" else "Aus") }
-            SettingsRow("Profil", null, onProfile) { Chevron(null) }
             if (exam != null) SettingsRow("Prüfung", null, { onExam(exam.id, ExamPage.Exam) }) { Chevron(null) }
             SettingsRow("Konto", null, { page = SettingsPage.Account }) { Chevron(null) }
         }
         SettingsPage.Sound -> SoundPage(vm) { page = null }
-        SettingsPage.Account -> AccountPage(state, vm) { page = null }
+        SettingsPage.Account -> AccountPage(state, vm, onLegal) { page = null }
     }
 }
 
@@ -82,7 +103,7 @@ private fun Chevron(value: String?) {
 private fun SoundPage(vm: AppViewModel, onDismiss: () -> Unit) {
     var on by remember { mutableStateOf(vm.audioEnabled) }
     val saved = AutoSave(on, true, instantKey = on) { v, fail -> vm.setAudioEnabled(v, fail) }
-    QuickscopeSheet(onDismiss, "Ton", status = if (saved) "Gespeichert" else null) {
+    QuickscopeSheet(onDismiss, "Ton", status = null) {
         SettingsRow("Vorlesen", null, { on = !on }) {
             Switch(
                 checked = on, onCheckedChange = { on = it },
@@ -93,27 +114,30 @@ private fun SoundPage(vm: AppViewModel, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun AccountPage(state: UiState, vm: AppViewModel, onDismiss: () -> Unit) {
+private fun AccountPage(state: UiState, vm: AppViewModel, onLegal: (com.jonasschnell.quickscope.logic.LegalPage) -> Unit, onDismiss: () -> Unit) {
     var accountStep by remember { mutableIntStateOf(0) }
+    val online by vm.online.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) vm.exportTo(uri) { u ->
-            val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, u).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }
+        if (uri != null) vm.exportTo(uri)
     }
     QuickscopeSheet(onDismiss, "Konto") {
-        SettingsRow("Meine Daten exportieren", null, { exportLauncher.launch("quickscope-export.json") }) {}
-        SettingsRow("Datenschutzerklärung", null, { openLegal(context, privacyUrl()) }) {}
-        SettingsRow("AGB", null, { openLegal(context, termsUrl()) }) {}
+        state.activeExam?.let { e -> vm.offlineDays(e.id) }?.let { d ->
+            Text("Offline bereit: $d ${if (d == 1) "Tag" else "Tage"}", color = Muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 4.dp))
+        }
+        SettingsRow("Meine Daten exportieren", null, { if (online) exportLauncher.launch("quickscope-export.json") else vm.needInternet() }) {}
         UpdateRow(state, vm)
         Column(
             Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SecondaryButton("Abmelden", vm::signOut)
-            HapticTextButton(onClick = { accountStep = 1 }) {
+            com.jonasschnell.quickscope.logic.LegalPage.entries.forEach { lp ->
+                HapticTextButton(onClick = { onLegal(lp) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                    Text(lp.title, color = Muted, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            HapticTextButton(onClick = { if (online) accountStep = 1 else vm.needInternet() }) {
                 Text("Konto löschen", color = Danger, style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -150,19 +174,11 @@ private fun AccountPage(state: UiState, vm: AppViewModel, onDismiss: () -> Unit)
     }
 }
 
-internal fun privacyUrl() = com.jonasschnell.quickscope.logic.legalUrl(BuildConfig.BASE_URL, com.jonasschnell.quickscope.logic.LEGAL_PRIVACY, BuildConfig.LEGAL_PRIVACY_URL)
-internal fun termsUrl() = com.jonasschnell.quickscope.logic.legalUrl(BuildConfig.BASE_URL, com.jonasschnell.quickscope.logic.LEGAL_TERMS, BuildConfig.LEGAL_TERMS_URL)
-
-/** Rechtliche Seite im Browser oeffnen (kein WebView). */
-internal fun openLegal(context: android.content.Context, url: String) {
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-}
-
 /** Ruhige Einstellungszeile: Titel, optionaler Untertitel, Aktion rechts. */
 @Composable
 internal fun SettingsRow(title: String, subtitle: String?, onClick: () -> Unit, trailing: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onClick)
+        Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

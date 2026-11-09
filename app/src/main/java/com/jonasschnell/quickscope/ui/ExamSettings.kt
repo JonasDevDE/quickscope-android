@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -63,18 +64,29 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         LaunchedEffect(Unit) { onDismiss() }
         return
     }
-    when (sub) {
-        null -> if (page == ExamPage.Learn) QuickscopeSheet(onDismiss, "Lernen") {
+    // Die Seite bleibt immer sichtbar; Unterthemen kommen als kleine Sheets darueber.
+    if (page == ExamPage.Learn) {
+        PageScaffold("Lernen", onDismiss) {
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
             SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
-            SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(if (exam.description.isNullOrBlank()) "–" else "gesetzt") }
-        } else QuickscopeSheet(onDismiss, "Prüfung") {
-            SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value("${exam.materialCount}") }
-            SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
-            SettingsRow("Art", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Dauerhaft" else "Prüfung") }
-            if (!isOpen(exam)) SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
-            SettingsRow("Mehr", null, { sub = ExamSetting.More }) {}
         }
+    } else {
+        var name by remember(exam.id) { mutableStateOf(exam.name) }
+        val saved = AutoSave(name.trim(), name.isNotBlank()) { v, fail -> vm.updateExam(exam.id, ExamUpdate(name = v), fail) }
+        PageScaffold("Prüfung", onDismiss, status = null) {
+            QuickscopeField(name, { name = it.take(80) }, "Name")
+            SettingsRow("Termin", null, { sub = if (isOpen(exam)) ExamSetting.Kind else ExamSetting.When }) {
+                Value(if (isOpen(exam)) "Dauerhaft" else formatExamWhen(exam.date, exam.time))
+            }
+            SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value(if (exam.materialCount == 1L) "1 Datei" else "${exam.materialCount} Dateien") }
+            SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(exam.description?.takeIf { it.isNotBlank() } ?: "–") }
+            HapticTextButton(onClick = { sub = ExamSetting.More }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+    when (sub) {
+        null -> Unit
         ExamSetting.More -> QuickscopeSheet({ sub = null }, "Mehr") {
             SettingsRow("Von vorn beginnen", null, { sub = ExamSetting.Reset }) {}
             SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
@@ -127,7 +139,7 @@ fun TwoStepConfirm(title1: String, text1: String, title2: String, text2: String,
 private fun NameSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf(exam.name) }
     val saved = AutoSave(name.trim(), name.isNotBlank()) { v, fail -> vm.updateExam(exam.id, ExamUpdate(name = v), fail) }
-    QuickscopeSheet(onDismiss, "Name", status = if (saved) "Gespeichert" else null) {
+    QuickscopeSheet(onDismiss, "Name", status = null) {
         QuickscopeField(name, { name = it.take(80) }, "Name")
     }
 }
@@ -136,7 +148,7 @@ private fun NameSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
 private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf(exam.description.orEmpty()) }
     val saved = AutoSave(text.trim(), true) { v, fail -> vm.updateExam(exam.id, ExamUpdate(description = v), fail) }
-    QuickscopeSheet(onDismiss, "Beschreibung", status = if (saved) "Gespeichert" else null) {
+    QuickscopeSheet(onDismiss, "Beschreibung", status = null) {
         QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
         Text("${text.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall)
     }
@@ -150,8 +162,9 @@ private fun WhenSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     val saved = AutoSave(date to time, date != null && !past, instantKey = date to time) { (d, t), fail ->
         vm.updateExam(exam.id, ExamUpdate(date = d.toString(), time = "%02d:%02d".format(t.hour, t.minute)), fail)
     }
-    QuickscopeSheet(onDismiss, "Datum und Uhrzeit", status = if (saved) "Gespeichert" else null) {
+    QuickscopeSheet(onDismiss, "Termin", status = null) {
         WhenPicker(date, time, { date = it }, { time = it })
+        SecondaryButton("Dauerhaft lernen", { vm.updateExam(exam.id, ExamUpdate(mode = "open")); onDismiss() })
         if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = Danger, style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -187,7 +200,7 @@ private fun KindSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
 private fun PriorSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     var value by remember { mutableStateOf(exam.priorKnowledge) }
     val saved = AutoSave(value, true, instantKey = value) { v, _ -> vm.updateExam(exam.id, ExamUpdate(priorKnowledge = v)) }
-    QuickscopeSheet(onDismiss, "Vorwissen", status = if (saved) "Gespeichert" else null) {
+    QuickscopeSheet(onDismiss, "Vorwissen", status = null) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PRIOR_KEYS.forEach { k -> Pill(priorLabel(k), value == k, { value = k }) }
         }
@@ -201,7 +214,7 @@ private fun DailySheet(state: UiState, vm: AppViewModel, exam: Exam, onDismiss: 
     var value by remember { mutableIntStateOf(exam.dailyMinutes) }
     val forecast = state.forecast?.takeIf { state.forecastExamId == exam.id }
     val saved = AutoSave(value, true, instantKey = value) { v, _ -> vm.updateExam(exam.id, ExamUpdate(dailyMinutes = v)) }
-    QuickscopeSheet(onDismiss, "Lernzeit pro Tag", status = if (saved) "Gespeichert" else null) {
+    QuickscopeSheet(onDismiss, "Lernzeit pro Tag", status = null) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DAILY_MINUTE_CHOICES.forEach { c -> Pill(minutesChoiceLabel(forecast, c), value == c, { value = c }) }
         }

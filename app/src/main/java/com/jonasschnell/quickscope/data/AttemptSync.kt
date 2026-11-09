@@ -14,7 +14,8 @@ class AttemptSync(private val api: QuickscopeApi, val queue: AttemptQueue) {
     private val mutex = Mutex()
 
     /** Antwort vormerken (sofort gespeichert, noch nicht gesendet). */
-    fun record(examId: String, attempt: AttemptRequest) = queue.add(examId, attempt)
+    fun record(examId: String, attempt: AttemptRequest) =
+        queue.add(examId, attempt.copy(offlineId = attempt.offlineId ?: java.util.UUID.randomUUID().toString()))
 
     fun hasPending(examId: String) = queue.pending(examId).isNotEmpty()
 

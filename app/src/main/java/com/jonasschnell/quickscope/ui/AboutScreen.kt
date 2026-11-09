@@ -52,7 +52,7 @@ import com.jonasschnell.quickscope.ui.theme.Muted
 
 /**
  * Profil in den Einstellungen: Alter, Bildung und "Ueber mich". Dient nur dazu, Beispiele und Erklaerungen passender zu machen.
- * Kein Pflichtfeld; gespeichert wird automatisch, "Gespeichert" ist sichtbar.
+ * Kein Pflichtfeld; gespeichert wird automatisch und ohne Hinweis (nur Fehler erscheinen).
  */
 @Composable
 fun AboutScreen(state: UiState, vm: AppViewModel, onClose: () -> Unit) {
@@ -103,7 +103,7 @@ private fun ProfileEditor(state: UiState, vm: AppViewModel, initial: Profile, on
             modifier = Modifier.heightIn(min = 180.dp), singleLine = false,
         )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (showSaved) "Gespeichert" else "", color = Muted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
             Text(aboutCounter(draft.about), color = Muted, style = MaterialTheme.typography.labelMedium)
         }
         PrimaryButton("Fertig", onClose)
@@ -123,6 +123,25 @@ fun <T> DropdownField(label: String, value: String, options: List<Pair<T, String
         }
         DropdownMenu(open, { open = false }, modifier = Modifier.background(Card).heightIn(max = 320.dp)) {
             options.forEach { (key, text) -> DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(key); open = false }) }
+        }
+    }
+}
+
+/**
+ * Ruhige Vollbildseite im Stil der Profilseite: Zurueck oben, grosser Titel, darunter wenige grosse Felder mit festen Abstaenden.
+ * Gespeichert wird immer automatisch, ohne Hinweis; [status] ist nur fuer Fehlertexte gedacht.
+ */
+@Composable
+fun PageScaffold(title: String, onClose: () -> Unit, status: String? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    BackHandler { onClose() }
+    Column(Modifier.fillMaxSize().background(Black).blockTouches().statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 24.dp)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            CloseButton(onClose, label = "Zurück")
+        }
+        Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 8.dp))
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            content()
+            Text(status ?: "", color = Muted, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

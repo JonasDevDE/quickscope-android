@@ -151,7 +151,9 @@ class AudioTest {
     @Test fun preflightDecidesBetweenSoundAndSilent() {
         assertEquals(AudioMode.On, audioModeFor(enabled = true, online = true, available = true))
         assertEquals(AudioMode.Silent, audioModeFor(true, true, false))
-        assertEquals(AudioMode.Silent, audioModeFor(true, true, null))     // Status unbekannt/Fehler
+        assertEquals(AudioMode.On, audioModeFor(true, true, null))         // Status unbekannt (z. B. 404): Stream wird versucht
+        assertEquals(AudioMode.On, audioModeFor(true, true, com.jonasschnell.quickscope.logic.statusAvailable(null)))  // 404/Fehler -> Audiomodus
+        assertEquals(AudioMode.Silent, audioModeFor(true, true, com.jonasschnell.quickscope.logic.statusAvailable(com.jonasschnell.quickscope.data.AudioStatus(available = false))))
         assertEquals(AudioMode.Silent, audioModeFor(true, false, true))    // offline
         assertEquals(AudioMode.Silent, audioModeFor(false, true, true))    // Vorlesen aus
     }

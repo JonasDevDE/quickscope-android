@@ -22,6 +22,11 @@ class Store(context: Context) : QueueStorage {
         get() = prefs.getBoolean("audioEnabled", true)
         set(value) = prefs.edit().putBoolean("audioEnabled", value).apply()
 
+    /** "Vorlesen" wurde offline geaendert und muss noch ins Profil geschrieben werden. */
+    var audioDirty: Boolean
+        get() = prefs.getBoolean("audioDirty", false)
+        set(value) = prefs.edit().putBoolean("audioDirty", value).apply()
+
     /** Tagesserie (lokal abgeleitet): letzter Tag mit abgeschlossener Runde (ISO) und Tage in Folge. */
     var lastSessionDay: String?
         get() = prefs.getString("lastSessionDay", null)
