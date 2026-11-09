@@ -11,6 +11,14 @@ Dieses Repository enthält die **Android-App** (Kotlin, Jetpack Compose).
 - Pflicht-Updates: Die App prüft beim Start, im Vordergrund und per Live-Ereignis auf neue Versionen
 - Live-Sync
 
+## Download
+
+Die aktuelle Android-App (APK) gibt es hier:
+
+**http://fast-hawk.cloudgate.darkstone.de:40029/download**
+
+Beim ersten Installieren fragt Android, ob dein Browser Apps installieren darf. Das musst du einmal erlauben. Danach aktualisiert sich die App selbst.
+
 ## Bauen
 
 Voraussetzungen: JDK 21, Android SDK (compileSdk 37).
