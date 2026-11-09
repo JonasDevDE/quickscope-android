@@ -381,17 +381,18 @@ class LogicTest {
 
     private fun exam(kind: String = "exam") = com.jonasschnell.quickscope.data.Exam(id = "e", status = "ready", kind = kind)
 
-    @Test fun ringShowsDashUntilSomethingWasPracticed() {
+    @Test fun ringShowsZeroPercentNeverADash() {
         val never = f(scoreNowPercent = 0, scoreAtExamPercent = 0, confidence = "none", coveragePercent = 0)
-        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam(), never))
-        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(confidence = "low", coveragePercent = 0)))   // alles 0 ohne Antworten
-        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam(), null))
-        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = null)))
-        // nach Antworten: Zahl wie gehabt, auch 0 % bleibt 0 %
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), never))
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(confidence = "low", coveragePercent = 0)))
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), null))                                // noch keine Prognose
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(null, null))
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = null)))   // Wissensstand
+        // mit Zahl: wie gehabt in 5er-Schritten abgerundet
         assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(scoreNowPercent = 0, confidence = "low", coveragePercent = 10)))
-        assertEquals("60 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(scoreNowPercent = 63, confidence = "low", coveragePercent = 40)))   // abgerundet
-        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = 0)))
+        assertEquals("60 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(scoreNowPercent = 63, confidence = "low", coveragePercent = 40)))
         assertEquals("45 %", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = 47)))
+        for (fc in listOf(never, f(coveragePercent = 0), f(mode = "open"))) assertTrue(!com.jonasschnell.quickscope.logic.ringLabel(exam(), fc).contains("–"))
     }
 
     @Test fun scoreForComparisonIsNullWithoutAnswers() {

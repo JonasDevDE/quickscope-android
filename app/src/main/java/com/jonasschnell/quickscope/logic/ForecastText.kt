@@ -22,9 +22,11 @@ fun remainingMinutes(dailyMinutes: Int, doneSecondsToday: Int): Int =
 /** Hauptknopf auf Heute: ohne Zeitangabe. */
 const val START_LABEL = "Starten"
 
-/** Text im Ring: "–", solange nie geuebt wurde (keine belastbare Zahl), sonst die Zahl in 5er-Schritten (auch "0 %" nach Antworten). */
-fun ringLabel(exam: com.jonasschnell.quickscope.data.Exam?, f: Forecast?): String =
-    if (exam != null && f != null && forecastReliable(exam, f)) percentText(ringPercent(exam, f)) else "–"
+/** Zahl im Ring: ohne belastbare Prognose/Wissensstand "0 %" (nie ein Strich), sonst die Zahl in 5er-Schritten. */
+fun ringPercentOrZero(exam: com.jonasschnell.quickscope.data.Exam?, f: Forecast?): Int =
+    if (exam != null && f != null && forecastReliable(exam, f)) ringPercent(exam, f) else 0
+
+fun ringLabel(exam: com.jonasschnell.quickscope.data.Exam?, f: Forecast?): String = percentText(ringPercentOrZero(exam, f))
 
 /** Abschlusszeile: "Prognose 60 % → 65 %". */
 fun beforeAfterLine(before: Int, after: Int): String =

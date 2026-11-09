@@ -55,7 +55,7 @@ import com.jonasschnell.quickscope.logic.relativeDayLabel
 import com.jonasschnell.quickscope.logic.forecastReliable
 import com.jonasschnell.quickscope.logic.isOpen
 import com.jonasschnell.quickscope.logic.isOver
-import com.jonasschnell.quickscope.logic.ringPercent
+import com.jonasschnell.quickscope.logic.ringPercentOrZero
 import com.jonasschnell.quickscope.logic.masteryPercent
 import com.jonasschnell.quickscope.logic.percentText
 import com.jonasschnell.quickscope.logic.projectionLine
@@ -179,7 +179,7 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
     } else {
-        if (forecast.coveragePercent > 0) ForecastRing(forecast.scoreNowPercent) else ForecastPlaceholder()
+        ForecastRing(if (forecast.coveragePercent > 0) forecast.scoreNowPercent else 0)
         Text("So warst du zuletzt vorbereitet (Schätzung)", color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
     Text("Prüfung vorbei", style = MaterialTheme.typography.titleMedium)
@@ -206,14 +206,14 @@ private fun ReadyView(
     }
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
-    } else if (forecastReliable(exam, forecast)) {
-        ForecastRing(ringPercent(exam, forecast))
-        Text(
+    } else {
+        // ohne belastbare Zahl: leerer Ring mit "0 %"; die Prognosezeile gibt es nur mit Backend-Wert (nichts erfinden)
+        val reliable = forecastReliable(exam, forecast)
+        ForecastRing(ringPercentOrZero(exam, forecast))
+        if (open || reliable) Text(
             if (open) "Wissensstand" else projectionLine(forecast, exam.dailyMinutes),
             color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
         )
-    } else {
-        ForecastPlaceholder()
     }
     Spacer(Modifier.height(8.dp))
     if (forecast?.showCheatsheetSuggestion == true && !open) {
@@ -228,18 +228,6 @@ private fun ReadyView(
     } else {
         PrimaryButton(START_LABEL, { onStart(exam, minutes) })
         HapticTextButton(onClick = { onOpenMore(exam) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge) }
-    }
-}
-
-/** Leerer Ring ohne Zahl, solange es keine belastbare Prognose gibt. */
-@Composable
-private fun ForecastPlaceholder() {
-    Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val w = 16.dp.toPx()
-            drawArc(CardHigh, -90f, 360f, false, Offset(w / 2, w / 2), Size(size.width - w, size.height - w), style = Stroke(w, cap = StrokeCap.Round))
-        }
-        Text("–", style = MaterialTheme.typography.displaySmall.copy(fontSize = 52.sp, lineHeight = 56.sp), color = Muted)
     }
 }
 
