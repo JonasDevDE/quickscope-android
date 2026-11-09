@@ -2,6 +2,12 @@ package com.jonasschnell.quickscope.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +60,10 @@ import com.jonasschnell.quickscope.ui.theme.Card
 import com.jonasschnell.quickscope.ui.theme.CardHigh
 import com.jonasschnell.quickscope.ui.theme.Muted
 import com.jonasschnell.quickscope.ui.theme.OnAccent
+import com.jonasschnell.quickscope.ui.theme.Outline
+import com.jonasschnell.quickscope.ui.theme.Pressed
+import com.jonasschnell.quickscope.ui.theme.Danger
+import com.jonasschnell.quickscope.ui.theme.DangerOutline
 import com.jonasschnell.quickscope.ui.theme.Sheet
 
 /** Rundes Nutzerbild (z. B. Google-Profilbild) mit Initiale als Fallback. */
@@ -138,6 +148,41 @@ fun <T> AutoSave(
     return showSaved
 }
 
+/** Gemeinsame erhoehte Flaeche: SurfaceRaised mit Rand und sichtbarem Pressed-State. Grundlage fuer Zeilen, Karten, Sekundaerknoepfe. */
+@Composable
+fun RowCard(
+    onClick: (() -> Unit)?, modifier: Modifier = Modifier, minHeight: Dp = 64.dp, border: Color = Outline,
+    shape: RoundedCornerShape = RoundedCornerShape(24.dp), content: @Composable RowScope.() -> Unit,
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val bg by animateColorAsState(if (pressed) Pressed else CardHigh, label = "rowBg")
+    val haptics = LocalHaptics.current
+    Row(
+        modifier.fillMaxWidth().defaultMinSize(minHeight = minHeight).clip(shape).background(bg).border(1.dp, border, shape)
+            .then(if (onClick != null) Modifier.clickable(interactionSource = source, indication = null) { haptics.tick(); onClick() } else Modifier)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+/** Gefahrenbereich: rot abgesetzte Ueberschrift und Zeilen, am Ende einer Seite. */
+@Composable
+fun DangerZone(content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Gefahrenbereich", color = Danger, style = MaterialTheme.typography.titleSmall)
+        content()
+    }
+}
+
+@Composable
+fun DangerRow(title: String, onClick: () -> Unit) {
+    RowCard(onClick, border = DangerOutline) {
+        Text(title, color = Danger, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val container by animateColorAsState(if (enabled) Accent else CardHigh, label = "buttonColor")
@@ -147,6 +192,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
             .height(56.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(container)
+            .then(if (enabled) Modifier else Modifier.border(1.dp, Outline, RoundedCornerShape(28.dp)))
             .hapticClickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -156,16 +202,8 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = Color.White) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(CardHigh)
-            .hapticClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = color)
+    RowCard(onClick, modifier, minHeight = 56.dp, shape = RoundedCornerShape(28.dp)) {
+        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = color, textAlign = TextAlign.Center)
     }
 }
 
@@ -177,6 +215,7 @@ fun Pill(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifie
         modifier
             .clip(RoundedCornerShape(50))
             .background(container)
+            .border(1.dp, if (selected) Accent else Outline, RoundedCornerShape(50))
             .hapticClickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -220,7 +259,7 @@ fun QuickscopeField(
             focusedLabelColor = Muted,
             unfocusedLabelColor = Muted,
         ),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().border(1.dp, Outline, RoundedCornerShape(20.dp)),
     )
 }
 

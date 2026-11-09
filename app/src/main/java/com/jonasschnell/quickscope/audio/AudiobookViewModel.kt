@@ -59,11 +59,16 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
     private var ticker: Job? = null
     private var examId = ""
     private var queue = AudiobookQueue(emptyList())
+    private var playerErrors = 0
+    private var everPlayed = false
+    private var watchdog: Job? = null
 
     fun start(examId: String, minutes: Int?, repeat: Boolean = false) {
         if (!com.jonasschnell.quickscope.logic.canStartBook(_state.value.phase.name)) return // nur eine Wiedergabe gleichzeitig
         this.examId = examId
         _state.value = BookUi(phase = BookPhase.Loading)
+        playerErrors = 0
+        everPlayed = false
         viewModelScope.launch {
             try {
                 val book = api.audiobook(examId, minutes, if (repeat) true else null)
@@ -77,7 +82,7 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
                 queue = AudiobookQueue(book.items)
 // Preflight: ohne Stimme (offline, nicht verfuegbar) gibt es kein Hoerbuch; ruhige Meldung statt Fehlerbild
                 if (!app.audio.available(force = true)) {
-                    _state.update { it.copy(phase = BookPhase.Error, message = "Gerade nicht möglich.") }
+                    _state.value = BookUi(phase = BookPhase.Error)
                     return@launch
                 }
                 val mediaItems = book.items.map { mediaItem(it, lessons[it.lessonId], order[it.chapterId] ?: 0, chapters.size) }
@@ -87,6 +92,11 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
                     it.play()
                 }
                 _state.update { it.copy(phase = BookPhase.Playing, count = book.items.size) }
+                // Kein "Ton laedt" ueber laengere Zeit: laeuft der Stream nicht binnen ~8 s, sauber beenden (Dienst und Benachrichtigung weg)
+                watchdog = launch {
+                    delay(com.jonasschnell.quickscope.logic.LISTEN_PROBE_TIMEOUT_MS)
+                    if (controller?.isPlaying != true && _state.value.phase == BookPhase.Playing && !everPlayed) failQuietly()
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -128,7 +138,11 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
             }
             controller = c
             c.addListener(object : Player.Listener {
-                override fun onEvents(player: Player, events: Player.Events) = refresh(player)
+                override fun onPlayerError(error: androidx.media3.common.PlaybackException) { playerErrors++ }
+                override fun onEvents(player: Player, events: Player.Events) {
+                    if (player.isPlaying) everPlayed = true
+                    refresh(player)
+                }
             })
             onReady(c)
             startTicker()
@@ -137,7 +151,8 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun refresh(p: Player) {
         if (p.playbackState == Player.STATE_ENDED) {
-            _state.update { it.copy(phase = BookPhase.Finished, playing = false) }
+            // Ende durch ausgefallene Streams (nach 3 Versuchen uebersprungen): sauber beenden statt "Fertig" zu zeigen
+            if (playerErrors > 0 && !everPlayed) failQuietly() else _state.update { it.copy(phase = BookPhase.Finished, playing = false) }
             return
         }
         val item = p.currentMediaItem ?: return
@@ -192,6 +207,15 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
     fun previous() {
         val c = controller ?: return
         if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem() else c.seekTo(0)
+    }
+
+    /** Ausfall ohne Fehlertext: Dienst loslassen und zurueck auf Heute (die Seite schliesst sich selbst). */
+    private fun failQuietly() {
+        watchdog?.cancel()
+        ticker?.cancel()
+        controller?.let { c -> runCatching { c.stop(); c.clearMediaItems(); c.release() } }
+        controller = null
+        _state.value = BookUi(phase = BookPhase.Error)
     }
 
     /** Beenden: Wiedergabe stoppen (der gehoerte Anteil wird vom Dienst gemeldet) und den Dienst loslassen. */

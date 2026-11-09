@@ -153,7 +153,8 @@ class AudioTest {
         assertEquals(AudioMode.Silent, audioModeFor(true, true, false))
         assertEquals(AudioMode.On, audioModeFor(true, true, null))         // Status unbekannt (z. B. 404): Stream wird versucht
         assertEquals(AudioMode.On, audioModeFor(true, true, com.jonasschnell.quickscope.logic.statusAvailable(null)))  // 404/Fehler -> Audiomodus
-        assertEquals(AudioMode.Silent, audioModeFor(true, true, com.jonasschnell.quickscope.logic.statusAvailable(com.jonasschnell.quickscope.data.AudioStatus(available = false))))
+        assertEquals(AudioMode.Silent, audioModeFor(true, true, com.jonasschnell.quickscope.logic.statusAvailable(com.jonasschnell.quickscope.data.AudioStatus(available = false, reason = "all-models-blocked", retryAfterSeconds = 30))))
+        assertEquals(AudioMode.On, audioModeFor(true, true, com.jonasschnell.quickscope.logic.statusAvailable(com.jonasschnell.quickscope.data.AudioStatus(available = false))))   // false ohne Grund schaltet nicht stumm
         assertEquals(AudioMode.Silent, audioModeFor(true, false, true))    // offline
         assertEquals(AudioMode.Silent, audioModeFor(false, true, true))    // Vorlesen aus
     }
@@ -169,5 +170,40 @@ class AudioTest {
         assertTrue(shouldRecheckAudio(AudioMode.Silent, true, 1_000, 1_000 + AUDIO_RECHECK_MS))
         assertFalse(shouldRecheckAudio(AudioMode.On, true, 0, 10 * AUDIO_RECHECK_MS))
         assertTrue(STREAM_START_TIMEOUT_MS in 1_000L..15_000L)
+    }
+
+    @Test fun understandEntryNeedsEveryCondition() {
+        val ok = com.jonasschnell.quickscope.data.AudioStatus(available = true)
+        val confirmed = com.jonasschnell.quickscope.logic.listenStatusConfirmed(ok)
+        val vis = { online: Boolean, on: Boolean, lessons: Boolean, conf: Boolean, blocked: Long, now: Long ->
+            com.jonasschnell.quickscope.logic.listenVisible(online, on, lessons, conf, blocked, now)
+        }
+        assertTrue(vis(true, true, true, confirmed, 0, 1_000))
+        assertFalse(vis(false, true, true, confirmed, 0, 1_000))       // offline
+        assertFalse(vis(true, false, true, confirmed, 0, 1_000))       // Vorlesen aus
+        assertFalse(vis(true, true, false, confirmed, 0, 1_000))       // keine Lektionen
+        assertFalse(vis(true, true, true, false, 0, 1_000))            // Status nicht bestaetigt
+        assertFalse(com.jonasschnell.quickscope.logic.listenStatusConfirmed(null))                                                    // Fehler/404
+        assertFalse(com.jonasschnell.quickscope.logic.listenStatusConfirmed(com.jonasschnell.quickscope.data.AudioStatus(available = false, reason = "x")))
+    }
+
+    @Test fun failedProbeHidesUnderstandForTwoMinutesThenReChecks() {
+        val now = 50_000L
+        val until = com.jonasschnell.quickscope.logic.listenBlockedUntil(now)
+        assertEquals(now + 120_000L, until)
+        val vis = { t: Long -> com.jonasschnell.quickscope.logic.listenVisible(true, true, true, true, until, t) }
+        assertFalse(vis(now + 1))
+        assertFalse(vis(until - 1))
+        assertTrue(vis(until))            // danach wird wieder angeboten (und neu geprueft)
+    }
+
+    @Test fun probeNeedsBytesWithinEightSeconds() {
+        val p = { a: Boolean, b: Boolean, c: Long -> com.jonasschnell.quickscope.logic.probePassed(a, b, c) }
+        assertTrue(p(true, true, 3_000))
+        assertTrue(p(true, true, 8_000))
+        assertFalse(p(true, true, 8_001))   // zu langsam
+        assertFalse(p(false, true, 100))    // 429/503/404
+        assertFalse(p(true, false, 100))    // leer
+        assertEquals(8_000L, com.jonasschnell.quickscope.logic.LISTEN_PROBE_TIMEOUT_MS)
     }
 }

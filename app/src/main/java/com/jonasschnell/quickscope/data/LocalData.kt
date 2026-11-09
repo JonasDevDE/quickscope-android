@@ -66,10 +66,14 @@ class LocalData(private val dir: File) {
     fun topics(examId: String): List<Topic> = getTyped("topics_$examId", ListSerializer(Topic.serializer())).orEmpty()
 
     /** Das Paket wird als Rohtext des Servers abgelegt und beim Lesen neu geparst (Parser bleibt austauschbar). */
-    fun savePack(examId: String, rawJson: String, days: Int) {
+    fun savePack(examId: String, rawJson: String, days: Int, etag: String?) {
         put("pack_$examId", AppJson.parseToJsonElement(rawJson))
-        put("packmeta_$examId", JsonObject(mapOf("days" to JsonPrimitive(days), "at" to JsonPrimitive(System.currentTimeMillis()))))
+        put("packmeta_$examId", JsonObject(mapOf("days" to JsonPrimitive(days), "etag" to JsonPrimitive(etag.orEmpty()), "at" to JsonPrimitive(System.currentTimeMillis()))))
     }
+
+    /** ETag des gespeicherten Pakets fuer If-None-Match (nur, wenn das Paket selbst noch da ist). */
+    fun packEtag(examId: String): String? =
+        if (get("pack_$examId") == null) null else ((get("packmeta_$examId") as? JsonObject)?.get("etag") as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
 
     fun pack(examId: String): OfflinePack? = get("pack_$examId")?.let { parseOfflinePack(it.toString()) }
 

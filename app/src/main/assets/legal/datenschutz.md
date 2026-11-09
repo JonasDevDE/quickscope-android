@@ -13,7 +13,7 @@ E-Mail: [E-Mail-Adresse]
 
 ## 2. Worum es geht
 
-Quickscope hilft dir, dich mit möglichst wenig Zeit auf Prüfungen vorzubereiten oder dauerhaft zu lernen. Aus deinem Material und deinen Angaben werden Lektionen, Aufgaben und auf Wunsch Sprachausgabe erstellt. Diese Erklärung beschreibt, welche Daten dafür verarbeitet werden.
+Quickscope hilft dir, dich mit möglichst wenig Zeit auf Prüfungen vorzubereiten oder dauerhaft zu einem Thema zu lernen. Aus deinem Material und deinen Angaben werden Lektionen, Aufgaben und auf Wunsch Sprachausgabe erstellt. Diese Erklärung beschreibt, welche Daten dafür verarbeitet werden.
 
 ## 3. Welche Daten wir verarbeiten
 
@@ -24,7 +24,7 @@ Quickscope hilft dir, dich mit möglichst wenig Zeit auf Prüfungen vorzubereite
   
 - **Sprachnachricht beim Einstieg:** Wenn du dich per Sprachnachricht vorstellst, wird die Aufnahme zur Erstellung einer kurzen Textzusammenfassung verarbeitet. Die Aufnahme selbst wird nicht gespeichert.
   
-- **Prüfungen und Material:** Name und Termin deiner Prüfung bzw. deines Lernbereichs, Beschreibungen sowie Dateien, die du hinzufügst (z. B. Fotos, Dokumente, Audio, Video), und die daraus erzeugten Themen, Lektionen und Aufgaben.
+- **Themen und Material:** Name und Termin (z. B. Prüfungstermin) deines Themas, Beschreibungen sowie Dateien, die du hinzufügst (z. B. Fotos, Dokumente, Audio, Video), und die daraus erzeugten Lektionen und Aufgaben.
   
 - **Lernfortschritt:** Deine Antworten, Antwortzeiten, Lernstand, Lernzeit und Serien.
   
@@ -46,12 +46,12 @@ Quickscope hilft dir, dich mit möglichst wenig Zeit auf Prüfungen vorzubereite
   
 - **Google:** Anmeldung (Google Sign-In) sowie KI-Verarbeitung über die Gemini-API: Dein Material, deine Beschreibungen, Profilangaben und Sprachaufnahmen werden an Google gesendet, um Lektionen, Aufgaben, Zusammenfassungen und Sprachausgabe zu erzeugen. Dabei kann eine Übermittlung in Drittländer (z. B. USA) stattfinden. [Verwendeter Gemini-Tarif, Auftragsverarbeitungsvertrag und Garantien (z. B. Standardvertragsklauseln) prüfen und hier benennen]
 
-Eine Weitergabe an andere Nutzer findet nicht statt. Deine Prüfungen, dein Material und dein Lernstand sind nur mit deinem Konto abrufbar.
+Eine Weitergabe an andere Nutzer findet nicht statt. Deine Themen, dein Material und dein Lernstand sind nur mit deinem Konto abrufbar.
 
 ## 6. Speicherdauer
 
   
-- Kontodaten, Prüfungen, Material und Lernfortschritt: bis du dein Konto löschst.
+- Kontodaten, Themen, Material und Lernfortschritt: bis du dein Konto löschst.
   
 - Anmeldesitzungen: höchstens 180 Tage, bei Nichtnutzung früher.
   

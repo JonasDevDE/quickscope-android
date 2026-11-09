@@ -17,6 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.border
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.graphics.Color
+import com.jonasschnell.quickscope.ui.theme.Outline
+import com.jonasschnell.quickscope.ui.theme.Danger
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,38 +43,48 @@ import java.time.Instant
 
 /** Pille im Kopf (ohne Pfeil): Name der aktiven Pruefung, Tippen oeffnet die Liste. */
 @Composable
-fun ExamPill(name: String, loading: Boolean, onClick: () -> Unit) {
+fun ExamPill(name: String, loading: Boolean, onClick: () -> Unit, icon: String? = null) {
     Row(
         Modifier.clip(RoundedCornerShape(50)).background(CardHigh).hapticClickable(enabled = !loading, onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(name, Modifier.widthIn(max = 220.dp), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (!loading) TopicIcon(icon, 24.dp)
+        Text(name, Modifier.widthIn(max = 220.dp).padding(start = if (loading) 0.dp else 8.dp), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** Liste der Pruefungen mit Datum/Uhrzeit; Zeile waehlt, Drei-Punkte oeffnen die Einstellungen; unten "Neue Prüfung". */
+/** "Meine Themen": Zeile waehlt, Drei-Punkte oeffnen das Menue (Bearbeiten, Material, Löschen); unten "Neues Thema". */
 @Composable
-fun ExamsSheet(state: UiState, vm: AppViewModel, onNew: () -> Unit, onSettings: (String) -> Unit, onDismiss: () -> Unit) {
+fun ExamsSheet(
+    state: UiState, vm: AppViewModel, onNew: () -> Unit, onEdit: (String) -> Unit, onMaterial: (String) -> Unit, onDelete: (String) -> Unit, onDismiss: () -> Unit,
+) {
     val now = Instant.now()
     val active = state.activeExam?.id
-    QuickscopeSheet(onDismiss, "Prüfungen") {
+    QuickscopeSheet(onDismiss, "Meine Themen") {
         sortExams(state.exams, now).forEach { e ->
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable { vm.selectExam(e.id); onDismiss() }.padding(start = 20.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(if (e.id == active) Accent else Card))
-                Column(Modifier.weight(1f).padding(start = 12.dp, top = 8.dp, bottom = 8.dp)) {
-                    Text(e.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(examSubtitle(e, now), color = Muted, style = MaterialTheme.typography.bodySmall)
+            androidx.compose.runtime.key(e.id) {
+                var menu by remember { mutableStateOf(false) }
+                RowCard({ vm.selectExam(e.id); onDismiss() }) {
+                    TopicIcon(e.icon, 40.dp, active = e.id == active)
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(e.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(examSubtitle(e, now), color = Muted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Box {
+                        Text(
+                            "⋮", style = MaterialTheme.typography.titleLarge, color = Color.White,
+                            modifier = Modifier.hapticClickable { menu = true }.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                        DropdownMenu(menu, { menu = false }, modifier = Modifier.background(CardHigh).border(1.dp, Outline, RoundedCornerShape(12.dp))) {
+                            DropdownMenuItem(text = { Text("Bearbeiten") }, onClick = { menu = false; onEdit(e.id) })
+                            DropdownMenuItem(text = { Text("Material") }, onClick = { menu = false; onMaterial(e.id) })
+                            DropdownMenuItem(text = { Text("Löschen", color = Danger) }, onClick = { menu = false; onDelete(e.id) })
+                        }
+                    }
                 }
-                Text(
-                    "⋮", style = MaterialTheme.typography.titleLarge, color = Muted,
-                    modifier = Modifier.hapticClickable { onSettings(e.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
             }
         }
-        PrimaryButton("Neue Prüfung", onNew)
+        PrimaryButton("Neues Thema", onNew)
     }
 }
 

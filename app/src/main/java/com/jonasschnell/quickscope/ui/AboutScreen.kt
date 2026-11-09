@@ -2,6 +2,7 @@ package com.jonasschnell.quickscope.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,12 +117,12 @@ fun <T> DropdownField(label: String, value: String, options: List<Pair<T, String
     var open by remember { mutableStateOf(false) }
     Box {
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(CardHigh).hapticClickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(CardHigh).border(1.dp, com.jonasschnell.quickscope.ui.theme.Outline, RoundedCornerShape(20.dp)).hapticClickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Text(label, color = Muted, style = MaterialTheme.typography.labelMedium)
             Text(value, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
-        DropdownMenu(open, { open = false }, modifier = Modifier.background(Card).heightIn(max = 320.dp)) {
+        DropdownMenu(open, { open = false }, modifier = Modifier.background(CardHigh).border(1.dp, com.jonasschnell.quickscope.ui.theme.Outline, RoundedCornerShape(12.dp)).heightIn(max = 320.dp)) {
             options.forEach { (key, text) -> DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(key); open = false }) }
         }
     }

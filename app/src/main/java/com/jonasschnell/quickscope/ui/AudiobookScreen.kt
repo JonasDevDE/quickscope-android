@@ -65,9 +65,9 @@ fun AudiobookScreen(examId: String, onQuestions: () -> Unit, onClose: () -> Unit
         }
         when (s.phase) {
             BookPhase.Playing -> PlayingView(s, vm)
-            BookPhase.Finished -> EndView("Fertig. Jetzt Fragen dazu?", "Zu den Fragen", { vm.close(); onQuestions() }, "Schließen", close)
+            BookPhase.Finished -> EndView("Fertig. Jetzt testen?", "Zum Test", { vm.close(); onQuestions() }, "Schließen", close)
             BookPhase.Empty -> EndView(s.message ?: "Nichts Neues zu hören.", "Mehr zuhören", { vm.start(examId, EXTRA_MINUTES, repeat = true) }, "Schließen", close)
-            BookPhase.Error -> EndView(s.message ?: "Das hat nicht geklappt", "Nochmal", { vm.start(examId, null) }, "Schließen", close)
+            BookPhase.Error -> LaunchedEffect(Unit) { close() } // kein Fehlerbild: ruhig zurueck auf Heute
             else -> {
                 SkeletonCard(70.dp)
                 Spacer(Modifier.height(12.dp))

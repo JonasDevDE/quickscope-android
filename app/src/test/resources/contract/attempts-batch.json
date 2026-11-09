@@ -1,0 +1,57 @@
+{
+  "forecast" : {
+    "scoreNowPercent" : 55,
+    "scoreAtExamPercent" : 95,
+    "projections" : [ {
+      "minutes" : 10,
+      "scoreAtExamPercent" : 95
+    }, {
+      "minutes" : 20,
+      "scoreAtExamPercent" : 95
+    }, {
+      "minutes" : 30,
+      "scoreAtExamPercent" : 95
+    }, {
+      "minutes" : 45,
+      "scoreAtExamPercent" : 95
+    }, {
+      "minutes" : 60,
+      "scoreAtExamPercent" : 95
+    } ],
+    "daysLeft" : 10,
+    "hoursLeft" : 227,
+    "doneSecondsToday" : 0,
+    "streakDays" : 2,
+    "bestStreakDays" : 3,
+    "weakTopics" : [ {
+      "topicId" : "6af22362ac9dc2f1867cbcda",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.58
+    }, {
+      "topicId" : "6af22362ac9dc2f1867cbcdd",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.54
+    }, {
+      "topicId" : "6af22362ac9dc2f1867cbcdc",
+      "title" : "Kalkulation",
+      "mastery" : 0.39
+    } ],
+    "confidence" : "low",
+    "mode" : "marathon",
+    "coveragePercent" : 45,
+    "milestones" : [ {
+      "date" : "2026-11-16",
+      "coveragePercent" : 95,
+      "scorePercent" : 80
+    } ],
+    "plan" : {
+      "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
+      "chaptersTotal" : 2,
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 5
+    },
+    "showCheatsheetSuggestion" : false,
+    "note" : "Schätzung, keine Garantie"
+  },
+  "doneSecondsToday" : 0
+}

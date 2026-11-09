@@ -65,28 +65,18 @@ fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onSettings: (
 
 @Composable
 private fun BigSettingsRow(title: String, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-    }
+    RowCard(onClick) { Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium) }
 }
 
 private enum class SettingsPage { Sound, Account }
 
-/** Einstellungen: vier grosse Zeilen (Lernen, Ton, Prüfung, Konto), jede oeffnet eine kleine Seite; Profil und Abmelden liegen im Avatar-Sheet. */
+/** Einstellungen (app-weit): nur Ton und Konto. Einstellungen eines Themas gibt es nur ueber das Drei-Punkte-Menue in "Meine Themen". */
 @Composable
-fun SettingsMain(
-    state: UiState, vm: AppViewModel, onExam: (String, ExamPage) -> Unit, onLegal: (com.jonasschnell.quickscope.logic.LegalPage) -> Unit, onDismiss: () -> Unit,
-) {
+fun SettingsMain(state: UiState, vm: AppViewModel, onLegal: (com.jonasschnell.quickscope.logic.LegalPage) -> Unit, onDismiss: () -> Unit) {
     var page by remember { mutableStateOf<SettingsPage?>(null) }
-    val exam = state.activeExam
     when (page) {
         null -> QuickscopeSheet(onDismiss, "Einstellungen") {
-            if (exam != null) SettingsRow("Lernen", null, { onExam(exam.id, ExamPage.Learn) }) { Chevron("${exam.dailyMinutes} min") }
             SettingsRow("Ton", null, { page = SettingsPage.Sound }) { Chevron(if (vm.audioEnabled) "An" else "Aus") }
-            if (exam != null) SettingsRow("Prüfung", null, { onExam(exam.id, ExamPage.Exam) }) { Chevron(null) }
             SettingsRow("Konto", null, { page = SettingsPage.Account }) { Chevron(null) }
         }
         SettingsPage.Sound -> SoundPage(vm) { page = null }
@@ -107,7 +97,7 @@ private fun SoundPage(vm: AppViewModel, onDismiss: () -> Unit) {
         SettingsRow("Vorlesen", null, { on = !on }) {
             Switch(
                 checked = on, onCheckedChange = { on = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = Accent, checkedThumbColor = Color.White, uncheckedTrackColor = CardHigh, uncheckedThumbColor = Muted, uncheckedBorderColor = CardHigh),
+                colors = SwitchDefaults.colors(checkedTrackColor = Accent, checkedThumbColor = Color.Black, checkedBorderColor = Accent, uncheckedTrackColor = Color(0xFF3E3E42), uncheckedThumbColor = Color(0xFFD0D0D4), uncheckedBorderColor = Color(0xFF8A8A90)),
             )
         }
     }
@@ -127,19 +117,15 @@ private fun AccountPage(state: UiState, vm: AppViewModel, onLegal: (com.jonassch
         }
         SettingsRow("Meine Daten exportieren", null, { if (online) exportLauncher.launch("quickscope-export.json") else vm.needInternet() }) {}
         UpdateRow(state, vm)
-        Column(
-            Modifier.fillMaxWidth().padding(top = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             com.jonasschnell.quickscope.logic.LegalPage.entries.forEach { lp ->
                 HapticTextButton(onClick = { onLegal(lp) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
                     Text(lp.title, color = Muted, style = MaterialTheme.typography.labelMedium)
                 }
             }
-            HapticTextButton(onClick = { if (online) accountStep = 1 else vm.needInternet() }) {
-                Text("Konto löschen", color = Danger, style = MaterialTheme.typography.labelMedium)
-            }
+        }
+        DangerZone {
+            DangerRow("Konto löschen") { if (online) accountStep = 1 else vm.needInternet() }
         }
     }
 
@@ -147,7 +133,7 @@ private fun AccountPage(state: UiState, vm: AppViewModel, onLegal: (com.jonassch
         TickOnAppear()
         AlertDialog(
             onDismissRequest = { accountStep = 0 },
-            containerColor = Card,
+            containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
             titleContentColor = Color.White,
             textContentColor = Color(0xFFCFCFD4),
             title = { Text("Konto löschen?") },
@@ -163,7 +149,7 @@ private fun AccountPage(state: UiState, vm: AppViewModel, onLegal: (com.jonassch
         TickOnAppear()
         AlertDialog(
             onDismissRequest = { accountStep = 0 },
-            containerColor = Card,
+            containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
             titleContentColor = Color.White,
             textContentColor = Color(0xFFCFCFD4),
             title = { Text("Wirklich endgültig löschen?") },
@@ -174,14 +160,10 @@ private fun AccountPage(state: UiState, vm: AppViewModel, onLegal: (com.jonassch
     }
 }
 
-/** Ruhige Einstellungszeile: Titel, optionaler Untertitel, Aktion rechts. */
+/** Einstellungszeile: Titel, optionaler Untertitel, Aktion rechts; gemeinsame erhoehte Flaeche mit Rand und Pressed-State. */
 @Composable
 internal fun SettingsRow(title: String, subtitle: String?, onClick: () -> Unit, trailing: @Composable () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    RowCard(onClick) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             if (subtitle != null) Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall)

@@ -23,7 +23,7 @@ class AttemptQueue(private val storage: QueueStorage) {
 
     fun add(examId: String, attempt: AttemptRequest) {
         val list = pending(examId)
-        if (attempt.offlineId != null && list.any { it.offlineId == attempt.offlineId }) return // gleiche Antwort nie doppelt vormerken
+        if (attempt.clientId != null && list.any { it.clientId == attempt.clientId }) return // gleiche Antwort nie doppelt vormerken
         save(examId, list + attempt)
     }
 

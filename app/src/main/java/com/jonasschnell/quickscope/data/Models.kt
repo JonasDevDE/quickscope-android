@@ -51,6 +51,8 @@ data class Exam(
     /** Fortschritt der Verarbeitung (optional). */
     val stage: String? = null,
     val progressPercent: Int? = null,
+    /** Icon-Schluessel aus der festen Liste (von der KI gewaehlt oder vom Nutzer gesetzt); fehlt/unbekannt: graduation. */
+    val icon: String? = null,
 )
 
 @Serializable
@@ -237,8 +239,8 @@ data class HeardRequest(val fraction: Double)
 @Serializable
 data class AttemptRequest(
     val itemId: String, val outcome: String, val ms: Int, val at: String? = null,
-    /** Eindeutige Id je Antwort: der Server nimmt eine erneut gesendete Antwort nicht doppelt (offline-fest, idempotent). */
-    val offlineId: String? = null,
+    /** Eindeutige Id je Antwort (UUID): schon verbuchte clientIds uebergeht der Server, so ist das erneute Senden wiederholbar. */
+    val clientId: String? = null,
 )
 
 @Serializable
@@ -285,6 +287,7 @@ data class ExamUpdate(
     val description: String? = null,
     val dailyMinutes: Int? = null,
     val priorKnowledge: String? = null,
+    val icon: String? = null,
 )
 
 /** Ein Wort im Vorlesetext: [start]/[end] sind Zeichenindizes (UTF-16, end exklusiv), Zeiten in Inhaltszeit der Audiodatei. */
@@ -326,4 +329,4 @@ data class Budget(val dailyMinutes: Int = 0, val usedMinutesToday: Int = 0, val 
 
 /** Antwort von GET audio/status: gibt es gerade eine Stimme (billig, serverseitig gecacht)? */
 @Serializable
-data class AudioStatus(val available: Boolean = true, val latencyMs: Int? = null)
+data class AudioStatus(val available: Boolean = true, val latencyMs: Int? = null, val reason: String? = null, val retryAfterSeconds: Int? = null)

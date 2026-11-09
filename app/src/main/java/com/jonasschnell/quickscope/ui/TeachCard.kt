@@ -87,7 +87,7 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
             maxLines = 1,
         )
         Spacer(Modifier.height(4.dp))
-        PrimaryButton("Weiter zu den Fragen", {
+        PrimaryButton("Weiter zum Test", {
             voice.stop()
             // Ueberspringen zaehlt nicht als gehoert: nur melden, wenn wirklich etwas gehoert wurde
             val fraction = heardFraction(elapsed, durationMs, finished)

@@ -179,7 +179,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
     val shownItems = s.tasks.filterIndexed { i, _ -> !s.isRetry.getOrElse(i) { false } }.map { it.item }
     val done = (0 until s.index).count { !s.isRetry.getOrElse(it) { false } }
-    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio) null else ({
+    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio || voice.failed) null else ({
         PlayPauseButton(voice.playState, {
             // Pause gilt nur fuer die aktuelle Karte; die naechste Karte startet von selbst
             when (playTap(voice.playState)) {

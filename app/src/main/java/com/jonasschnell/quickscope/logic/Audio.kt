@@ -120,8 +120,9 @@ enum class AudioMode { On, Silent }
 fun audioModeFor(enabled: Boolean, online: Boolean, available: Boolean?): AudioMode =
     if (enabled && online && available != false) AudioMode.On else AudioMode.Silent
 
-/** Status-Antwort -> verfuegbar? Nur eine ausdrueckliche Antwort mit available=false heisst nein; fehlende Antwort (404, Fehler, Timeout) = unbekannt = versuchen. */
-fun statusAvailable(status: com.jonasschnell.quickscope.data.AudioStatus?): Boolean = status?.available ?: true
+/** Status-Antwort -> verfuegbar? Nur eine ausdrueckliche Antwort mit available=false UND reason heisst nein; fehlende Antwort (404, Fehler, Timeout) = unbekannt = versuchen. */
+fun statusAvailable(status: com.jonasschnell.quickscope.data.AudioStatus?): Boolean =
+    !(status != null && !status.available && !status.reason.isNullOrBlank())
 
 /** Darf ueberhaupt eine Audio-Anfrage (Status, Stream, Wortzeiten) gestellt werden? Nur bei eingeschaltetem Vorlesen. */
 fun mayRequestAudio(enabled: Boolean): Boolean = enabled

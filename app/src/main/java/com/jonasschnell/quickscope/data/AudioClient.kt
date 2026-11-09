@@ -19,6 +19,7 @@ class AudioClient(
 ) {
     private var lastCheck = 0L
     private var lastResult = true
+    private var recheckMs = AUDIO_RECHECK_MS
     private val STATUS_TIMEOUT_MS = 4_000L
     private val base = Uri.parse(BuildConfig.BASE_URL)
 
@@ -27,7 +28,7 @@ class AudioClient(
         if (!store.audioEnabled) return false // kein einziger Audio-Aufruf bei "Vorlesen aus"
         if (!connectivity.isOnline()) return false
         val now = SystemClock.elapsedRealtime()
-        if (!force && lastCheck != 0L && now - lastCheck < AUDIO_RECHECK_MS) return lastResult
+        if (!force && lastCheck != 0L && now - lastCheck < recheckMs) return lastResult
         // Nur eine ausdrueckliche Antwort {available:false} schaltet still; 404/401/5xx/Timeout/Netzfehler heissen "unbekannt"
         // und der Stream wird trotzdem versucht (bei Fehler bleibt nur diese Karte still).
         val status = try {
@@ -38,8 +39,23 @@ class AudioClient(
             null
         }
         lastResult = statusAvailable(status)
+        // Der Server nennt bei Ausfall, wann es sich lohnt, wieder zu fragen
+        recheckMs = if (!lastResult) (status?.retryAfterSeconds?.times(1000L)?.coerceIn(5_000L, 300_000L) ?: AUDIO_RECHECK_MS) else AUDIO_RECHECK_MS
         lastCheck = now
         return lastResult
+    }
+
+    /** Strenger Status fuer "Verstehen": nur eine echte Antwort available=true zaehlt (Fehler/404 = nicht bestaetigt). */
+    suspend fun confirmed(): Boolean {
+        if (!store.audioEnabled || !connectivity.isOnline()) return false
+        val status = try {
+            kotlinx.coroutines.withTimeoutOrNull(STATUS_TIMEOUT_MS) { api.audioStatus() }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        return com.jonasschnell.quickscope.logic.listenStatusConfirmed(status)
     }
 
     fun itemUri(examId: String, itemId: String): Uri = Uri.parse("${BuildConfig.BASE_URL}api/exams/$examId/items/$itemId/audio?part=question")

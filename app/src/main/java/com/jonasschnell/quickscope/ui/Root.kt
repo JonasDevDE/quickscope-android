@@ -76,7 +76,7 @@ private sealed interface Overlay {
     data object SettingsMain : Overlay
     data object Exams : Overlay
     data object NewExam : Overlay
-    data class Settings(val examId: String, val start: ExamSetting? = null, val page: ExamPage = ExamPage.Exam) : Overlay
+    data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
     data class Cheat(val examId: String) : Overlay
     data class Audiobook(val examId: String) : Overlay
     data class More(val examId: String) : Overlay
@@ -197,18 +197,27 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
         when (val o = overlay) {
             null -> Unit
             Overlay.Me -> MeSheet(state, vm, onAbout = { if (online) overlay = Overlay.About else vm.needInternet() }, onSettings = { overlay = Overlay.SettingsMain }, onDismiss = dismiss)
-            Overlay.SettingsMain -> SettingsMain(state, vm, onExam = { id, pg -> overlay = Overlay.Settings(id, null, pg) }, onLegal = { legal = it }, onDismiss = dismiss)
+            Overlay.SettingsMain -> SettingsMain(state, vm, onLegal = { legal = it }, onDismiss = dismiss)
             Overlay.About -> AboutScreen(state, vm, onClose = dismiss)
-            Overlay.Exams -> ExamsSheet(state, vm, onNew = { if (online) overlay = Overlay.NewExam else vm.needInternet() }, onSettings = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
+            Overlay.Exams -> ExamsSheet(state, vm, onNew = { if (online) overlay = Overlay.NewExam else vm.needInternet() }, onEdit = { overlay = Overlay.Settings(it) },
+                onMaterial = { if (online) overlay = Overlay.Settings(it, ExamSetting.Material) else vm.needInternet() },
+                onDelete = { overlay = Overlay.Settings(it, ExamSetting.Delete) }, onDismiss = dismiss)
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
-            is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, o.page, dismiss)
+            is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
             is Overlay.More -> {
                 val exam = state.exams.firstOrNull { it.id == o.examId }
+                val hasLessons = (state.activeForecast?.plan?.chaptersTotal ?: 0) > 0
+                var canUnderstand by remember { mutableStateOf(false) }
+                var probing by remember { mutableStateOf(false) }
+                LaunchedEffect(o.examId, online) { canUnderstand = online && hasLessons && vm.listenReady(hasLessons) }
                 if (exam != null) MoreSheet(
-                    canListen = com.jonasschnell.quickscope.logic.canListen(online, vm.audioEnabled, (state.activeForecast?.plan?.chaptersTotal ?: 0) > 0),
-                    onQuestionsOnly = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
-                    onListen = { overlay = Overlay.Audiobook(exam.id) },
+                    canUnderstand = canUnderstand, probing = probing,
+                    onTest = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
+                    onUnderstand = {
+                        probing = true
+                        vm.startUnderstand(exam.id, onReady = { probing = false; overlay = Overlay.Audiobook(exam.id) }, onFail = { probing = false; canUnderstand = false })
+                    },
                     onDismiss = dismiss,
                 )
             }
@@ -269,7 +278,7 @@ private fun Header(state: UiState, vm: AppViewModel, onExams: () -> Unit, onMe: 
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ExamPill(state.activeExam?.name ?: "Neue Prüfung", loading = state.phase != Phase.Ready || !state.examsLoaded, onClick = onExams)
+        ExamPill(state.activeExam?.name ?: "Neues Thema", loading = state.phase != Phase.Ready || !state.examsLoaded, onClick = onExams, icon = state.activeExam?.icon)
         val me = state.me
         Box(Modifier.size(44.dp).clip(CircleShape).hapticClickable(onClick = onMe)) {
             UserAvatar(me?.pictureUrl ?: vm.signInPictureUrl, me?.name ?: me?.email ?: "?", 44.dp)

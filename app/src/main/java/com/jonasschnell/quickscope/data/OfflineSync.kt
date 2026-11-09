@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 enum class PackSyncResult { Synced, Pending, Unavailable }
 
 /**
- * Haelt das Offline-Paket aktuell: zuerst offene Antworten senden (idempotent ueber offlineId), dann das Paket holen,
+ * Haelt das Offline-Paket aktuell: zuerst offene Antworten senden (idempotent ueber clientId), dann das Paket holen,
  * erst danach das lokal "Erledigte" zuruecksetzen; so gehen Antworten nie verloren und das neue Paket kennt den neuen Stand.
  * 404/Fehler sind ruhig: dann bleibt das alte Paket liegen.
  */
@@ -29,21 +29,34 @@ class OfflineSync(private val api: QuickscopeApi, private val local: LocalData, 
     suspend fun syncExam(examId: String): PackSyncResult {
         attempts.flush(examId)
         if (attempts.hasPending(examId)) return PackSyncResult.Pending
-        val text = try {
-            api.offlinePack(examId, OFFLINE_DAYS).use { it.string() }
+        val response = try {
+            api.offlinePack(examId, OFFLINE_DAYS, local.packEtag(examId))
         } catch (e: CancellationException) {
             throw e
-        } catch (e: HttpException) {
-            AppLog.w("Offline", "Paket nicht verfuegbar: HTTP ${e.code()}")
-            return PackSyncResult.Unavailable
         } catch (e: Exception) {
             AppLog.w("Offline", "Paket nicht geladen: ${e.javaClass.simpleName}")
             return PackSyncResult.Unavailable
         }
+        if (response.code() == 304) {
+            // unveraendert: das gespeicherte Paket bleibt, der Server kennt alle Antworten
+            local.clearDone(examId)
+            return PackSyncResult.Synced
+        }
+        if (!response.isSuccessful) {
+            AppLog.w("Offline", "Paket nicht verfuegbar: HTTP ${response.code()}")
+            return PackSyncResult.Unavailable
+        }
+        val text = try {
+            response.body()?.use { it.string() } ?: return PackSyncResult.Unavailable
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return PackSyncResult.Unavailable
+        }
         val pack = parseOfflinePack(text) ?: return PackSyncResult.Unavailable
-        local.savePack(examId, text, pack.days)
+        local.savePack(examId, text, OFFLINE_DAYS, response.headers()["ETag"])
         local.clearDone(examId)
-        runCatching { local.saveTopics(examId, api.topics(examId)) }
+        if (pack.topics.isNotEmpty()) local.saveTopics(examId, pack.topics) else runCatching { local.saveTopics(examId, api.topics(examId)) }
         runCatching { local.saveForecast(examId, api.forecast(examId)) }
         return PackSyncResult.Synced
     }

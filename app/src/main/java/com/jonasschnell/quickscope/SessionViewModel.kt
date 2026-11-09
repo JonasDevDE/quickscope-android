@@ -379,7 +379,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     private fun errorText(e: Exception): String = when (e) {
         is HttpException -> backendMessage(e) ?: when (e.code()) {
-            409 -> "Die Prüfung ist schon vorbei."
+            409 -> "Der Termin ist schon vorbei."
             else -> "Serverfehler (${e.code()})."
         }
         is IOException -> "Keine Verbindung zum Server."

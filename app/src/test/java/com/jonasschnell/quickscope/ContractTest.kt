@@ -626,4 +626,63 @@ class ContractTest {
         assertFalse(body.contains("date"))
         assertTrue(body.contains("\"mode\":\"open\""))
     }
+
+    @Test fun offlinePackAttemptsBatchAndAudioStatusSamples() {
+        val pack = com.jonasschnell.quickscope.logic.parseOfflinePack(raw("offline-pack.json"))!!
+        assertEquals(8, pack.entries.size)
+        assertTrue(pack.entries.all { it.item != null || it.lesson != null })
+        assertEquals("i-card", pack.entries.first().item?.id)
+        assertEquals("card", pack.entries.first().item?.type)
+        assertEquals(8, pack.entries.first().item?.estSeconds)
+        assertEquals(0, pack.reserve.size)
+        assertEquals(4, pack.topics.size)
+        assertTrue(pack.version.isNotBlank())
+        assertEquals(setOf("card", "cloze", "number", "match", "choice2"), pack.entries.mapNotNull { it.item?.type }.toSet().intersect(setOf("card", "cloze", "number", "match", "choice2")))
+        val status = parse("audio-status.json", com.jonasschnell.quickscope.data.AudioStatus.serializer())
+        assertTrue(status.available)
+        assertEquals(0, status.latencyMs)
+        assertTrue(com.jonasschnell.quickscope.logic.statusAvailable(status))
+        val resp = parse("attempts-batch.json", com.jonasschnell.quickscope.data.AttemptsResponse.serializer())
+        assertEquals(55, resp.forecast.scoreNowPercent)
+        assertEquals(95, resp.forecast.scoreAtExamPercent)
+        assertEquals(0, resp.doneSecondsToday)
+        // clientId geht mit der Antwort mit; maximal 500 je Aufruf
+        val body = AppJson.encodeToString(com.jonasschnell.quickscope.data.AttemptRequest.serializer(), com.jonasschnell.quickscope.data.AttemptRequest("i", "correct", 800, "2026-11-09T10:00:00Z", "u-1"))
+        assertTrue(body.contains("\"clientId\":\"u-1\""))
+        assertEquals(500, com.jonasschnell.quickscope.data.AttemptSync.MAX_BATCH)
+    }
+
+    @Test fun topicIconIsNullableAndFallsBackToGraduation() {
+        val withIcon = AppJson.decodeFromString(Exam.serializer(), """{"id":"e","name":"X","icon":"brain"}""")
+        assertEquals("brain", withIcon.icon)
+        assertEquals("brain", com.jonasschnell.quickscope.logic.normalizeIcon(withIcon.icon))
+        val without = AppJson.decodeFromString(Exam.serializer(), """{"id":"e","name":"X"}""")
+        assertEquals(null, without.icon)
+        assertEquals("graduation", com.jonasschnell.quickscope.logic.normalizeIcon(without.icon))
+        assertEquals("graduation", com.jonasschnell.quickscope.logic.normalizeIcon("unbekannt"))
+        assertEquals(59, com.jonasschnell.quickscope.logic.TOPIC_ICON_KEYS.toSet().size)
+        val body = AppJson.encodeToString(com.jonasschnell.quickscope.data.ExamUpdate.serializer(), com.jonasschnell.quickscope.data.ExamUpdate(icon = "rocket"))
+        assertEquals("""{"icon":"rocket"}""", body)
+    }
+
+    @Test fun everyTaskTypeIsRenderedAsItsOwnTaskNotAsCard() {
+        val pack = com.jonasschnell.quickscope.logic.parseOfflinePack(raw("offline-pack.json"))!!
+        val types = pack.entries.mapNotNull { it.item }.associate { it.type to com.jonasschnell.quickscope.logic.parseTask(it) }
+        assertTrue(types["card"] is com.jonasschnell.quickscope.logic.Task.Card)
+        assertTrue(types["cloze"] is com.jonasschnell.quickscope.logic.Task.Cloze)
+        assertTrue(types["match"] is com.jonasschnell.quickscope.logic.Task.Match)
+        assertTrue(types["choice2"] is com.jonasschnell.quickscope.logic.Task.Choice)
+        assertTrue(types["number"] is com.jonasschnell.quickscope.logic.Task.Choice)
+        // Typen, die das Beispiel nicht enthaelt, mit je einem Muster
+        fun task(type: String, payload: String) = com.jonasschnell.quickscope.logic.parseTask(
+            AppJson.decodeFromString(com.jonasschnell.quickscope.data.Item.serializer(), """{"id":"x","type":"$type","question":"q","answer":"a","payload":$payload}"""),
+        )
+        assertTrue(task("order", """{"steps":["a","b","c"]}""") is com.jonasschnell.quickscope.logic.Task.Order)
+        assertTrue(task("spot", """{"statements":["a","b","c"],"falseIndex":1}""") is com.jonasschnell.quickscope.logic.Task.Spot)
+        assertTrue(task("mc", """{"options":["a","b","c"],"correctIndex":2}""") is com.jonasschnell.quickscope.logic.Task.Choice)
+        assertTrue(task("truefalse", "{}") is com.jonasschnell.quickscope.logic.Task.Choice)
+        // kaputte Payload oder unbekannter Typ: ruhig als Karte (nie ein Absturz)
+        assertTrue(task("order", """{"steps":["a"]}""") is com.jonasschnell.quickscope.logic.Task.Card)
+        assertTrue(task("neuertyp", "{}") is com.jonasschnell.quickscope.logic.Task.Card)
+    }
 }

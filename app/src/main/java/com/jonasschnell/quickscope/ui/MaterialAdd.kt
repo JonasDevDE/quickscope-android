@@ -93,7 +93,7 @@ fun MaterialAddButtons(onJobs: (List<UploadJob>) -> Unit) {
     if (askMore) {
         AlertDialog(
             onDismissRequest = { askMore = false; pages = emptyList() },
-            containerColor = Card,
+            containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
             titleContentColor = Color.White,
             textContentColor = Muted,
             title = { Text("${pages.size} ${if (pages.size == 1) "Seite" else "Seiten"} aufgenommen") },
@@ -123,7 +123,7 @@ private fun RoleDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
     TickOnAppear()
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Card,
+        containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
         titleContentColor = Color.White,
         title = { Text("Was ist das?") },
         text = {

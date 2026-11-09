@@ -1,13 +1,16 @@
 package com.jonasschnell.quickscope.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,61 +53,52 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-/** Unterseite der Pruefungs-Einstellungen: Lernen (Zeit, Vorwissen, Beschreibung) oder Pruefung (Material, Name, Art, Datum, Mehr). */
-enum class ExamPage { Learn, Exam }
+enum class ExamSetting { Icon, Material, Description, Name, Kind, Daily, Prior, Reset, Delete }
 
-enum class ExamSetting { More, Material, Description, Name, Kind, When, Daily, Prior, Reset, Delete }
-
-/** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
+/**
+ * Thema-Seite im Stil der Profilseite: Name, Termin, Material, Beschreibung, Lernzeit, Vorwissen und am Ende der Gefahrenbereich.
+ * Erreichbar nur ueber das Drei-Punkte-Menue in "Meine Themen". Gespeichert wird automatisch und ohne Hinweis.
+ */
 @Composable
-fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt: ExamSetting? = null, page: ExamPage = ExamPage.Exam, onDismiss: () -> Unit) {
+fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt: ExamSetting? = null, onDismiss: () -> Unit) {
     var sub by remember { mutableStateOf(startAt) }
     val exam = state.exams.firstOrNull { it.id == examId }
     if (exam == null) {
         LaunchedEffect(Unit) { onDismiss() }
         return
     }
+    var name by remember(exam.id) { mutableStateOf(exam.name) }
+    AutoSave(name.trim(), name.isNotBlank()) { v, fail -> vm.updateExam(exam.id, ExamUpdate(name = v), fail) }
     // Die Seite bleibt immer sichtbar; Unterthemen kommen als kleine Sheets darueber.
-    if (page == ExamPage.Learn) {
-        PageScaffold("Lernen", onDismiss) {
-            SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
-            SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
-        }
-    } else {
-        var name by remember(exam.id) { mutableStateOf(exam.name) }
-        val saved = AutoSave(name.trim(), name.isNotBlank()) { v, fail -> vm.updateExam(exam.id, ExamUpdate(name = v), fail) }
-        PageScaffold("Prüfung", onDismiss, status = null) {
-            QuickscopeField(name, { name = it.take(80) }, "Name")
-            SettingsRow("Termin", null, { sub = if (isOpen(exam)) ExamSetting.Kind else ExamSetting.When }) {
-                Value(if (isOpen(exam)) "Dauerhaft" else formatExamWhen(exam.date, exam.time))
-            }
-            SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value(if (exam.materialCount == 1L) "1 Datei" else "${exam.materialCount} Dateien") }
-            SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(exam.description?.takeIf { it.isNotBlank() } ?: "–") }
-            HapticTextButton(onClick = { sub = ExamSetting.More }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge)
-            }
+    PageScaffold("Thema", onDismiss) {
+        QuickscopeField(name, { name = it.take(80) }, "Name")
+        SettingsRow("Icon", null, { sub = ExamSetting.Icon }) { TopicIcon(exam.icon, 36.dp) }
+        SettingsRow("Termin", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Ohne Termin" else formatExamWhen(exam.date, exam.time)) }
+        SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value(if (exam.materialCount == 1L) "1 Datei" else "${exam.materialCount} Dateien") }
+        SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(exam.description?.takeIf { it.isNotBlank() } ?: "–") }
+        SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
+        SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
+        DangerZone {
+            DangerRow("Von vorn beginnen") { sub = ExamSetting.Reset }
+            DangerRow("Thema löschen") { sub = ExamSetting.Delete }
         }
     }
     when (sub) {
         null -> Unit
-        ExamSetting.More -> QuickscopeSheet({ sub = null }, "Mehr") {
-            SettingsRow("Von vorn beginnen", null, { sub = ExamSetting.Reset }) {}
-            SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
-        }
+        ExamSetting.Icon -> IconSheet(vm, exam) { sub = null }
         ExamSetting.Material -> MaterialSheet(state, vm, exam) { sub = null }
         ExamSetting.Description -> DescriptionSheet(vm, exam) { sub = null }
-        ExamSetting.Name -> NameSheet(vm, exam) { sub = null }
-        ExamSetting.When -> WhenSheet(vm, exam) { sub = null }
+        ExamSetting.Name -> Unit
         ExamSetting.Kind -> KindSheet(vm, exam) { sub = null }
         ExamSetting.Daily -> DailySheet(state, vm, exam) { sub = null }
         ExamSetting.Prior -> PriorSheet(vm, exam) { sub = null }
         ExamSetting.Reset -> TwoStepConfirm(
-            "Von vorn beginnen?", "Lernstand und Aufgaben dieser Prüfung werden neu aufgebaut.",
-            "Wirklich von vorn beginnen?", "Letzte Bestätigung: Der Lernstand wird jetzt gelöscht.",
+            "Von vorn beginnen?", "Der Lernstand dieses Themas wird zurückgesetzt und alle Aufgaben werden neu aufgebaut.",
+            "Wirklich von vorn beginnen?", "Letzte Bestätigung: Der Lernstand wird jetzt zurückgesetzt.",
             "Von vorn beginnen", { vm.regenerateItems(exam.id, resetProgress = true); onDismiss() }, { sub = null },
         )
         ExamSetting.Delete -> TwoStepConfirm(
-            "Prüfung löschen?", "Material, Aufgaben und Fortschritt dieser Prüfung werden gelöscht.",
+            "Thema löschen?", "Material, Aufgaben und Fortschritt dieses Themas werden gelöscht.",
             "Wirklich endgültig löschen?", "Letzte Bestätigung: „${exam.name}“ wird unwiderruflich gelöscht.",
             "Endgültig löschen", { vm.deleteExam(exam.id); onDismiss() }, { sub = null },
         )
@@ -123,7 +117,7 @@ fun TwoStepConfirm(title1: String, text1: String, title2: String, text2: String,
     TickOnAppear()
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor = Card,
+        containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
         titleContentColor = Color.White,
         textContentColor = Color(0xFFCFCFD4),
         title = { Text(if (step == 1) title1 else title2) },
@@ -136,57 +130,52 @@ fun TwoStepConfirm(title1: String, text1: String, title2: String, text2: String,
 }
 
 @Composable
-private fun NameSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf(exam.name) }
-    val saved = AutoSave(name.trim(), name.isNotBlank()) { v, fail -> vm.updateExam(exam.id, ExamUpdate(name = v), fail) }
-    QuickscopeSheet(onDismiss, "Name", status = null) {
-        QuickscopeField(name, { name = it.take(80) }, "Name")
-    }
-}
-
-@Composable
 private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf(exam.description.orEmpty()) }
     val saved = AutoSave(text.trim(), true) { v, fail -> vm.updateExam(exam.id, ExamUpdate(description = v), fail) }
-    QuickscopeSheet(onDismiss, "Beschreibung", status = null) {
-        QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
+    PageScaffold("Beschreibung", onDismiss) {
+        QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", modifier = Modifier.heightIn(min = 180.dp), singleLine = false)
         Text("${text.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall)
     }
 }
 
+/** Icon waehlen: Raster der festen Sammlung (5 Spalten, grosse Treffer); setzt sofort. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WhenSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
-    var date by remember { mutableStateOf(runCatching { LocalDate.parse(exam.date) }.getOrNull()) }
-    var time by remember { mutableStateOf(runCatching { LocalTime.parse(exam.time) }.getOrDefault(LocalTime.of(8, 0))) }
-    val past = date?.let { isInPast(it, time, Instant.now()) } == true
-    val saved = AutoSave(date to time, date != null && !past, instantKey = date to time) { (d, t), fail ->
-        vm.updateExam(exam.id, ExamUpdate(date = d.toString(), time = "%02d:%02d".format(t.hour, t.minute)), fail)
-    }
-    QuickscopeSheet(onDismiss, "Termin", status = null) {
-        WhenPicker(date, time, { date = it }, { time = it })
-        SecondaryButton("Dauerhaft lernen", { vm.updateExam(exam.id, ExamUpdate(mode = "open")); onDismiss() })
-        if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = Danger, style = MaterialTheme.typography.bodyMedium)
+private fun IconSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
+    val current = com.jonasschnell.quickscope.logic.normalizeIcon(exam.icon)
+    QuickscopeSheet(onDismiss, "Icon") {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 5) {
+            com.jonasschnell.quickscope.logic.TOPIC_ICON_KEYS.forEach { key ->
+                Box(Modifier.hapticClickable { vm.updateExam(exam.id, ExamUpdate(icon = key)); onDismiss() }.padding(2.dp)) {
+                    TopicIcon(key, 56.dp, active = key == current)
+                }
+            }
+        }
     }
 }
 
-/** Art wechseln: Dauerhaft lernen (ohne Termin) oder Pruefung (Datum und Uhrzeit werden abgefragt). */
+/** Termin: "Mit Termin" (Datum und Uhrzeit des Pruefungstermins) oder "Ohne Termin" (dauerhaft lernen). */
 @Composable
 private fun KindSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
-    var wantsExam by remember { mutableStateOf(!isOpen(exam)) }
+    val wasExam = !isOpen(exam)
+    var wantsExam by remember { mutableStateOf(wasExam) }
     var date by remember { mutableStateOf(runCatching { LocalDate.parse(exam.date) }.getOrNull()) }
     var time by remember { mutableStateOf(runCatching { LocalTime.parse(exam.time) }.getOrDefault(LocalTime.of(8, 0))) }
-    QuickscopeSheet(onDismiss, "Art") {
-        if (wantsExam) PrimaryButton("Prüfung", {}) else SecondaryButton("Prüfung", { wantsExam = true })
-        if (!wantsExam) PrimaryButton("Dauerhaft lernen", {}) else SecondaryButton("Dauerhaft lernen", {
+    val past = date?.let { isInPast(it, time, Instant.now()) } == true
+    AutoSave(date to time, wasExam && wantsExam && date != null && !past, instantKey = date to time) { (d, t), fail ->
+        vm.updateExam(exam.id, ExamUpdate(date = d.toString(), time = "%02d:%02d".format(t.hour, t.minute)), fail)
+    }
+    QuickscopeSheet(onDismiss, "Termin") {
+        if (wantsExam) PrimaryButton("Mit Termin", {}) else SecondaryButton("Mit Termin", { wantsExam = true })
+        if (!wantsExam) PrimaryButton("Ohne Termin", {}) else SecondaryButton("Ohne Termin", {
             vm.updateExam(exam.id, ExamUpdate(mode = "open"))
             onDismiss()
         })
-        if (wantsExam && isOpen(exam)) {
-            // Wechsel zur Pruefung: Datum und Uhrzeit abfragen
+        if (wantsExam) {
             WhenPicker(date, time, { date = it }, { time = it })
-            val past = date?.let { isInPast(it, time, Instant.now()) } == true
             if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = Danger, style = MaterialTheme.typography.bodyMedium)
-            PrimaryButton("Speichern", {
+            if (!wasExam) PrimaryButton("Speichern", {
                 vm.updateExam(exam.id, ExamUpdate(mode = "exam", date = date.toString(), time = "%02d:%02d".format(time.hour, time.minute)))
                 onDismiss()
             }, enabled = date != null && !past)
@@ -235,7 +224,7 @@ private fun statusLabel(m: Material) = when (m.status) {
 
 @Composable
 private fun Chip(text: String, color: Color = Muted) {
-    Text(text, color = color, style = MaterialTheme.typography.labelMedium, modifier = Modifier.clip(RoundedCornerShape(50)).background(CardHigh).padding(horizontal = 10.dp, vertical = 4.dp))
+    Text(text, color = color, style = MaterialTheme.typography.labelMedium, modifier = Modifier.clip(RoundedCornerShape(50)).background(com.jonasschnell.quickscope.ui.theme.Black).border(1.dp, com.jonasschnell.quickscope.ui.theme.Outline, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp))
 }
 
 /** Material einer Pruefung: Liste mit Rolle, Status, Seiten und Warnung; Original ansehen, entfernen, hinzufuegen. */
@@ -244,7 +233,7 @@ private fun MaterialSheet(state: UiState, vm: AppViewModel, exam: Exam, onDismis
     var removing by remember { mutableStateOf<Material?>(null) }
     LaunchedEffect(exam.id) { vm.loadMaterials(exam.id) }
     val list = state.materials.takeIf { state.materialsExamId == exam.id }
-    QuickscopeSheet(onDismiss, "Material") {
+    PageScaffold("Material", onDismiss) {
         UploadCard(state, exam.id, vm::cancelUpload, vm::retryUpload)
         if (list == null) {
             SkeletonCard(70.dp)
@@ -254,7 +243,7 @@ private fun MaterialSheet(state: UiState, vm: AppViewModel, exam: Exam, onDismis
         } else {
             list.forEach { m ->
                 Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable { vm.openPreview(exam.id, m) }.padding(16.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CardHigh).border(1.dp, com.jonasschnell.quickscope.ui.theme.Outline, RoundedCornerShape(24.dp)).hapticClickable { vm.openPreview(exam.id, m) }.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -271,13 +260,12 @@ private fun MaterialSheet(state: UiState, vm: AppViewModel, exam: Exam, onDismis
                 }
             }
         }
-        Text("Material hinzufügen", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         MaterialAddButtons(onJobs = { vm.upload(exam.id, it) })
     }
     removing?.let { m ->
         AlertDialog(
             onDismissRequest = { removing = null },
-            containerColor = Card,
+            containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
             titleContentColor = Color.White,
             textContentColor = Color(0xFFCFCFD4),
             title = { Text("Material entfernen?") },

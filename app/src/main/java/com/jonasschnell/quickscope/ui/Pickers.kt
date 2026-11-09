@@ -73,7 +73,7 @@ private fun DateDialog(initial: LocalDate?, onPick: (LocalDate) -> Unit, onDismi
         },
     )
     val colors = DatePickerDefaults.colors(
-        containerColor = Card, titleContentColor = Muted, headlineContentColor = Color.White, weekdayContentColor = Muted,
+        containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh, titleContentColor = Muted, headlineContentColor = Color.White, weekdayContentColor = Muted,
         subheadContentColor = Muted, yearContentColor = Color.White, currentYearContentColor = Accent,
         selectedYearContentColor = OnAccent, selectedYearContainerColor = Accent, dayContentColor = Color.White,
         disabledDayContentColor = Color(0xFF55555A), selectedDayContentColor = OnAccent, selectedDayContainerColor = Accent,
@@ -97,7 +97,7 @@ private fun TimeDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDismis
     val state = rememberTimePickerState(initial.hour, initial.minute, is24Hour = true)
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Card,
+        containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh,
         title = { Text("Uhrzeit", color = Color.White) },
         text = {
             LightSystemIcons()
@@ -106,7 +106,7 @@ private fun TimeDialog(initial: LocalTime, onPick: (LocalTime) -> Unit, onDismis
                     state,
                     colors = TimePickerDefaults.colors(
                         clockDialColor = CardHigh, clockDialSelectedContentColor = OnAccent, clockDialUnselectedContentColor = Color.White,
-                        selectorColor = Accent, containerColor = Card, timeSelectorSelectedContainerColor = Accent,
+                        selectorColor = Accent, containerColor = com.jonasschnell.quickscope.ui.theme.CardHigh, timeSelectorSelectedContainerColor = Accent,
                         timeSelectorUnselectedContainerColor = CardHigh, timeSelectorSelectedContentColor = OnAccent,
                         timeSelectorUnselectedContentColor = Color.White,
                     ),

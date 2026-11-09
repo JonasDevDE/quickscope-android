@@ -16,12 +16,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 val Black = Color(0xFF000000)
-val Card = Color(0xFF121212)
-val CardHigh = Color(0xFF1A1A1A)
-val Sheet = Color(0xFF101010)
+/** Gemeinsamer Satz Flaechen: Seite (Black), Sheet/Dialog (Sheet), Karte auf Schwarz (Card), erhoehte Flaeche mit Rand (SurfaceRaised). */
+val Card = Color(0xFF1E1E1E)
+val CardHigh = Color(0xFF2B2B2B)
+val Sheet = Color(0xFF141414)
+val SurfaceRaised = CardHigh
+/** Duenner Rand um erhoehte Flaechen (Zeilen, Karten, Felder, Chips, Sekundaerknoepfe). */
+val Outline = Color(0xFF454545)
+/** Gedrueckter Zustand einer erhoehten Flaeche. */
+val Pressed = Color(0xFF3A3A3A)
+/** Rand der Danger-Zeilen. */
+val DangerOutline = Color(0xFF8A3B3B)
 val Accent = Color(0xFFD4FF3A)
 val OnAccent = Color(0xFF000000)
-val Muted = Color(0xFF8C8C92)
+val Muted = Color(0xFF9E9EA4)
 val Danger = Color(0xFFFF6B6B)
 val Warn = Color(0xFFFFC857)
 /** Warmes Orange fuer "nicht ganz": sanft statt hartem Rot. */

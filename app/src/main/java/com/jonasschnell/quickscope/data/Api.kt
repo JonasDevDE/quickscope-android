@@ -62,8 +62,9 @@ interface QuickscopeApi {
     @GET("api/exams/{id}/topics") suspend fun topics(@Path("id") id: String): List<Topic>
     @GET("api/exams/{id}/session") suspend fun session(@Path("id") id: String, @Query("minutes") minutes: Int? = null, @Query("lessons") lessons: Boolean? = null): LearnSession
     @POST("api/exams/{id}/attempts") suspend fun attempts(@Path("id") id: String, @Body body: List<AttemptRequest>): AttemptsResponse
-    /** Offline-Paket der naechsten [days] Tage (Aufgaben, Lektionen, Reserve); 404, solange das Backend es nicht kennt. */
-    @GET("api/exams/{id}/offline-pack") suspend fun offlinePack(@Path("id") id: String, @Query("days") days: Int = 3): okhttp3.ResponseBody
+    /** Offline-Paket der naechsten [days] Tage (1..7); mit ETag/If-None-Match (304 = unveraendert). */
+    @GET("api/exams/{id}/offline-pack")
+    suspend fun offlinePack(@Path("id") id: String, @Query("days") days: Int = 3, @retrofit2.http.Header("If-None-Match") etag: String? = null): retrofit2.Response<okhttp3.ResponseBody>
     @GET("api/exams/{id}/forecast") suspend fun forecast(@Path("id") id: String): Forecast
     @GET("api/exams/{id}/cheatsheet") suspend fun cheatsheet(@Path("id") id: String, @Query("minutes") minutes: Int = 5): CheatSheet
     /** Aufgaben neu erzeugen (202); der Lernstand wird zurueckgesetzt, die Pruefung ist danach wieder "processing". */

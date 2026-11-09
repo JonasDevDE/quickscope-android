@@ -74,6 +74,10 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
         player?.let { p -> if (machine.state == PlayState.Paused) { p.start(); machine.resume(g); sync() } }
     }
 
+    /** Der Stream der aktuellen Karte ist nicht gestartet oder ausgefallen: dann zeigt die Runde kein Ton-Symbol. */
+    var failed by mutableStateOf(false)
+        private set
+
     /** Live-Hervorhebung des gerade gesprochenen Wortes (leer, wenn nichts zu markieren ist). */
     var highlight by mutableStateOf(Highlight())
         private set
@@ -98,6 +102,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
      */
     private suspend fun play(label: String, uri: android.net.Uri, timings: (suspend () -> AudioTimings?)?, displayText: String?): Boolean {
         val gen = machine.begin() // alles Vorherige ist damit ungueltig
+        failed = false
         sync()
         releasePlayer()
         highlight = Highlight()
@@ -116,6 +121,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
                 if (!ok) {
                     com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream nicht gestartet, Karte bleibt still")
                     playJob.cancel()
+                    failed = true
                     return@coroutineScope false
                 }
                 com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream laeuft nach ${SystemClock.elapsedRealtime() - t0} ms")
@@ -137,6 +143,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
                     throw e
                 } catch (e: Exception) {
                     com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Stream abgebrochen", e)
+                    failed = true
                     false
                 } finally {
                     ticker?.cancel()

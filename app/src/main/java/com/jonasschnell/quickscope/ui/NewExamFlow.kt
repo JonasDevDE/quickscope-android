@@ -121,18 +121,18 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when (pages.getOrElse(p) { NewExamPage.Daily }) {
                     NewExamPage.Kind -> {
-                        PageTitle("Was möchtest du lernen?")
-                        PrimaryButton("Prüfung", { isOpen = false; page = p + 1 })
-                        SecondaryButton("Dauerhaft lernen", { isOpen = true; page = p + 1 })
+                        PageTitle("Mit oder ohne Termin?")
+                        PrimaryButton("Mit Termin", { isOpen = false; page = p + 1 })
+                        SecondaryButton("Ohne Termin", { isOpen = true; page = p + 1 })
                     }
                     NewExamPage.Name -> {
-                        PageTitle(if (isOpen) "Wie heißt der Lernbereich?" else "Wie heißt die Prüfung?")
+                        PageTitle("Wie heißt das Thema?")
                         QuickscopeField(name, { name = it.take(80) }, "Name")
                         Spacer(Modifier.height(8.dp))
                         PrimaryButton("Weiter", { page = p + 1 }, enabled = name.isNotBlank())
                     }
                     NewExamPage.When -> {
-                        PageTitle("Wann ist die Prüfung?")
+                        PageTitle("Wann ist der Prüfungstermin?")
                         WhenPicker(date, time, { date = it }, { time = it })
                         val past = date?.let { isInPast(it, time, Instant.now()) } == true
                         if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = com.jonasschnell.quickscope.ui.theme.Danger, style = MaterialTheme.typography.bodyMedium)
@@ -141,7 +141,6 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                     }
                     NewExamPage.Material -> {
                         PageTitle("Material hinzufügen")
-                        Text("Optional.", color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         MaterialAddButtons(onJobs = { jobs = jobs + it })
                         jobs.forEachIndexed { i, job ->
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -156,9 +155,6 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                         PageTitle("Kurz beschreiben?")
                         QuickscopeField(description, { description = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
                         Text("${description.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.End))
-                        if (jobs.isEmpty() && description.isBlank()) {
-                            Text("Ohne beides gibt es nichts zu lernen. Später ergänzbar.", color = Muted, style = MaterialTheme.typography.bodySmall)
-                        }
                         Spacer(Modifier.height(8.dp))
                         PrimaryButton("Weiter", { page = p + 1 })
                     }
@@ -184,5 +180,5 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
 @Composable
 private fun PageTitle(text: String) {
     Spacer(Modifier.height(8.dp))
-    Text(text, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    Text(text, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.fillMaxWidth())
 }
