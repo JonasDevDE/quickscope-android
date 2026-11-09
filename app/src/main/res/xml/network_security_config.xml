@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nur https ist erlaubt. Soll ausnahmsweise ein einzelner Host unverschlüsselt (http) erreichbar sein,
+     etwa ein Entwicklungs-Backend, den folgenden Block unterhalb von base-config einkommentieren
+     und den Host eintragen. Alles andere bleibt https-pflichtig. Vor dem Release wieder entfernen.
+<domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">dev.example.invalid</domain>
+</domain-config>
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

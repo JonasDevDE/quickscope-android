@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fadenkreuz (Scope): Ring, vier Striche und Mittelpunkt in Akzentfarbe -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:strokeColor="@color/accent"
+        android:strokeWidth="3"
+        android:pathData="M54,54 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0" />
+    <path android:strokeColor="@color/accent"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,26 L54,44 M54,64 L54,82 M26,54 L44,54 M64,54 L82,54" />
+    <path android:fillColor="@color/accent"
+        android:pathData="M54,54 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+</vector>
