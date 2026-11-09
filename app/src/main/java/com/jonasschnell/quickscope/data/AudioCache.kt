@@ -129,8 +129,8 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
             scope.async {
                 val t0 = android.os.SystemClock.elapsedRealtime()
                 val ok = runCatching { if (t.lesson) fetchLesson(examId, t.id) else fetch(examId, t.id, VoicePart.Question) }
-                    .onFailure { android.util.Log.w("AudioCache", "warm ${t.id} fehlgeschlagen", it) }.isSuccess
-                android.util.Log.d("AudioCache", "warm ${if (t.lesson) "Lektion" else "Aufgabe"} ${t.id}: ${if (ok) "bereit" else "Fehler"} nach ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+                    .onFailure { com.jonasschnell.quickscope.data.AppLog.w("AudioCache", "warm ${t.id} fehlgeschlagen", it) }.isSuccess
+                com.jonasschnell.quickscope.data.AppLog.d("AudioCache", "warm ${if (t.lesson) "Lektion" else "Aufgabe"} ${t.id}: ${if (ok) "bereit" else "Fehler"} nach ${android.os.SystemClock.elapsedRealtime() - t0} ms")
                 ok
             }
         }

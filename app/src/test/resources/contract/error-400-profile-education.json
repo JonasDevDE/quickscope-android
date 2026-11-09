@@ -1,5 +1,5 @@
 {
-  "timestamp" : "2026-11-09T18:15:51.455Z",
+  "timestamp" : "2026-11-09T18:43:52.243Z",
   "status" : 400,
   "error" : "Bad Request",
   "message" : "educationLevel: hauptschule, realschule, abitur, ausbildung, studium oder other",

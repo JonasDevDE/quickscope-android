@@ -84,7 +84,9 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit,
                     SkeletonCard(56.dp)
                 }
             }
-            SessionPhase.Empty -> MessageView(if (s.reason.contains("Tagesziel")) "Tagesziel geschafft" else "Gerade nichts zu lernen", s.reason.ifBlank { "Komm später wieder." }, "Noch eine Runde", onMore, "Fertig", onClose)
+            SessionPhase.Empty ->
+                if (s.reason.contains("Alles gelernt")) MessageView("Alles gelernt", s.reason, "Fertig", onClose, null, null) // offenes Lernen: ruhig, dann schliessen
+                else MessageView(if (s.reason.contains("Tagesziel")) "Tagesziel geschafft" else "Gerade nichts zu lernen", s.reason.ifBlank { "Komm später wieder." }, "Noch eine Runde", onMore, "Fertig", onClose)
             SessionPhase.Error -> MessageView("Das hat nicht geklappt", s.message ?: "Unbekannter Fehler", "Nochmal", onRetry, "Schließen", onClose)
         }
     }
@@ -200,7 +202,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, vm)
+                    TaskBody(task, s.feedback, s.neutral, s.audio, s.examId, voice, vm)
                 }
             }
         }
@@ -221,14 +223,14 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
 /** Die Aufgabe je Typ. Lektionskarten und Loesungswege haben ihren eigenen "Weiter"-Knopf. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice?, vm: SessionViewModel) {
+private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, audioOn: Boolean, examId: String, voice: Voice?, vm: SessionViewModel) {
     val answered = feedback != null
     val revealed = neutral
     val onAnswer: (Boolean) -> Unit = { ok -> vm.answer(ok) }
     when (task) {
         is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
-        is Task.Teach -> if (voice != null) TeachCard(task, examId, voice, onHeard = vm::heard, onNext = vm::next)
+        is Task.Teach -> if (voice != null) TeachCard(task, examId, voice, muted = !audioOn, onHeard = vm::heard, onNext = vm::next)
         is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
         is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
         is Task.Spot -> SpotTask(task, revealed, onAnswer)

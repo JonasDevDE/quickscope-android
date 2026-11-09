@@ -46,6 +46,11 @@ data class Exam(
     val daysLeft: Int = 0,
     /** Fehlertext, wenn status = failed (z. B. "KI nicht eingerichtet", "KI-Limit erreicht, später wieder"). */
     val error: String? = null,
+    /** "exam" (mit Termin) oder "open" (dauerhaft lernen, ohne date/time/startsAt/daysLeft). */
+    val kind: String = "exam",
+    /** Fortschritt der Verarbeitung (optional). */
+    val stage: String? = null,
+    val progressPercent: Int? = null,
 )
 
 @Serializable
@@ -128,6 +133,8 @@ data class Forecast(
     /** Lernplan-Kurzinfo fuer die Heute-Ansicht. */
     val plan: Plan? = null,
     val note: String = "Schätzung, keine Garantie",
+    /** Nur bei offenem Lernen: Wissensstand (5er-Schritte abgerundet); fehlt bis zur ersten Antwort. */
+    val knowledgePercent: Int? = null,
 )
 
 /** Lektion als Element der Session (`type:"lesson"`); nicht zu verwechseln mit [Item.lesson] (Loesungsweg-Karte). */
@@ -255,8 +262,10 @@ data class Topic(
 @Serializable
 data class ExamCreate(
     val name: String,
-    val date: String,
-    val time: String,
+    val date: String? = null,
+    val time: String? = null,
+    /** "exam" (Standard) oder "open" (ohne Termin; date/time entfallen). */
+    val mode: String? = null,
     val description: String? = null,
     val dailyMinutes: Int? = null,
     val priorKnowledge: String? = null,
@@ -266,6 +275,7 @@ data class ExamCreate(
 @Serializable
 data class ExamUpdate(
     val name: String? = null,
+    val mode: String? = null,
     val date: String? = null,
     val time: String? = null,
     val description: String? = null,

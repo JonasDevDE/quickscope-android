@@ -1,5 +1,5 @@
 {
-  "timestamp" : "2026-11-09T18:15:51.591Z",
+  "timestamp" : "2026-11-09T18:43:52.375Z",
   "status" : 400,
   "error" : "Bad Request",
   "message" : "file: Audioformat nicht lesbar (aac, m4a, ogg, webm oder wav)",

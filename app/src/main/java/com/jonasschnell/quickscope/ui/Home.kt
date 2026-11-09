@@ -48,7 +48,9 @@ import com.jonasschnell.quickscope.logic.formatRemaining
 import com.jonasschnell.quickscope.logic.secondaryModes
 import com.jonasschnell.quickscope.logic.planLine
 import com.jonasschnell.quickscope.logic.forecastReliable
+import com.jonasschnell.quickscope.logic.isOpen
 import com.jonasschnell.quickscope.logic.isOver
+import com.jonasschnell.quickscope.logic.ringPercent
 import com.jonasschnell.quickscope.logic.masteryPercent
 import com.jonasschnell.quickscope.logic.percentText
 import com.jonasschnell.quickscope.logic.projectionLine
@@ -185,19 +187,22 @@ private fun ReadyView(
     onMore: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
+    val open = isOpen(exam)
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
         SkeletonLine(200.dp)
     } else if (forecastReliable(exam, forecast)) {
-        ForecastRing(forecast.scoreNowPercent)
-        Text(projectionLine(forecast, exam.dailyMinutes), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+        ForecastRing(ringPercent(exam, forecast))
+        if (open) Text("Wissensstand", color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+        else Text(projectionLine(forecast, exam.dailyMinutes), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
     } else {
         // Noch keine belastbare Prognose: ruhiger Platzhalter statt einer Zahl
         ForecastPlaceholder()
-        Text("Prognose nach der ersten Runde", style = MaterialTheme.typography.titleSmall, color = Muted, textAlign = TextAlign.Center)
+        Text(if (open) "Wissensstand nach der ersten Runde" else "Prognose nach der ersten Runde", style = MaterialTheme.typography.titleSmall, color = Muted, textAlign = TextAlign.Center)
     }
-    Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    // Offenes Lernen: kein Countdown
+    if (!open) Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     planLine(forecast?.plan)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
     if (dayStreak != null && dayStreak > 0) Text("$dayStreak ${if (dayStreak == 1) "Tag" else "Tage"}", color = Accent, style = MaterialTheme.typography.labelLarge)
     if (forecast != null) Text(budgetLine(exam.dailyMinutes, forecast.doneSecondsToday), color = Muted, style = MaterialTheme.typography.bodySmall)
@@ -219,7 +224,7 @@ private fun ReadyView(
             if (StartMode.ListenOnly in modes) HapticTextButton(onClick = { onListen(exam) }) { Text("Nur zuhören", color = Muted, style = MaterialTheme.typography.labelLarge) }
         }
     }
-    if (forecast?.showCheatsheetSuggestion == true) {
+    if (forecast?.showCheatsheetSuggestion == true && !open) {
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable { onCheatsheet(exam) }.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

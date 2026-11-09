@@ -244,7 +244,7 @@ class VoiceRecorder(private val context: Context, private val onMax: () -> Unit)
         startedAt = android.os.SystemClock.elapsedRealtime()
         true
     } catch (e: Exception) {
-        android.util.Log.w("VoiceRecorder", "Aufnahme nicht gestartet", e)
+        com.jonasschnell.quickscope.data.AppLog.w("VoiceRecorder", "Aufnahme nicht gestartet", e)
         cancel()
         false
     }

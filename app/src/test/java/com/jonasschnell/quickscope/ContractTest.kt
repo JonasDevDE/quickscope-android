@@ -568,4 +568,70 @@ class ContractTest {
         assertEquals("Heute: 12 von 30 min", com.jonasschnell.quickscope.logic.budgetLine(30, 12 * 60 + 59))
         assertEquals(10, com.jonasschnell.quickscope.logic.EXTRA_MINUTES)
     }
+
+    @Test fun openLearningHasNoDateAndNeverEndsOrCountsDown() {
+        val open = parse("exam-open.json", Exam.serializer())
+        assertEquals("open", open.kind)
+        assertEquals("open", open.mode)
+        assertEquals("", open.date)        // fehlt im JSON (nicht null)
+        assertEquals("", open.startsAt)
+        assertEquals(15, open.dailyMinutes)
+        assertEquals("ready", open.status)
+        assertTrue(com.jonasschnell.quickscope.logic.isOpen(open))
+        assertFalse(com.jonasschnell.quickscope.logic.isOver(open, java.time.Instant.parse("2030-01-01T00:00:00Z")))
+        assertEquals("∞ Dauerhaft", com.jonasschnell.quickscope.logic.examSubtitle(open, java.time.Instant.now()))
+        val created = parse("exam-open-created.json", Exam.serializer())
+        assertEquals("open", created.kind)
+        assertEquals("processing", created.status)
+        assertEquals(20, created.dailyMinutes)
+        // Pruefungen tragen kind "exam"
+        assertTrue(exams().all { it.kind == "exam" })
+        // Forecast: Wissensstand statt Prognose, keine Projektionen/Meilensteine/Tage
+        val f = parse("forecast-open.json", Forecast.serializer())
+        assertEquals("open", f.mode)
+        assertEquals(70, f.knowledgePercent)
+        assertEquals(65, f.coveragePercent)
+        assertTrue(f.projections.isEmpty())
+        assertTrue(f.milestones.isEmpty())
+        assertFalse(f.showCheatsheetSuggestion)
+        assertEquals(70, f.scoreOrNull())
+        assertTrue(forecastReliable(open, f))
+        assertEquals(70, com.jonasschnell.quickscope.logic.ringPercent(open, f))
+        // bis zur ersten Antwort fehlt knowledgePercent: Platzhalter statt Zahl
+        val none = AppJson.decodeFromString(Forecast.serializer(), """{"mode":"open","confidence":"none","coveragePercent":0}""")
+        assertNull(none.knowledgePercent)
+        assertNull(none.scoreOrNull())
+        assertFalse(forecastReliable(open, none))
+        // leere Session des offenen Lernens
+        val s = parse("session-open.json", LearnSession.serializer())
+        assertTrue(s.items.isNotEmpty())
+        val empty = AppJson.decodeFromString(LearnSession.serializer(), """{"items":[],"plannedSeconds":0,"kind":"open","reason":"Alles gelernt. Neuer Stoff wird erstellt."}""")
+        assertTrue(empty.items.isEmpty())
+        assertTrue(empty.reason.contains("Alles gelernt"))
+    }
+
+    @Test fun openListAndNavigationLogic() {
+        val now = java.time.Instant.parse("2026-11-09T12:00:00Z")
+        val ex = exams().first { it.id == "e-ready" }
+        val open = parse("exam-open.json", Exam.serializer())
+        // Liste: Pruefungen nach Termin, offene Lernbereiche danach
+        val sorted = com.jonasschnell.quickscope.logic.sortExams(listOf(open, ex), now)
+        assertEquals(listOf("e-ready", "e-open"), sorted.map { it.id })
+        // aktive Pruefung: ohne Termin-Pruefung ist der offene Lernbereich aktiv, sonst die naechste Pruefung
+        assertEquals("e-open", com.jonasschnell.quickscope.logic.pickActiveExam(listOf(open), null, now)?.id)
+        assertEquals("e-ready", com.jonasschnell.quickscope.logic.pickActiveExam(listOf(open, ex), null, now)?.id)
+        assertEquals("e-open", com.jonasschnell.quickscope.logic.pickActiveExam(listOf(open, ex), "e-open", now)?.id)
+        // Neu-Pruefung-Folge: Datum/Uhrzeit-Seite entfaellt bei "Dauerhaft lernen"
+        val examPages = com.jonasschnell.quickscope.logic.newExamPages(false)
+        val openPages = com.jonasschnell.quickscope.logic.newExamPages(true)
+        assertEquals(com.jonasschnell.quickscope.logic.NewExamPage.Kind, examPages.first())
+        assertTrue(com.jonasschnell.quickscope.logic.NewExamPage.When in examPages)
+        assertFalse(com.jonasschnell.quickscope.logic.NewExamPage.When in openPages)
+        assertEquals(examPages.size - 1, openPages.size)
+        assertEquals(com.jonasschnell.quickscope.logic.NewExamPage.Daily, openPages.last())
+        // Anfrage: open sendet kein Datum
+        val body = AppJson.encodeToString(com.jonasschnell.quickscope.data.ExamCreate.serializer(), com.jonasschnell.quickscope.data.ExamCreate(name = "SQL", mode = "open", dailyMinutes = 20))
+        assertFalse(body.contains("date"))
+        assertTrue(body.contains("\"mode\":\"open\""))
+    }
 }

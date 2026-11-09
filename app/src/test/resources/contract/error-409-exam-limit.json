@@ -1,5 +1,5 @@
 {
-  "timestamp" : "2026-11-09T18:15:52.198Z",
+  "timestamp" : "2026-11-09T18:43:53.168Z",
   "status" : 409,
   "error" : "Conflict",
   "message" : "Höchstens 20 Prüfungen je Nutzer",

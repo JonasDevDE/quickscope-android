@@ -1,13 +1,13 @@
 {
   "pending" : 0,
-  "queued" : 2,
-  "ready" : 2,
+  "failed" : 0,
   "items" : [ {
-    "status" : "ready",
-    "id" : "i-number:question"
+    "id" : "i-number:question",
+    "status" : "ready"
   }, {
-    "status" : "ready",
-    "id" : "i-number:answer"
+    "id" : "i-number:answer",
+    "status" : "ready"
   } ],
-  "failed" : 0
+  "ready" : 2,
+  "queued" : 2
 }

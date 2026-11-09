@@ -34,6 +34,7 @@ import com.jonasschnell.quickscope.data.ExamUpdate
 import com.jonasschnell.quickscope.data.Material
 import com.jonasschnell.quickscope.logic.DAILY_MINUTE_CHOICES
 import com.jonasschnell.quickscope.logic.PRIOR_KEYS
+import com.jonasschnell.quickscope.logic.isOpen
 import com.jonasschnell.quickscope.logic.minutesChoiceLabel
 import com.jonasschnell.quickscope.logic.priorLabel
 import com.jonasschnell.quickscope.logic.formatExamWhen
@@ -48,7 +49,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Material, Description, Name, When, Daily, Prior, Regenerate, Reset, Delete }
+enum class ExamSetting { Material, Description, Name, Kind, When, Daily, Prior, Regenerate, Reset, Delete }
 
 /** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
 @Composable
@@ -64,7 +65,8 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
             SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value("${exam.materialCount}") }
             SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(if (exam.description.isNullOrBlank()) "–" else "gesetzt") }
             SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
-            SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
+            SettingsRow("Art", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Dauerhaft" else "Prüfung") }
+            if (!isOpen(exam)) SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
             SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
             SettingsRow("Aufgaben neu erzeugen", null, { sub = ExamSetting.Regenerate }) {}
@@ -75,6 +77,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         ExamSetting.Description -> DescriptionSheet(vm, exam) { sub = null }
         ExamSetting.Name -> NameSheet(vm, exam) { sub = null }
         ExamSetting.When -> WhenSheet(vm, exam) { sub = null }
+        ExamSetting.Kind -> KindSheet(vm, exam) { sub = null }
         ExamSetting.Daily -> DailySheet(state, vm, exam) { sub = null }
         ExamSetting.Prior -> PriorSheet(vm, exam) { sub = null }
         ExamSetting.Regenerate -> AlertDialog(
@@ -154,6 +157,31 @@ private fun WhenSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     QuickscopeSheet(onDismiss, "Datum und Uhrzeit", status = if (saved) "Gespeichert" else null) {
         WhenPicker(date, time, { date = it }, { time = it })
         if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = Danger, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** Art wechseln: Dauerhaft lernen (ohne Termin) oder Pruefung (Datum und Uhrzeit werden abgefragt). */
+@Composable
+private fun KindSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
+    var wantsExam by remember { mutableStateOf(!isOpen(exam)) }
+    var date by remember { mutableStateOf(runCatching { LocalDate.parse(exam.date) }.getOrNull()) }
+    var time by remember { mutableStateOf(runCatching { LocalTime.parse(exam.time) }.getOrDefault(LocalTime.of(8, 0))) }
+    QuickscopeSheet(onDismiss, "Art") {
+        if (wantsExam) PrimaryButton("Prüfung", {}) else SecondaryButton("Prüfung", { wantsExam = true })
+        if (!wantsExam) PrimaryButton("Dauerhaft lernen", {}) else SecondaryButton("Dauerhaft lernen", {
+            vm.updateExam(exam.id, ExamUpdate(mode = "open"))
+            onDismiss()
+        })
+        if (wantsExam && isOpen(exam)) {
+            // Wechsel zur Pruefung: Datum und Uhrzeit abfragen
+            WhenPicker(date, time, { date = it }, { time = it })
+            val past = date?.let { isInPast(it, time, Instant.now()) } == true
+            if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = Danger, style = MaterialTheme.typography.bodyMedium)
+            PrimaryButton("Speichern", {
+                vm.updateExam(exam.id, ExamUpdate(mode = "exam", date = date.toString(), time = "%02d:%02d".format(time.hour, time.minute)))
+                onDismiss()
+            }, enabled = date != null && !past)
+        }
     }
 }
 

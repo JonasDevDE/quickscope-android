@@ -1,5 +1,5 @@
 {
-  "timestamp" : "2026-11-09T18:15:52.136805300Z",
+  "timestamp" : "2026-11-09T18:43:53.102672900Z",
   "status" : 400,
   "error" : "Bad Request",
   "message" : "time: Uhrzeit als HH:MM",

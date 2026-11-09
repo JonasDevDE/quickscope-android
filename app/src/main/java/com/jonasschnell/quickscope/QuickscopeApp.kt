@@ -6,6 +6,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import coil3.ImageLoader
+import java.io.File
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
@@ -38,8 +39,20 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
 
     val updater by lazy { Updater(this, network.client, network.api) }
 
+    /** Beim Abmelden und Konto loeschen: alles lokal entfernen (Einstellungen, Warteschlange, Audio, Vorschauen, Bild-Cache, Exporte). */
+    fun wipeLocalData() {
+        store.clearAll()
+        listOf("audio", "previews", "camera", "exports", "image_cache").forEach { File(cacheDir, it).deleteRecursively() }
+        cacheDir.listFiles { f -> f.name.startsWith("voice_") }?.forEach { it.delete() }
+        runCatching {
+            SingletonImageLoader.get(this).let { it.memoryCache?.clear(); it.diskCache?.clear() }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
+        // Uebrig gebliebene Sprachaufnahmen (Abbruch, App beendet) beim Start loeschen
+        cacheDir.listFiles { f -> f.name.startsWith("voice_") }?.forEach { it.delete() }
         sfx // Toene vorab erzeugen und laden
         network.onUpgradeRequired = { updater.markForced() }
         // Update erst installieren, wenn die App in den Hintergrund geht (nie waehrend der Nutzer sie benutzt).

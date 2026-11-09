@@ -127,7 +127,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     val t0 = SystemClock.elapsedRealtime()
                     val jobs = app.audioCache.warm(examId, warmPlan(tasks))
                     val ready = withTimeoutOrNull(FIRST_AUDIO_WAIT_MS) { jobs.first().await() }
-                    android.util.Log.d("Session", "erstes Audio: ${if (ready == true) "bereit" else "nicht rechtzeitig"} nach ${SystemClock.elapsedRealtime() - t0} ms")
+                    com.jonasschnell.quickscope.data.AppLog.d("Session", "erstes Audio: ${if (ready == true) "bereit" else "nicht rechtzeitig"} nach ${SystemClock.elapsedRealtime() - t0} ms")
                 }
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }

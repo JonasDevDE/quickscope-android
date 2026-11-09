@@ -1,0 +1,302 @@
+{
+  "items" : [ {
+    "type" : "lesson",
+    "lesson" : {
+      "id" : "6af21467193b86598e1b5cee",
+      "title" : "Zinsen verstehen",
+      "keyPoints" : [ "Zins = Preis für Geld", "Kapital, Satz, Zeit", "Zinsformel", "Zinseszins" ],
+      "ttsText" : "Zinsen sind der Preis für geliehenes Geld. Wer Geld verleiht, bekommt Zinsen. Wer sich Geld leiht, zahlt sie. Drei Dinge bestimmen die Höhe: das Kapital, der Zinssatz und die Zeit. Das Kapital ist der Betrag, um den es geht. Der Zinssatz sagt, wie viel Prozent pro Jahr dazukommen. Ein Beispiel: Tausend Euro bei drei Prozent bringen nach einem Jahr dreißig Euro Zinsen. Die Formel dafür lautet Kapital mal Zinssatz geteilt durch hundert. Bleiben die Zinsen auf dem Konto, werden sie im nächsten Jahr mitverzinst. Das nennt man Zinseszins. Merk dir: Zins ist die Miete für Geld. Je mehr Geld und je länger, desto höher die Miete.",
+      "mnemonic" : "Zins = Miete für Geld",
+      "estSeconds" : 48
+    }
+  }, {
+    "id" : "i-aisol",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ce9",
+    "type" : "number",
+    "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
+    "answer" : "1.081,60 €",
+    "payload" : {
+      "options" : [ "1.040 €", "1.081,60 €", "1.160 €", "1.080 €" ],
+      "correctIndex" : 1
+    },
+    "solutionSteps" : [ "1000 × 1,04", "× 1,04", "= 1081,60" ],
+    "trick" : "Faktor zweimal",
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam",
+      "page" : 1
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : true,
+    "patternId" : "p-1",
+    "lesson" : false,
+    "ttsText" : "1.000 € zu 4 %, 2 Jahre Zinseszins?"
+  }, {
+    "id" : "i-number",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ce9",
+    "type" : "number",
+    "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
+    "answer" : "30 €",
+    "payload" : {
+      "options" : [ "30 €", "300 €", "0,3 €", "3 €" ],
+      "correctIndex" : 0
+    },
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zins: 1.000 € bei 3 %, 1 Jahr?"
+  }, {
+    "id" : "i-lesson",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ce9",
+    "type" : "card",
+    "question" : "So geht: Zinseszins berechnen",
+    "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
+    "solutionSteps" : [ "Faktor: 1 + p/100", "Faktor hoch Laufzeit", "Mal Kapital" ],
+    "trick" : "Faktor 1,0x merken",
+    "difficulty" : 2,
+    "estSeconds" : 20,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "lesson" : true,
+    "ttsText" : "So geht: Zinseszins berechnen"
+  }, {
+    "id" : "i-card",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ce9",
+    "type" : "card",
+    "question" : "Zinsen?",
+    "answer" : "Preis für Kapital",
+    "explanation" : "Steigen mit Betrag, Laufzeit.",
+    "mnemonic" : "Zins = Miete für Geld",
+    "difficulty" : 1,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf",
+      "page" : 2
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zinsen?"
+  }, {
+    "id" : "i-mc",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ce9",
+    "type" : "mc",
+    "question" : "Jahreszins-Formel?",
+    "answer" : "K × p / 100",
+    "options" : [ "K × p / 100", "p × 100", "K / p", "K + p" ],
+    "correctIndex" : 0,
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Jahreszins-Formel?"
+  }, {
+    "id" : "i-ai",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5cec",
+    "type" : "card",
+    "question" : "Verbrauchsgüterkauf?",
+    "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "sourceType" : "ai_knowledge",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Verbrauchsgüterkauf?"
+  }, {
+    "id" : "i-cloze",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ceb",
+    "type" : "cloze",
+    "question" : "Selbstkosten + ___ = Verkaufspreis.",
+    "answer" : "Gewinn",
+    "payload" : {
+      "text" : "Selbstkosten + ___ = Verkaufspreis.",
+      "bank" : [ "Gewinn", "Skonto", "Rabatt" ],
+      "answer" : "Gewinn"
+    },
+    "difficulty" : 3,
+    "estSeconds" : 12,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Selbstkosten + – = Verkaufspreis."
+  }, {
+    "id" : "i-choice2",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5cec",
+    "type" : "choice2",
+    "question" : "Transportrisiko: Käufer oder Verkäufer?",
+    "answer" : "Käufer",
+    "payload" : {
+      "options" : [ "Verkäufer", "Käufer" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 7,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Transportrisiko: Käufer oder Verkäufer?"
+  }, {
+    "id" : "i-order",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ceb",
+    "type" : "order",
+    "question" : "Kalkulation, Reihenfolge:",
+    "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
+    "payload" : {
+      "steps" : [ "Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis" ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 18,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Kalkulation, Reihenfolge:"
+  }, {
+    "id" : "i-tf",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5cec",
+    "type" : "truefalse",
+    "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
+    "answer" : "wahr",
+    "difficulty" : 3,
+    "estSeconds" : 7,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Mündlicher Vertrag: grundsätzlich gültig."
+  }, {
+    "id" : "i-match",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5ceb",
+    "type" : "match",
+    "question" : "Zuordnen:",
+    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
+    "payload" : {
+      "pairs" : [ {
+        "left" : "Selbstkosten",
+        "right" : "Herstellkosten + Verwaltung"
+      }, {
+        "left" : "Listenpreis",
+        "right" : "Preis vor Rabatt"
+      }, {
+        "left" : "Zielpreis",
+        "right" : "Preis vor Skonto"
+      } ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 19,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zuordnen:"
+  }, {
+    "id" : "i-spot",
+    "examId" : "e-ready",
+    "topicId" : "6af21467193b86598e1b5cec",
+    "type" : "spot",
+    "question" : "Fehler finden:",
+    "answer" : "Verträge: immer Schriftform.",
+    "payload" : {
+      "statements" : [ "Verträge: immer Schriftform.", "Angebot: verbindlich.", "Schweigen: meist keine Zustimmung." ],
+      "falseIndex" : 0
+    },
+    "difficulty" : 3,
+    "estSeconds" : 16,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Fehler finden:"
+  } ],
+  "plannedSeconds" : 197,
+  "kind" : "daily",
+  "reason" : "Erst hören: Zinsen verstehen, dann Fragen.",
+  "forecast" : {
+    "knowledgePercent" : 70,
+    "doneSecondsToday" : 0,
+    "streakDays" : 0,
+    "bestStreakDays" : 0,
+    "weakTopics" : [ {
+      "topicId" : "6af21467193b86598e1b5ce9",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.45
+    }, {
+      "topicId" : "6af21467193b86598e1b5cec",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.75
+    }, {
+      "topicId" : "6af21467193b86598e1b5ceb",
+      "title" : "Kalkulation",
+      "mastery" : 0.97
+    } ],
+    "confidence" : "medium",
+    "mode" : "open",
+    "coveragePercent" : 65,
+    "plan" : {
+      "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
+      "chaptersTotal" : 2,
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 5
+    },
+    "showCheatsheetSuggestion" : false,
+    "note" : "Schätzung, keine Garantie"
+  },
+  "showCheatsheetSuggestion" : false,
+  "finalRoundStart" : null,
+  "budget" : {
+    "dailyMinutes" : 15,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 15
+  }
+}

@@ -19,7 +19,7 @@ class Store(context: Context) : QueueStorage {
 
     /** Audio-Modus (Sprachausgabe) in der Lernrunde: Zustand wird gemerkt. */
     var audioMode: Boolean
-        get() = prefs.getBoolean("audioMode", false)
+        get() = prefs.getBoolean("audioMode", true)
         set(value) = prefs.edit().putBoolean("audioMode", value).apply()
 
     /** Tagesserie (lokal abgeleitet): letzter Tag mit abgeschlossener Runde (ISO) und Tage in Folge. */
@@ -30,6 +30,11 @@ class Store(context: Context) : QueueStorage {
     var dayStreak: Int
         get() = prefs.getInt("dayStreak", 0)
         set(value) = prefs.edit().putInt("dayStreak", value).apply()
+
+    /** Alles lokal Gemerkte loeschen (Abmelden, Konto loeschen): Einstellungen und die Antwort-Warteschlange. */
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
 
     // Warteschlange fuer Antworten (siehe AttemptQueue)
     override fun read(key: String): String? = prefs.getString("q_$key", null)

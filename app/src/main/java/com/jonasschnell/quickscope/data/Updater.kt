@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.ConnectivityManager
 import android.os.Build
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.jonasschnell.quickscope.BuildConfig
@@ -137,7 +136,7 @@ class Updater(private val context: Context, private val client: OkHttpClient, pr
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w(TAG, "Update-Pruefung fehlgeschlagen", e)
+            com.jonasschnell.quickscope.data.AppLog.w(TAG, "Update-Pruefung fehlgeschlagen", e)
             val blocking = newerKnown || _forced.value || (before is UpdateStatus.Error && before.blocking) || before is UpdateStatus.Ready
             val text = when (e) {
                 is UpdateException -> e.message.orEmpty()
@@ -265,7 +264,7 @@ class Updater(private val context: Context, private val client: OkHttpClient, pr
                 session.commit(pending.intentSender)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Installation konnte nicht gestartet werden", e)
+            com.jonasschnell.quickscope.data.AppLog.w(TAG, "Installation konnte nicht gestartet werden", e)
             if (sessionId >= 0) runCatching { context.packageManager.packageInstaller.abandonSession(sessionId) }
             _status.value = if (userInitiated) UpdateStatus.Error("Installation fehlgeschlagen.", blocking = true) else UpdateStatus.Ready(name, false, notes)
         }
@@ -276,7 +275,7 @@ class Updater(private val context: Context, private val client: OkHttpClient, pr
         val name = prefs.getString(KEY_NAME, "").orEmpty()
         val notes = prefs.getString(KEY_NOTES, null)
         when (status) {
-            PackageInstaller.STATUS_SUCCESS -> Log.i(TAG, "Update installiert")
+            PackageInstaller.STATUS_SUCCESS -> com.jonasschnell.quickscope.data.AppLog.i(TAG, "Update installiert")
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val foreground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
                 if (foreground && confirmIntent != null) {
@@ -293,7 +292,7 @@ class Updater(private val context: Context, private val client: OkHttpClient, pr
                 _status.value = UpdateStatus.Ready(name, true, notes)
             }
             else -> {
-                Log.w(TAG, "Installation fehlgeschlagen: status=$status $message")
+                com.jonasschnell.quickscope.data.AppLog.w(TAG, "Installation fehlgeschlagen: status=$status $message")
                 // Diese Version nicht automatisch erneut laden; der manuelle Knopf darf es weiter versuchen.
                 prefs.edit().putInt(KEY_FAILED, prefs.getInt(KEY_CODE, 0)).apply()
                 clearReady()

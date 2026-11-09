@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T18:43:52.905Z",
+  "status" : 409,
+  "error" : "Conflict",
+  "message" : "Den Merkzettel gibt es nur bei Prüfungen mit Termin",
+  "path" : "/api/exams/e-open/cheatsheet"
+}

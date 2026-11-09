@@ -1,0 +1,20 @@
+{
+  "id" : "e-open",
+  "name" : "Spanisch Vokabeln",
+  "description" : "Alltagswortschatz Spanisch, Reisen und Essen",
+  "priorKnowledge" : "some",
+  "dailyMinutes" : 15,
+  "status" : "ready",
+  "mode" : "open",
+  "topicCount" : 3,
+  "itemCount" : 13,
+  "materialCount" : 5,
+  "createdAt" : "2026-11-09T18:43:52.866212100Z",
+  "stage" : "lessons",
+  "topicsReady" : 3,
+  "topicsTotal" : 3,
+  "lessonsReady" : 0,
+  "lessonsTotal" : 3,
+  "progressPercent" : 70,
+  "kind" : "open"
+}

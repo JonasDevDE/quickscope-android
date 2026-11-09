@@ -3,4 +3,5 @@
     <cache-path name="updates" path="updates/" />
     <cache-path name="previews" path="previews/" />
     <cache-path name="camera" path="camera/" />
+    <cache-path name="exports" path="exports/" />
 </paths>

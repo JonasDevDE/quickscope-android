@@ -10,6 +10,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 /** Vertrag mit dem Backend. Der SSE-Stream (`api/stream`) laeuft ueber [LiveSync], die Original-Vorschau ueber [MaterialPreview]. */
 interface QuickscopeApi {
@@ -18,6 +19,13 @@ interface QuickscopeApi {
     @POST("api/auth/session") suspend fun createSession(): SessionResponse
 
     @DELETE("api/me") suspend fun deleteMe()
+
+    /** Abmelden: die Sitzung auf dem Server beenden (neu im Backend; 404/405 werden ruhig behandelt). */
+    @POST("api/auth/logout") suspend fun logout()
+
+    /** Eigene Daten als Datei (Streaming, nicht komplett im Speicher). */
+    @Streaming
+    @GET("api/me/export") suspend fun export(): okhttp3.ResponseBody
 
     @GET("api/me/profile") suspend fun profile(): Profile
     @PUT("api/me/profile") suspend fun putProfile(@Body body: ProfileUpdate): Profile

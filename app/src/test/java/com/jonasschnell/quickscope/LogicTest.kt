@@ -294,4 +294,19 @@ class LogicTest {
         assertEquals("0:07", com.jonasschnell.quickscope.logic.recordTime(7))
         assertEquals("1:00", com.jonasschnell.quickscope.logic.recordTime(com.jonasschnell.quickscope.logic.RECORD_MAX_SECONDS))
     }
+
+    @Test fun secretPackingRoundTripsAndRejectsGarbage() {
+        val iv = ByteArray(12) { it.toByte() }
+        val ct = ByteArray(40) { (it * 3).toByte() }
+        val packed = com.jonasschnell.quickscope.logic.packSecret(iv, ct)
+        val (iv2, ct2) = com.jonasschnell.quickscope.logic.unpackSecret(packed)!!
+        assertTrue(iv.contentEquals(iv2))
+        assertTrue(ct.contentEquals(ct2))
+        assertNull(com.jonasschnell.quickscope.logic.unpackSecret(ByteArray(0)))
+        assertNull(com.jonasschnell.quickscope.logic.unpackSecret(byteArrayOf(0, 1, 2)))
+        assertNull(com.jonasschnell.quickscope.logic.unpackSecret(byteArrayOf(12, 1, 2)))
+        // Migration: nur wenn ein alter Klartextwert da ist
+        assertTrue(com.jonasschnell.quickscope.logic.needsSecretMigration("bst_x"))
+        assertFalse(com.jonasschnell.quickscope.logic.needsSecretMigration(null))
+    }
 }

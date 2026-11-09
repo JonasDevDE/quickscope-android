@@ -2,7 +2,7 @@
   "items" : [ {
     "id" : "i-choice2",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d2",
+    "topicId" : "6af21467193b86598e1b5cec",
     "type" : "choice2",
     "question" : "Transportrisiko: Käufer oder Verkäufer?",
     "answer" : "Käufer",
@@ -23,7 +23,7 @@
   }, {
     "id" : "i-card",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442cf",
+    "topicId" : "6af21467193b86598e1b5ce9",
     "type" : "card",
     "question" : "Zinsen?",
     "answer" : "Preis für Kapital",
@@ -43,7 +43,7 @@
   }, {
     "id" : "i-cloze",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d1",
+    "topicId" : "6af21467193b86598e1b5ceb",
     "type" : "cloze",
     "question" : "Selbstkosten + ___ = Verkaufspreis.",
     "answer" : "Gewinn",
@@ -65,7 +65,7 @@
   }, {
     "id" : "i-tf",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d2",
+    "topicId" : "6af21467193b86598e1b5cec",
     "type" : "truefalse",
     "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
     "answer" : "wahr",
@@ -82,7 +82,7 @@
   }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442cf",
+    "topicId" : "6af21467193b86598e1b5ce9",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -107,7 +107,7 @@
   }, {
     "id" : "i-order",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d1",
+    "topicId" : "6af21467193b86598e1b5ceb",
     "type" : "order",
     "question" : "Kalkulation, Reihenfolge:",
     "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
@@ -127,7 +127,7 @@
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d2",
+    "topicId" : "6af21467193b86598e1b5cec",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -141,7 +141,7 @@
   }, {
     "id" : "i-number",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442cf",
+    "topicId" : "6af21467193b86598e1b5ce9",
     "type" : "number",
     "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
     "answer" : "30 €",
@@ -162,20 +162,20 @@
   }, {
     "id" : "i-match",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d1",
+    "topicId" : "6af21467193b86598e1b5ceb",
     "type" : "match",
     "question" : "Zuordnen:",
     "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
     "payload" : {
       "pairs" : [ {
-        "right" : "Herstellkosten + Verwaltung",
-        "left" : "Selbstkosten"
+        "left" : "Selbstkosten",
+        "right" : "Herstellkosten + Verwaltung"
       }, {
-        "right" : "Preis vor Rabatt",
-        "left" : "Listenpreis"
+        "left" : "Listenpreis",
+        "right" : "Preis vor Rabatt"
       }, {
-        "right" : "Preis vor Skonto",
-        "left" : "Zielpreis"
+        "left" : "Zielpreis",
+        "right" : "Preis vor Skonto"
       } ]
     },
     "difficulty" : 3,
@@ -191,7 +191,7 @@
   }, {
     "id" : "i-spot",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442d2",
+    "topicId" : "6af21467193b86598e1b5cec",
     "type" : "spot",
     "question" : "Fehler finden:",
     "answer" : "Verträge: immer Schriftform.",
@@ -212,7 +212,7 @@
   }, {
     "id" : "i-mc",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442cf",
+    "topicId" : "6af21467193b86598e1b5ce9",
     "type" : "mc",
     "question" : "Jahreszins-Formel?",
     "answer" : "K × p / 100",
@@ -231,7 +231,7 @@
   }, {
     "id" : "i-lesson",
     "examId" : "e-ready",
-    "topicId" : "6af20dd6375be45253b442cf",
+    "topicId" : "6af21467193b86598e1b5ce9",
     "type" : "card",
     "question" : "So geht: Zinseszins berechnen",
     "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
@@ -259,15 +259,15 @@
     "streakDays" : 0,
     "bestStreakDays" : 0,
     "weakTopics" : [ {
-      "topicId" : "6af20dd6375be45253b442cf",
+      "topicId" : "6af21467193b86598e1b5ce9",
       "title" : "Zinsrechnung",
       "mastery" : 0.1
     }, {
-      "topicId" : "6af20dd6375be45253b442d2",
+      "topicId" : "6af21467193b86598e1b5cec",
       "title" : "Vertragsrecht",
       "mastery" : 0.1
     }, {
-      "topicId" : "6af20dd6375be45253b442d1",
+      "topicId" : "6af21467193b86598e1b5ceb",
       "title" : "Kalkulation",
       "mastery" : 0.1
     } ],

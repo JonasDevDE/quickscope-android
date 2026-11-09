@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.jonasschnell.quickscope.logic.needsSecretMigration
 import java.lang.ref.WeakReference
 
 sealed interface SignInResult {
@@ -30,13 +31,20 @@ sealed interface SignInResult {
 
 class AuthManager(context: Context, private val serverClientId: String) {
     private val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+    private val secrets = SecretStore(context.getSharedPreferences("auth_secure", Context.MODE_PRIVATE)).also { store ->
+        // Migration: alter Klartext-Token verschluesselt ablegen, Klartext loeschen
+        prefs.getString(KEY_TOKEN, null).takeIf { needsSecretMigration(it) }?.let { plain ->
+            store.put(KEY_TOKEN, plain)
+            prefs.edit().remove(KEY_TOKEN).apply()
+        }
+    }
     private val credentialManager = CredentialManager.create(context)
     private val mutex = Mutex()
     private var activityRef: WeakReference<Activity>? = null
     private val _sessionExpired = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     @Volatile
-    var token: String? = prefs.getString(KEY_TOKEN, null)
+    var token: String? = secrets.get(KEY_TOKEN)
         private set
 
     /** Profilbild aus dem Google-Credential (sofort verfuegbar, bevor /api/me geantwortet hat). */
@@ -117,7 +125,7 @@ class AuthManager(context: Context, private val serverClientId: String) {
         // Abgelehnte Sitzung (abgelaufen/widerrufen) verwerfen, damit wieder ein Google-Token geholt wird.
         if (rejected != null && isSession(rejected) && current == rejected) {
             token = null
-            prefs.edit().remove(KEY_TOKEN).apply()
+            secrets.put(KEY_TOKEN, null)
         }
         if (foregroundActivity() == null) return@withLock null
         try {
@@ -140,13 +148,14 @@ class AuthManager(context: Context, private val serverClientId: String) {
 
     suspend fun signOut() {
         token = null
+        secrets.put(KEY_TOKEN, null)
         prefs.edit().remove(KEY_TOKEN).remove(KEY_PICTURE).apply()
         runCatching { credentialManager.clearCredentialState(ClearCredentialStateRequest()) }
     }
 
     private fun store(idToken: String) {
         token = idToken
-        prefs.edit().putString(KEY_TOKEN, idToken).apply()
+        secrets.put(KEY_TOKEN, idToken)
     }
 
     private fun extractToken(response: GetCredentialResponse): String? {

@@ -6,7 +6,6 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.media.SoundPool
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -34,10 +33,10 @@ class Sfx(context: Context) {
         SoundPool.Builder().setMaxStreams(4)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             .build()
-    }.onFailure { Log.w(TAG, "SoundPool nicht verfuegbar", it) }.getOrNull()
+    }.onFailure { com.jonasschnell.quickscope.data.AppLog.w(TAG, "SoundPool nicht verfuegbar", it) }.getOrNull()
 
     init {
-        pool?.setOnLoadCompleteListener { _, id, status -> if (status == 0) loaded.add(id) else Log.w(TAG, "Laden fehlgeschlagen: $status") }
+        pool?.setOnLoadCompleteListener { _, id, status -> if (status == 0) loaded.add(id) else com.jonasschnell.quickscope.data.AppLog.w(TAG, "Laden fehlgeschlagen: $status") }
         val dir = File(context.cacheDir, "sfx").apply { mkdirs() }
         for ((i, notes) in Tones.all.withIndex()) {
             val samples = synth(notes)
@@ -45,7 +44,7 @@ class Sfx(context: Context) {
             runCatching {
                 val file = File(dir, "tone_$i.wav").apply { writeBytes(wavBytes(samples)) }
                 pool?.load(file.path, 1)?.let { soundIds[notes] = it }
-            }.onFailure { Log.w(TAG, "Ton $i nicht vorbereitet", it) }
+            }.onFailure { com.jonasschnell.quickscope.data.AppLog.w(TAG, "Ton $i nicht vorbereitet", it) }
         }
     }
 
@@ -55,7 +54,7 @@ class Sfx(context: Context) {
         val id = soundIds[notes]
         if (pool != null && id != null && id in loaded) {
             if (pool.play(id, 1f, 1f, 1, 0, 1f) != 0) return
-            Log.w(TAG, "SoundPool.play lieferte 0, Rueckfall auf AudioTrack")
+            com.jonasschnell.quickscope.data.AppLog.w(TAG, "SoundPool.play lieferte 0, Rueckfall auf AudioTrack")
         }
         playTrack(notes)
     }
@@ -77,7 +76,7 @@ class Sfx(context: Context) {
             })
             track.play()
         } catch (e: Exception) {
-            Log.w(TAG, "Ton konnte nicht abgespielt werden", e)
+            com.jonasschnell.quickscope.data.AppLog.w(TAG, "Ton konnte nicht abgespielt werden", e)
         }
     }
 }

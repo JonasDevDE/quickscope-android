@@ -11,7 +11,6 @@ import android.media.MediaPlayer
 import android.media.PlaybackParams
 import android.os.PowerManager
 import android.os.SystemClock
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -118,7 +117,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.w("Voice", "$label: Audio nicht geladen", e)
+                com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Audio nicht geladen", e)
                 null
             }
             loading = false
@@ -128,7 +127,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
                 machine.finish(gen)
                 return
             }
-            Log.d("Voice", "$label: Audio bereit nach ${SystemClock.elapsedRealtime() - t0} ms")
+            com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Audio bereit nach ${SystemClock.elapsedRealtime() - t0} ms")
             val usable = timings?.let { t -> t()?.takeIf { displayText != null && timingsMatch(displayText, it) } }
             if (!machine.isCurrent(gen)) return
             coroutineScope {
@@ -155,7 +154,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
             if (machine.isCurrent(gen)) { machine.stop(); releasePlayer() }
             throw e
         } catch (e: Exception) {
-            Log.w("Voice", "$label: Wiedergabe fehlgeschlagen", e)
+            com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Wiedergabe fehlgeschlagen", e)
             loading = false
             highlight = Highlight()
             if (machine.isCurrent(gen)) { unavailable = true; machine.finish(gen) }

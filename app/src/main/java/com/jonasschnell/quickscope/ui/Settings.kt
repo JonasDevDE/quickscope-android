@@ -50,6 +50,14 @@ fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onDismiss: ()
             }
         }
         SettingsRow("Über mich", null, onAbout) {}
+        val context = androidx.compose.ui.platform.LocalContext.current
+        SettingsRow("Meine Daten exportieren", null, {
+            vm.exportData { file ->
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        }) {}
         UpdateRow(state, vm)
         Column(
             Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -73,7 +81,7 @@ fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onDismiss: ()
             title = { Text("Konto löschen?") },
             text = {
                 LightSystemIcons()
-                Text("Dein Konto und alle zugehörigen Daten werden gelöscht. Das kann nicht rückgängig gemacht werden.")
+                Text("Alle Daten werden endgültig gelöscht. Das kann nicht rückgängig gemacht werden.")
             },
             confirmButton = { HapticTextButton(onClick = { accountStep = 2 }) { Text("Weiter", color = Danger) } },
             dismissButton = { HapticTextButton(onClick = { accountStep = 0 }) { Text("Abbrechen", color = Color.White) } },

@@ -40,7 +40,9 @@ import com.jonasschnell.quickscope.AppViewModel
 import com.jonasschnell.quickscope.data.ExamCreate
 import com.jonasschnell.quickscope.data.UploadJob
 import com.jonasschnell.quickscope.logic.DAILY_MINUTE_CHOICES
+import com.jonasschnell.quickscope.logic.NewExamPage
 import com.jonasschnell.quickscope.logic.PRIOR_KEYS
+import com.jonasschnell.quickscope.logic.newExamPages
 import com.jonasschnell.quickscope.logic.isInPast
 import com.jonasschnell.quickscope.logic.priorLabel
 import com.jonasschnell.quickscope.ui.theme.Accent
@@ -52,7 +54,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-private const val PAGES = 6
 private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
 /** Kurzbeschreibung eines vorgemerkten Uploads, z. B. "Foto-Scan, 3 Seiten, Skript". */
@@ -68,6 +69,8 @@ private fun jobLabel(job: UploadJob): String {
 @Composable
 fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = Modifier) {
     var page by remember { mutableIntStateOf(0) }
+    var isOpen by remember { mutableStateOf(false) }
+    val pages = remember(isOpen) { newExamPages(isOpen) }
     var name by remember { mutableStateOf("") }
     var date by remember { mutableStateOf<LocalDate?>(null) }
     var time by remember { mutableStateOf(LocalTime.of(8, 0)) }
@@ -84,7 +87,10 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
         daily = minutes
         busy = true
         vm.createExam(
-            ExamCreate(name.trim(), date.toString(), timeFmt.format(time), description.trim().ifEmpty { null }, dailyMinutes = minutes, priorKnowledge = prior),
+            ExamCreate(
+                name.trim(), if (isOpen) null else date.toString(), if (isOpen) null else timeFmt.format(time), if (isOpen) "open" else null,
+                description.trim().ifEmpty { null }, dailyMinutes = minutes, priorKnowledge = prior,
+            ),
             onDone = { exam ->
                 vm.upload(exam.id, jobs)
                 onClose?.invoke()
@@ -101,7 +107,7 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                 }
             }
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center) {
-                repeat(PAGES) { i ->
+                repeat(pages.size) { i ->
                     Box(Modifier.padding(horizontal = 4.dp).size(8.dp).clip(CircleShape).background(if (i == page) Accent else CardHigh))
                 }
             }
@@ -115,22 +121,27 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
             },
         ) { p ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                when (p) {
-                    0 -> {
-                        PageTitle("Wie heißt die Prüfung?")
+                when (pages.getOrElse(p) { NewExamPage.Daily }) {
+                    NewExamPage.Kind -> {
+                        PageTitle("Was möchtest du lernen?")
+                        PrimaryButton("Prüfung", { isOpen = false; page = p + 1 })
+                        SecondaryButton("Dauerhaft lernen", { isOpen = true; page = p + 1 })
+                    }
+                    NewExamPage.Name -> {
+                        PageTitle(if (isOpen) "Wie heißt der Lernbereich?" else "Wie heißt die Prüfung?")
                         QuickscopeField(name, { name = it.take(80) }, "Name")
                         Spacer(Modifier.height(8.dp))
-                        PrimaryButton("Weiter", { page = 1 }, enabled = name.isNotBlank())
+                        PrimaryButton("Weiter", { page = p + 1 }, enabled = name.isNotBlank())
                     }
-                    1 -> {
+                    NewExamPage.When -> {
                         PageTitle("Wann ist die Prüfung?")
                         WhenPicker(date, time, { date = it }, { time = it })
                         val past = date?.let { isInPast(it, time, Instant.now()) } == true
                         if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = com.jonasschnell.quickscope.ui.theme.Danger, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(8.dp))
-                        PrimaryButton("Weiter", { page = 2 }, enabled = date != null && !past)
+                        PrimaryButton("Weiter", { page = p + 1 }, enabled = date != null && !past)
                     }
-                    2 -> {
+                    NewExamPage.Material -> {
                         PageTitle("Material hinzufügen")
                         Text("Optional.", color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         MaterialAddButtons(onJobs = { jobs = jobs + it })
@@ -141,9 +152,9 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        PrimaryButton(if (jobs.isEmpty()) "Überspringen" else "Weiter", { page = 3 })
+                        PrimaryButton(if (jobs.isEmpty()) "Überspringen" else "Weiter", { page = p + 1 })
                     }
-                    3 -> {
+                    NewExamPage.Description -> {
                         PageTitle("Kurz beschreiben?")
                         QuickscopeField(description, { description = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
                         Text("${description.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.End))
@@ -151,15 +162,15 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                             Text("Ohne beides gibt es nichts zu lernen. Später ergänzbar.", color = Muted, style = MaterialTheme.typography.bodySmall)
                         }
                         Spacer(Modifier.height(8.dp))
-                        PrimaryButton("Weiter", { page = 4 })
+                        PrimaryButton("Weiter", { page = p + 1 })
                     }
-                    4 -> {
+                    NewExamPage.Prior -> {
                         PageTitle("Vorwissen?")
                         PRIOR_KEYS.forEach { key ->
-                            if (key == prior) PrimaryButton(priorLabel(key), { prior = key; page = 5 }) else SecondaryButton(priorLabel(key), { prior = key; page = 5 })
+                            if (key == prior) PrimaryButton(priorLabel(key), { prior = key; page = p + 1 }) else SecondaryButton(priorLabel(key), { prior = key; page = p + 1 })
                         }
                     }
-                    else -> {
+                    NewExamPage.Daily -> {
                         PageTitle("Wie viel Zeit pro Tag?")
                         DAILY_MINUTE_CHOICES.forEach { m ->
                             val label = if (busy && m == daily) "Einen Moment" else "$m min"

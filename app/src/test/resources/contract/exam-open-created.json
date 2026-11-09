@@ -1,0 +1,20 @@
+{
+  "id" : "e-new",
+  "name" : "SQL fuer immer",
+  "description" : "SQL Grundlagen und Joins",
+  "priorKnowledge" : "some",
+  "dailyMinutes" : 20,
+  "status" : "processing",
+  "mode" : "open",
+  "topicCount" : 0,
+  "itemCount" : 0,
+  "materialCount" : 0,
+  "createdAt" : "2026-11-09T18:43:52.922810600Z",
+  "stage" : "topics",
+  "topicsReady" : 0,
+  "topicsTotal" : 0,
+  "lessonsReady" : 0,
+  "lessonsTotal" : 0,
+  "progressPercent" : 5,
+  "kind" : "open"
+}

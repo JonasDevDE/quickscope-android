@@ -12,8 +12,9 @@
   "topicCount" : 3,
   "itemCount" : 13,
   "materialCount" : 0,
-  "createdAt" : "2026-11-09T18:15:51.594693500Z",
-  "daysLeft" : 0
+  "createdAt" : "2026-11-09T18:43:52.379479700Z",
+  "daysLeft" : 0,
+  "kind" : "exam"
 }, {
   "id" : "e-failed",
   "name" : "Bio Test",
@@ -28,16 +29,17 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 1,
-  "createdAt" : "2026-11-09T18:15:51.594693500Z",
+  "createdAt" : "2026-11-09T18:43:52.378950600Z",
   "daysLeft" : 5,
-  "error" : "Im Material wurden keine Themen gefunden"
+  "error" : "Im Material wurden keine Themen gefunden",
+  "kind" : "exam"
 }, {
   "id" : "e-processing",
   "name" : "Recht Zwischenprüfung",
   "date" : "2026-11-21",
   "time" : "09:30",
   "startsAt" : "2026-11-21T08:30:00Z",
-  "hoursLeft" : 278,
+  "hoursLeft" : 277,
   "priorKnowledge" : "some",
   "dailyMinutes" : 20,
   "status" : "processing",
@@ -45,8 +47,15 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 1,
-  "createdAt" : "2026-11-09T18:15:51.594693500Z",
-  "daysLeft" : 12
+  "createdAt" : "2026-11-09T18:43:52.378950600Z",
+  "daysLeft" : 12,
+  "stage" : "topics",
+  "topicsReady" : 0,
+  "topicsTotal" : 0,
+  "lessonsReady" : 0,
+  "lessonsTotal" : 0,
+  "progressPercent" : 5,
+  "kind" : "exam"
 }, {
   "id" : "e-ready",
   "name" : "IHK Fachinformatiker AP2",
@@ -62,8 +71,15 @@
   "topicCount" : 3,
   "itemCount" : 13,
   "materialCount" : 5,
-  "createdAt" : "2026-11-09T18:15:51.594693500Z",
-  "daysLeft" : 21
+  "createdAt" : "2026-11-09T18:43:52.378950600Z",
+  "daysLeft" : 21,
+  "stage" : "lessons",
+  "topicsReady" : 3,
+  "topicsTotal" : 3,
+  "lessonsReady" : 0,
+  "lessonsTotal" : 3,
+  "progressPercent" : 70,
+  "kind" : "exam"
 }, {
   "id" : "e-empty",
   "name" : "Mathe Klausur",
@@ -78,6 +94,7 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 0,
-  "createdAt" : "2026-11-09T18:15:51.594693500Z",
-  "daysLeft" : 30
+  "createdAt" : "2026-11-09T18:43:52.378950600Z",
+  "daysLeft" : 30,
+  "kind" : "exam"
 } ]

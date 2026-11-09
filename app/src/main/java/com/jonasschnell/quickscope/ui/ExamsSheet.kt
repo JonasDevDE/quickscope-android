@@ -27,8 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.jonasschnell.quickscope.AppViewModel
 import com.jonasschnell.quickscope.UiState
 import com.jonasschnell.quickscope.data.CheatSheet
-import com.jonasschnell.quickscope.logic.formatExamWhen
-import com.jonasschnell.quickscope.logic.isOver
+import com.jonasschnell.quickscope.logic.examSubtitle
 import com.jonasschnell.quickscope.logic.sortExams
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Card
@@ -61,10 +60,7 @@ fun ExamsSheet(state: UiState, vm: AppViewModel, onNew: () -> Unit, onSettings: 
                 Box(Modifier.size(8.dp).clip(CircleShape).background(if (e.id == active) Accent else Card))
                 Column(Modifier.weight(1f).padding(start = 12.dp, top = 8.dp, bottom = 8.dp)) {
                     Text(e.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        formatExamWhen(e.date, e.time) + if (isOver(e, now)) " · vorbei" else "",
-                        color = Muted, style = MaterialTheme.typography.bodySmall,
-                    )
+                    Text(examSubtitle(e, now), color = Muted, style = MaterialTheme.typography.bodySmall)
                 }
                 Text(
                     "⋮", style = MaterialTheme.typography.titleLarge, color = Muted,

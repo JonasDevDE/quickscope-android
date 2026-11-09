@@ -1,19 +1,19 @@
 {
   "items" : [ {
-    "lessonId" : "6af20dd6375be45253b442d5",
-    "chapterId" : "6af20dd6375be45253b442d0",
+    "lessonId" : "6af21467193b86598e1b5cef",
+    "chapterId" : "6af21467193b86598e1b5cea",
     "chapterTitle" : "Rechnen",
     "title" : "Preis kalkulieren",
     "estSeconds" : 42
   }, {
-    "lessonId" : "6af20dd6375be45253b442d6",
-    "chapterId" : "6af20dd6375be45253b442d2",
+    "lessonId" : "6af21467193b86598e1b5cf0",
+    "chapterId" : "6af21467193b86598e1b5cec",
     "chapterTitle" : "Vertragsrecht",
     "title" : "Vertrag entsteht",
     "estSeconds" : 41
   }, {
-    "lessonId" : "6af20dd6375be45253b442d4",
-    "chapterId" : "6af20dd6375be45253b442d0",
+    "lessonId" : "6af21467193b86598e1b5cee",
+    "chapterId" : "6af21467193b86598e1b5cea",
     "chapterTitle" : "Rechnen",
     "title" : "Zinsen verstehen",
     "estSeconds" : 48

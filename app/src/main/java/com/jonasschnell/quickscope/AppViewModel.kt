@@ -167,7 +167,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                android.util.Log.w("Quickscope", "Stilles Neuladen fehlgeschlagen: ${e.message}")
+                com.jonasschnell.quickscope.data.AppLog.w("Quickscope", "Stilles Neuladen fehlgeschlagen")
             }
         }
     }
@@ -237,11 +237,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Abmelden: Sitzung auf dem Server beenden (Fehler egal), danach ALLES lokal loeschen. */
     fun signOut() {
         viewModelScope.launch {
             loadJob?.cancel()
+            runCatching { kotlinx.coroutines.withTimeoutOrNull(4_000) { api.logout() } }
             auth.signOut()
+            app.audioCache.clear()
+            app.wipeLocalData()
             _state.value = UiState(phase = Phase.NeedsLogin)
+        }
+    }
+
+    /** Eigene Daten abrufen und als Datei bereitstellen (zum Teilen/Speichern); 404/405 und andere Fehler ruhig. */
+    fun exportData(onFile: (java.io.File) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = api.export()
+                val dir = java.io.File(getApplication<Application>().cacheDir, "exports").apply { mkdirs() }
+                val file = java.io.File(dir, "quickscope-export.json")
+                body.byteStream().use { input -> file.outputStream().use { input.copyTo(it) } }
+                onFile(file)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                say("Gerade nicht verfügbar.")
+            }
         }
     }
 
@@ -251,6 +272,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             api.deleteMe()
             loadJob?.cancel()
             auth.signOut()
+            app.audioCache.clear()
+            app.wipeLocalData()
             _state.value = UiState(phase = Phase.NeedsLogin)
         }
     }
@@ -451,7 +474,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 com.jonasschnell.quickscope.logic.voiceOutcomeForStatus((e as? HttpException)?.code())
             }
-            file.delete() // Aufnahme nie lokal behalten
+            file.delete() // Aufnahme nie lokal behalten (auch bei Fehlern und Abbruch)
             onResult(result)
         }
     }

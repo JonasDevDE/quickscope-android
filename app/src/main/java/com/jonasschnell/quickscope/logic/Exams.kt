@@ -15,6 +15,9 @@ private val BERLIN: ZoneId = ZoneId.of("Europe/Berlin")
 
 fun examStart(e: Exam): Instant? = runCatching { Instant.parse(e.startsAt) }.getOrNull()
 
+/** Dauerhaftes Lernen ohne Termin. */
+fun isOpen(e: Exam): Boolean = e.kind == "open"
+
 fun isOver(e: Exam, now: Instant): Boolean = e.status == "over" || examStart(e)?.let { !it.isAfter(now) } == true
 
 /**
@@ -102,7 +105,22 @@ fun planLine(plan: com.jonasschnell.quickscope.data.Plan?): String? {
  * Aufgaben oder Lektionen aendern; dann lieber ein ruhiger Platzhalter statt einer Zahl.
  */
 fun forecastReliable(exam: com.jonasschnell.quickscope.data.Exam?, f: com.jonasschnell.quickscope.data.Forecast?): Boolean =
-    exam != null && f != null && exam.status == "ready" && f.coveragePercent > 0 && f.confidence != "none"
+    exam != null && f != null && exam.status == "ready" &&
+        if (exam.kind == "open") f.knowledgePercent != null else f.coveragePercent > 0 && f.confidence != "none"
 
 /** Stand jetzt, oder null ohne belastbare Prognose (confidence "none": die Zahlen fehlen im JSON). */
-fun Forecast.scoreOrNull(): Int? = if (confidence == "none") null else scoreNowPercent
+fun Forecast.scoreOrNull(): Int? = if (mode == "open") knowledgePercent else if (confidence == "none") null else scoreNowPercent
+
+/** Zahl im Ring: bei offenem Lernen der Wissensstand, sonst der Stand fuer heute. */
+fun ringPercent(exam: Exam, f: com.jonasschnell.quickscope.data.Forecast): Int =
+    if (isOpen(exam)) f.knowledgePercent ?: 0 else f.scoreNowPercent
+
+/** Zeile in der Liste: Termin oder "∞ Dauerhaft" (bei offenem Lernen), dahinter "vorbei". */
+fun examSubtitle(e: Exam, now: Instant): String =
+    if (isOpen(e)) "∞ Dauerhaft" else formatExamWhen(e.date, e.time) + if (isOver(e, now)) " · vorbei" else ""
+
+/** Seiten der Neu-Pruefung-Folge: bei "Dauerhaft lernen" entfaellt die Datum-/Uhrzeitseite. */
+enum class NewExamPage { Kind, Name, When, Material, Description, Prior, Daily }
+
+fun newExamPages(open: Boolean): List<NewExamPage> =
+    NewExamPage.entries.filter { open.not() || it != NewExamPage.When }

@@ -1,8 +1,8 @@
 [ {
-  "id" : "6af20dd6375be45253b442d4",
+  "id" : "6af21467193b86598e1b5cee",
   "examId" : "e-ready",
-  "topicId" : "6af20dd6375be45253b442cf",
-  "chapterId" : "6af20dd6375be45253b442d0",
+  "topicId" : "6af21467193b86598e1b5ce9",
+  "chapterId" : "6af21467193b86598e1b5cea",
   "title" : "Zinsen verstehen",
   "keyPoints" : [ "Zins = Preis für Geld", "Kapital, Satz, Zeit", "Zinsformel", "Zinseszins" ],
   "ttsText" : "Zinsen sind der Preis für geliehenes Geld. Wer Geld verleiht, bekommt Zinsen. Wer sich Geld leiht, zahlt sie. Drei Dinge bestimmen die Höhe: das Kapital, der Zinssatz und die Zeit. Das Kapital ist der Betrag, um den es geht. Der Zinssatz sagt, wie viel Prozent pro Jahr dazukommen. Ein Beispiel: Tausend Euro bei drei Prozent bringen nach einem Jahr dreißig Euro Zinsen. Die Formel dafür lautet Kapital mal Zinssatz geteilt durch hundert. Bleiben die Zinsen auf dem Konto, werden sie im nächsten Jahr mitverzinst. Das nennt man Zinseszins. Merk dir: Zins ist die Miete für Geld. Je mehr Geld und je länger, desto höher die Miete.",
@@ -14,12 +14,12 @@
     "page" : 2
   },
   "heard" : true,
-  "heardAt" : "2026-11-09T17:15:50.852280700Z"
+  "heardAt" : "2026-11-09T17:43:51.731553400Z"
 }, {
-  "id" : "6af20dd6375be45253b442d5",
+  "id" : "6af21467193b86598e1b5cef",
   "examId" : "e-ready",
-  "topicId" : "6af20dd6375be45253b442d1",
-  "chapterId" : "6af20dd6375be45253b442d0",
+  "topicId" : "6af21467193b86598e1b5ceb",
+  "chapterId" : "6af21467193b86598e1b5cea",
   "title" : "Preis kalkulieren",
   "keyPoints" : [ "Kosten, dann Gewinn", "Selbstkosten", "Skonto, Rabatt einrechnen" ],
   "ttsText" : "Kalkulation heißt: Du rechnest aus, zu welchem Preis du etwas verkaufen musst. Du startest bei den Kosten. Zuerst kommen die Herstellkosten, also Material und Arbeit. Dazu kommen die Verwaltungs und Vertriebskosten. Das zusammen sind die Selbstkosten. Auf die Selbstkosten schlägst du den Gewinn auf. So entsteht der Barverkaufspreis. Dann geben Kunden meist Skonto und Rabatt. Beides musst du schon vorher einrechnen, sonst bleibt dir weniger Gewinn. Der Preis im Katalog ist der Listenpreis. Ein Beispiel: Hundert Euro Selbstkosten und zehn Prozent Gewinn ergeben hundertzehn Euro. Merk dir die Reihenfolge: Kosten, Gewinn, Skonto, Rabatt.",
@@ -32,10 +32,10 @@
   },
   "heard" : false
 }, {
-  "id" : "6af20dd6375be45253b442d6",
+  "id" : "6af21467193b86598e1b5cf0",
   "examId" : "e-ready",
-  "topicId" : "6af20dd6375be45253b442d2",
-  "chapterId" : "6af20dd6375be45253b442d2",
+  "topicId" : "6af21467193b86598e1b5cec",
+  "chapterId" : "6af21467193b86598e1b5cec",
   "title" : "Vertrag entsteht",
   "keyPoints" : [ "Angebot plus Annahme", "Mündlich gültig", "Schriftform bei Grundstück", "Geschäftsfähigkeit" ],
   "ttsText" : "Ein Vertrag entsteht, wenn zwei Seiten sich einig sind. Eine Seite macht ein Angebot, die andere nimmt es an. Das sind zwei übereinstimmende Willenserklärungen. Ein mündlicher Vertrag ist grundsätzlich gültig, nur manche Verträge brauchen Schriftform, zum Beispiel ein Grundstückskauf. Wichtig ist auch, wer geschäftsfähig ist. Kinder unter sieben Jahren können keine Verträge schließen. Zwischen sieben und achtzehn Jahren braucht es meist die Zustimmung der Eltern. Ein Beispiel: Du bestellst online ein Buch. Dein Klick ist das Angebot, die Bestätigung des Shops ist die Annahme. Merk dir: Angebot plus Annahme gleich Vertrag.",

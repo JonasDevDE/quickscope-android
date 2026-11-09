@@ -13,6 +13,13 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 0,
-  "createdAt" : "2026-11-09T18:15:51.733449900Z",
-  "daysLeft" : 40
+  "createdAt" : "2026-11-09T18:43:52.540375100Z",
+  "daysLeft" : 40,
+  "stage" : "topics",
+  "topicsReady" : 0,
+  "topicsTotal" : 0,
+  "lessonsReady" : 0,
+  "lessonsTotal" : 0,
+  "progressPercent" : 5,
+  "kind" : "exam"
 }

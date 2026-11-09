@@ -54,9 +54,12 @@ class AudiobookService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val app = application as QuickscopeApp
-        val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(false)
+        val api = android.net.Uri.parse(BuildConfig.BASE_URL)
         val data = ResolvingDataSource.Factory(http) { spec ->
-            spec.withAdditionalHeaders(
+            // Token nur an den eigenen API-Host (Schema, Host und Port muessen passen)
+            val own = spec.uri.scheme == api.scheme && spec.uri.host == api.host && spec.uri.port == api.port
+            if (!own) spec else spec.withAdditionalHeaders(
                 mapOf("Authorization" to "Bearer ${app.auth.token.orEmpty()}", "X-App-Version" to BuildConfig.VERSION_CODE.toString()),
             )
         }
@@ -72,7 +75,9 @@ class AudiobookService : MediaSessionService() {
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build().apply { setSmallIcon(R.drawable.ic_launcher_foreground) })
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+    /** Nur die eigene App und vertrauenswuerdige System-Controller (Benachrichtigung, Sperrbildschirm, Medientasten) duerfen steuern. */
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+        if (controllerInfo.packageName == packageName || controllerInfo.isTrusted) session else null
 
     override fun onDestroy() {
         player.currentMediaItem?.let { reportPartial(it) }
