@@ -60,7 +60,7 @@ import com.jonasschnell.quickscope.logic.masteryPercent
 import com.jonasschnell.quickscope.logic.percentText
 import com.jonasschnell.quickscope.logic.projectionLine
 import com.jonasschnell.quickscope.logic.remainingMinutes
-import com.jonasschnell.quickscope.logic.startLabel
+import com.jonasschnell.quickscope.logic.START_LABEL
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Card
 import com.jonasschnell.quickscope.ui.theme.CardHigh
@@ -187,7 +187,7 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
 
 /**
  * Heute, radikal reduziert, als EINE kompakte Spalte mit festen Abstaenden: Countdown, Ring mit EINER Prognosezeile, Merkzettel
- * (nur kurz vor der Pruefung), der grosse Knopf "Los (N min)" und direkt darunter "Mehr" (mindestens 48 dp, gut mit dem
+ * (nur kurz vor der Pruefung), der grosse Knopf "Starten" und direkt darunter "Mehr" (mindestens 48 dp, gut mit dem
  * Daumen erreichbar). Nichts haengt am Bildschirmrand.
  */
 @Composable
@@ -226,7 +226,7 @@ private fun ReadyView(
         Text("✓ Tagesziel geschafft", color = Accent, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).padding(top = 14.dp))
         HapticTextButton(onClick = { onMore(exam) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Noch eine Runde", color = Muted, style = MaterialTheme.typography.labelLarge) }
     } else {
-        PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
+        PrimaryButton(START_LABEL, { onStart(exam, minutes) })
         HapticTextButton(onClick = { onOpenMore(exam) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge) }
     }
 }

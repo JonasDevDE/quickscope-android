@@ -19,7 +19,12 @@ fun minutesChoiceLabel(f: Forecast?, minutes: Int): String =
 fun remainingMinutes(dailyMinutes: Int, doneSecondsToday: Int): Int =
     maxOf(3, dailyMinutes - doneSecondsToday / 60)
 
-fun startLabel(minutes: Int) = "Los ($minutes min)"
+/** Hauptknopf auf Heute: ohne Zeitangabe. */
+const val START_LABEL = "Starten"
+
+/** Text im Ring: "–", solange nie geuebt wurde (keine belastbare Zahl), sonst die Zahl in 5er-Schritten (auch "0 %" nach Antworten). */
+fun ringLabel(exam: com.jonasschnell.quickscope.data.Exam?, f: Forecast?): String =
+    if (exam != null && f != null && forecastReliable(exam, f)) percentText(ringPercent(exam, f)) else "–"
 
 /** Abschlusszeile: "Prognose 60 % → 65 %". */
 fun beforeAfterLine(before: Int, after: Int): String =

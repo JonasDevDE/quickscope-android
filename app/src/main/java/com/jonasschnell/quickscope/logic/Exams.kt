@@ -94,7 +94,8 @@ fun forecastReliable(exam: com.jonasschnell.quickscope.data.Exam?, f: com.jonass
         if (exam.kind == "open") f.knowledgePercent != null else f.coveragePercent > 0 && f.confidence != "none"
 
 /** Stand jetzt, oder null ohne belastbare Prognose (confidence "none": die Zahlen fehlen im JSON). */
-fun Forecast.scoreOrNull(): Int? = if (mode == "open") knowledgePercent else if (confidence == "none") null else scoreNowPercent
+fun Forecast.scoreOrNull(): Int? =
+    if (mode == "open") knowledgePercent else if (confidence == "none" || coveragePercent <= 0) null else scoreNowPercent
 
 /** Zahl im Ring: bei offenem Lernen der Wissensstand, sonst der Stand fuer heute. */
 fun ringPercent(exam: Exam, f: com.jonasschnell.quickscope.data.Forecast): Int =

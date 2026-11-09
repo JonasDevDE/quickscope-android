@@ -28,7 +28,8 @@ import com.jonasschnell.quickscope.logic.remainingMinutes
 import com.jonasschnell.quickscope.logic.sessionProgress
 import com.jonasschnell.quickscope.logic.shortExplanation
 import com.jonasschnell.quickscope.logic.sortExams
-import com.jonasschnell.quickscope.logic.startLabel
+import com.jonasschnell.quickscope.logic.START_LABEL
+import com.jonasschnell.quickscope.logic.scoreOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -106,7 +107,7 @@ class LogicTest {
         assertEquals("Prognose 50 %", beforeAfterLine(51, 52))
         assertEquals(20, remainingMinutes(30, 600))
         assertEquals(3, remainingMinutes(10, 3000))
-        assertEquals("Los (20 min)", startLabel(20))
+        assertEquals("Starten", START_LABEL)
     }
 
     // --- Antwort-Warteschlange ---
@@ -371,5 +372,37 @@ class LogicTest {
         assertEquals("In 5 Tagen", day("2026-11-14T08:00:00Z", "2026-11-09T12:00:00Z", startOfSentence = true))
         assertEquals("Vorbei", day("2026-11-08T08:00:00Z", "2026-11-09T12:00:00Z", startOfSentence = true))
         assertEquals("Prüfung morgen", "Prüfung " + day("2026-11-10T07:00:00Z", "2026-11-09T20:00:00Z"))   // mitten im Satz klein
+    }
+
+    // --- "–" statt "0 %", solange nie geuebt wurde ---
+
+    private fun f(scoreNowPercent: Int = 0, scoreAtExamPercent: Int = 0, confidence: String = "low", coveragePercent: Int = 0, mode: String? = null, knowledgePercent: Int? = null) =
+        com.jonasschnell.quickscope.data.Forecast(scoreNowPercent = scoreNowPercent, scoreAtExamPercent = scoreAtExamPercent, confidence = confidence, coveragePercent = coveragePercent, mode = mode, knowledgePercent = knowledgePercent)
+
+    private fun exam(kind: String = "exam") = com.jonasschnell.quickscope.data.Exam(id = "e", status = "ready", kind = kind)
+
+    @Test fun ringShowsDashUntilSomethingWasPracticed() {
+        val never = f(scoreNowPercent = 0, scoreAtExamPercent = 0, confidence = "none", coveragePercent = 0)
+        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam(), never))
+        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(confidence = "low", coveragePercent = 0)))   // alles 0 ohne Antworten
+        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam(), null))
+        assertEquals("–", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = null)))
+        // nach Antworten: Zahl wie gehabt, auch 0 % bleibt 0 %
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(scoreNowPercent = 0, confidence = "low", coveragePercent = 10)))
+        assertEquals("60 %", com.jonasschnell.quickscope.logic.ringLabel(exam(), f(scoreNowPercent = 63, confidence = "low", coveragePercent = 40)))   // abgerundet
+        assertEquals("0 %", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = 0)))
+        assertEquals("45 %", com.jonasschnell.quickscope.logic.ringLabel(exam("open"), f(mode = "open", knowledgePercent = 47)))
+    }
+
+    @Test fun scoreForComparisonIsNullWithoutAnswers() {
+        assertEquals(null, f(scoreNowPercent = 0, confidence = "none", coveragePercent = 0).scoreOrNull())
+        assertEquals(null, f(scoreNowPercent = 0, confidence = "low", coveragePercent = 0).scoreOrNull())
+        assertEquals(0, f(scoreNowPercent = 0, confidence = "low", coveragePercent = 5).scoreOrNull())
+        assertEquals(null, f(mode = "open", knowledgePercent = null).scoreOrNull())
+        assertEquals(35, f(mode = "open", knowledgePercent = 35).scoreOrNull())
+    }
+
+    @Test fun startButtonHasNoMinutes() {
+        assertTrue(!START_LABEL.contains("min") && !START_LABEL.any { it.isDigit() })
     }
 }
