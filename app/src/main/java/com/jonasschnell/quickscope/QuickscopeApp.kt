@@ -30,10 +30,14 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     val audioCache by lazy { AudioCache(this, network.client, network.api) }
     val preview by lazy { MaterialPreview(this, network.client) }
 
+    /** Toene fuer Rueckmeldungen; wird beim Start vorgeladen. */
+    val sfx by lazy { com.jonasschnell.quickscope.ui.Sfx(this) }
+
     val updater by lazy { Updater(this, network.client, network.api) }
 
     override fun onCreate() {
         super.onCreate()
+        sfx // Toene vorab erzeugen und laden
         network.onUpgradeRequired = { updater.markForced() }
         // Update erst installieren, wenn die App in den Hintergrund geht (nie waehrend der Nutzer sie benutzt).
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

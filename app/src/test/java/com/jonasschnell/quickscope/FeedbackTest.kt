@@ -142,4 +142,42 @@ class FeedbackTest {
         // Weiss nicht erzeugt gar kein Ergebnis (neutral) und damit keinen Ton
         assertEquals("dontknow", com.jonasschnell.quickscope.logic.dontKnowOutcome())
     }
+
+    private fun item(type: String, id: String = "x") = com.jonasschnell.quickscope.data.Item(id = id, type = type, question = "Q?", answer = "A")
+
+    @Test fun everyTaskTypePlingsOnCorrectAndStaysSilentOnWrongOrDontKnow() {
+        // Der Weg jeder Aufgabe: Antwort -> FeedbackTracker.record -> soundFor. Alle Typen laufen ueber denselben Pfad.
+        for (type in listOf("card", "mc", "cloze", "truefalse", "choice2", "number", "match", "order", "spot")) {
+            val task = com.jonasschnell.quickscope.logic.parseTask(item(type))
+            val tracker = FeedbackTracker()
+            val right = tracker.record(true, task.item.difficulty)
+            assertEquals("richtig bei $type", Tones.correct, com.jonasschnell.quickscope.logic.soundFor(right))
+            val wrong = FeedbackTracker().record(false, task.item.difficulty)
+            assertNull("falsch bei $type", com.jonasschnell.quickscope.logic.soundFor(wrong))
+        }
+        // auch eine Wiederholung ("richtig" ohne XP) und das erste Item bekommen das Pling
+        assertEquals(Tones.correct, com.jonasschnell.quickscope.logic.soundFor(FeedbackTracker().record(true, 3, retry = true)))
+        // Zuordnen: nur ein richtig verbundenes Paar plingt
+        assertEquals(Tones.correct, com.jonasschnell.quickscope.logic.soundForMatch(com.jonasschnell.quickscope.logic.MatchResult.Right))
+        assertNull(com.jonasschnell.quickscope.logic.soundForMatch(com.jonasschnell.quickscope.logic.MatchResult.Wrong))
+        assertNull(com.jonasschnell.quickscope.logic.soundForMatch(com.jonasschnell.quickscope.logic.MatchResult.Revealed))
+        assertNull(com.jonasschnell.quickscope.logic.soundForMatch(com.jonasschnell.quickscope.logic.MatchResult.None))
+    }
+
+    @Test fun wavFileHasValidHeaderAndLittleEndianSamples() {
+        val pcm = synth(Tones.correct)
+        val wav = com.jonasschnell.quickscope.logic.wavBytes(pcm)
+        assertEquals(44 + pcm.size * 2, wav.size)
+        assertEquals("RIFF", String(wav, 0, 4))
+        assertEquals("WAVE", String(wav, 8, 4))
+        assertEquals("data", String(wav, 36, 4))
+        fun le32(o: Int) = (wav[o].toInt() and 0xFF) or ((wav[o + 1].toInt() and 0xFF) shl 8) or ((wav[o + 2].toInt() and 0xFF) shl 16) or ((wav[o + 3].toInt() and 0xFF) shl 24)
+        assertEquals(FeedbackTuning.SAMPLE_RATE, le32(24))
+        assertEquals(pcm.size * 2, le32(40))
+        // ein Sample aus der Mitte: Byte-Reihenfolge stimmt
+        val k = pcm.size / 2
+        val v = (wav[44 + 2 * k].toInt() and 0xFF) or (wav[45 + 2 * k].toInt() shl 8)
+        assertEquals(pcm[k].toInt(), v)
+        assertTrue(pcm.maxOf { abs(it.toInt()) } > 5000) // deutlich hoerbar, nicht nur ein Hauch
+    }
 }

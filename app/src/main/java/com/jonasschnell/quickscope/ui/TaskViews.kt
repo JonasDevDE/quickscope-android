@@ -4,7 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.ui.graphics.graphicsLayer
 import com.jonasschnell.quickscope.logic.MatchResult
-import com.jonasschnell.quickscope.logic.Tones
+import com.jonasschnell.quickscope.logic.soundForMatch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -232,8 +232,11 @@ fun MatchTask(task: Task.Match, revealed: Boolean, onAnswer: (Boolean) -> Unit) 
                     MatchCell(right, if (c >= 0) PairColors[c % PairColors.size] else null, false, wrongRight == right, shake) {
                         if (state.done) return@MatchCell
                         val left = state.selectedLeft
-                        when (state.tapRight(right)) {
-                            MatchResult.Right -> { sfx.play(Tones.correct); haptics.confirm() }
+                        val result = state.tapRight(right)
+                        // das letzte Paar loest ohnehin das Pling der ganzen Aufgabe aus
+                        if (!state.done) soundForMatch(result)?.let(sfx::play)
+                        when (result) {
+                            MatchResult.Right -> haptics.confirm()
                             MatchResult.Revealed -> haptics.tick() // Paar wird gezeigt, ohne Ton
                             MatchResult.Wrong -> { haptics.tick(); wrongLeft = left; wrongRight = right; wrongTick++ }
                             MatchResult.None -> Unit

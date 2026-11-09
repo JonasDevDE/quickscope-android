@@ -36,7 +36,7 @@ object FeedbackTuning {
     const val CONFETTI = 60
 
     /** Toene: kurz und leise (Anteil der Vollaussteuerung). */
-    const val SFX_VOLUME = 0.22
+    const val SFX_VOLUME = 0.4
     const val SAMPLE_RATE = 22050
 }
 
@@ -182,3 +182,19 @@ fun synth(notes: List<Note>, volume: Double = FeedbackTuning.SFX_VOLUME, sampleR
     }
     return out
 }
+
+/** 16-Bit-PCM (mono, little endian) als WAV-Datei mit 44-Byte-Kopf, damit SoundPool es laden kann. */
+fun wavBytes(pcm: ShortArray, sampleRate: Int = FeedbackTuning.SAMPLE_RATE): ByteArray {
+    val dataLen = pcm.size * 2
+    val out = java.io.ByteArrayOutputStream(44 + dataLen)
+    fun int32(v: Int) { out.write(v and 0xFF); out.write((v shr 8) and 0xFF); out.write((v shr 16) and 0xFF); out.write((v shr 24) and 0xFF) }
+    fun int16(v: Int) { out.write(v and 0xFF); out.write((v shr 8) and 0xFF) }
+    out.write("RIFF".toByteArray()); int32(36 + dataLen); out.write("WAVE".toByteArray())
+    out.write("fmt ".toByteArray()); int32(16); int16(1); int16(1); int32(sampleRate); int32(sampleRate * 2); int16(2); int16(16)
+    out.write("data".toByteArray()); int32(dataLen)
+    for (s in pcm) int16(s.toInt())
+    return out.toByteArray()
+}
+
+/** Ein richtig verbundenes Paar bei "Zuordnen" bekommt sofort ein Pling; falsch und aufgedeckt bleiben ohne Ton. */
+fun soundForMatch(result: MatchResult): List<Note>? = if (result == MatchResult.Right) Tones.correct else null
