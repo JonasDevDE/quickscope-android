@@ -13,6 +13,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.jonasschnell.quickscope.logic.Celebration
 import com.jonasschnell.quickscope.logic.Tones
+import com.jonasschnell.quickscope.logic.PlayTap
+import com.jonasschnell.quickscope.logic.mayAutoplay
+import com.jonasschnell.quickscope.logic.playTap
 import com.jonasschnell.quickscope.logic.shouldSpeakQuestion
 import com.jonasschnell.quickscope.logic.soundFor
 import com.jonasschnell.quickscope.logic.floor5
@@ -72,10 +75,10 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit,
     Box(Modifier.fillMaxSize().background(Black)) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
         when (s.phase) {
-            SessionPhase.Running -> RunningView(s, vm, onClose)
+            SessionPhase.Running -> if (s.blocked) BlockedView(onRetry = vm::retryGate, onSilent = vm::continueSilent, onClose = onClose) else RunningView(s, vm, onClose)
             SessionPhase.Done -> DoneView(s, onClose)
-            SessionPhase.Loading, SessionPhase.Closed -> {
-                TopRow(0f, false, 0, null, onClose)
+            SessionPhase.Loading, SessionPhase.Closed -> if (s.blocked) BlockedView(onRetry = vm::retryGate, onSilent = vm::continueSilent, onClose = onClose) else {
+                TopRow(0f, 0, null, onClose)
                 Text("Gleich geht's los", color = Muted, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
                 Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SkeletonCard(80.dp)
@@ -96,13 +99,20 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit,
 }
 
 @Composable
-private fun TopRow(progress: Float, audio: Boolean, streak: Int, onAudio: ((Boolean) -> Unit)?, onClose: () -> Unit) {
+private fun TopRow(progress: Float, streak: Int, play: (@Composable () -> Unit)?, onClose: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("✕", style = MaterialTheme.typography.titleLarge, color = Muted, modifier = Modifier.hapticClickable(onClick = onClose).padding(horizontal = 8.dp, vertical = 4.dp))
         GlowProgress(progress, Modifier.weight(1f))
         StreakChip(streak)
-        if (onAudio != null) Pill("Ton", audio, { onAudio(!audio) })
+        play?.invoke()
     }
+}
+
+/** Ruhiger Zwischenbildschirm, wenn das Audio nicht kommt: keine halbe Uebung, die Runde bleibt erhalten. */
+@Composable
+private fun BlockedView(onRetry: () -> Unit, onSilent: () -> Unit, onClose: () -> Unit) {
+    TopRow(0f, 0, null, onClose)
+    MessageView("Gerade nicht möglich", "Bitte gleich nochmal.", "Nochmal", onRetry, "Ohne Ton lernen", onSilent)
 }
 
 @Composable
@@ -125,22 +135,22 @@ private fun MessageView(title: String, text: String, primary: String, onPrimary:
 @Composable
 private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose: () -> Unit) {
     val task = s.current ?: return
-    val voice = if (s.audio || task is Task.Teach) rememberVoice() else null
+    val voice = rememberVoice(onBackground = vm::suppressAutoplay)
     val haptics = LocalHaptics.current
     val sfx = rememberSfx()
     val shake = remember { Animatable(0f) }
     val ids = remember(s.tasks) { s.tasks.map { it.item.id } }
 
     // Audio-Modus: naechste Aufgaben vorab laden
-    LaunchedEffect(s.index, s.audio) {
-        if (s.audio) voice?.prefetch(s.examId, ids, s.index)
+    LaunchedEffect(s.index) {
+        voice.prefetch(s.examId, ids, s.index)
     }
     // Audio-Modus: nur die Frage vorlesen (nie Antwort oder Rueckmeldung)
     var retry by remember { mutableIntStateOf(0) }
-    LaunchedEffect(s.index, s.audio, s.feedback != null, voice, retry) {
+    LaunchedEffect(s.index, s.feedback != null, voice, retry) {
         if (task is Task.Teach) return@LaunchedEffect // Lektionskarte spielt sich selbst ab
-        if (voice != null && shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach)) voice.speak(s.examId, task.item.id, task.item.question)
-        else voice?.stop()
+        if (shouldSpeakQuestion(!s.silent && !s.waiting, s.feedback, task is Task.Teach) && mayAutoplay(s.autoplaySuppressedAt, s.index)) voice.speak(s.examId, task.item.id, task.item.question)
+        else voice.stop()
     }
     // Rueckmeldung: Ton und Haptik; richtig deutlich groesser als falsch
     LaunchedEffect(s.fx?.id) {
@@ -181,14 +191,18 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
     val shownItems = s.tasks.filterIndexed { i, _ -> !s.isRetry.getOrElse(i) { false } }.map { it.item }
     val done = (0 until s.index).count { !s.isRetry.getOrElse(it) { false } }
-    TopRow(sessionProgress(shownItems, done), s.audio, s.streak, vm::setAudio, onClose)
-    if (voice != null) {
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (voice.loading) SkeletonBox(Modifier.size(10.dp), CircleShape)
-            if (voice.unavailable && task !is Task.Teach) {
-                Text("Audio gerade nicht verfügbar", color = Muted, style = MaterialTheme.typography.bodySmall)
-                HapticTextButton(onClick = { retry++ }) { Text("Nochmal", color = Accent, style = MaterialTheme.typography.labelLarge) }
+    TopRow(sessionProgress(shownItems, done), s.streak, if (s.silent) null else ({
+        PlayPauseButton(voice.playState, {
+            // Pause gilt nur fuer die aktuelle Karte; die naechste Karte startet von selbst
+            when (playTap(voice.playState)) {
+                PlayTap.Pause -> voice.pause()
+                PlayTap.Resume -> voice.resume()
+                PlayTap.Restart -> { vm.allowAutoplay(); retry++ }
             }
+        })
+    }), onClose)
+    run {
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         }
     }
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
@@ -202,7 +216,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, s.neutral, s.audio, s.examId, voice, vm)
+                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), s.silent, vm)
                 }
             }
         }
@@ -223,14 +237,14 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
 /** Die Aufgabe je Typ. Lektionskarten und Loesungswege haben ihren eigenen "Weiter"-Knopf. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, audioOn: Boolean, examId: String, voice: Voice?, vm: SessionViewModel) {
+private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel) {
     val answered = feedback != null
     val revealed = neutral
     val onAnswer: (Boolean) -> Unit = { ok -> vm.answer(ok) }
     when (task) {
         is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
-        is Task.Teach -> if (voice != null) TeachCard(task, examId, voice, muted = !audioOn, onHeard = vm::heard, onNext = vm::next)
+        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next)
         is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
         is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
         is Task.Spot -> SpotTask(task, revealed, onAnswer)

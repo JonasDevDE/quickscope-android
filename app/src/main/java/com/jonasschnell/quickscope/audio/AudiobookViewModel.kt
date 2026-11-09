@@ -44,8 +44,6 @@ data class BookUi(
     val playing: Boolean = false,
     val positionMs: Long = 0,
     val durationMs: Long = 0,
-    /** Audio kam nicht: ruhiger Hinweis mit "Nochmal". */
-    val unavailable: Boolean = false,
     val message: String? = null,
 )
 
@@ -77,6 +75,11 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
                 val order = chapters.associate { it.chapterId to it.order }
                 queue = AudiobookQueue(book.items)
                 app.audioCache.requestLessonPrefetch(examId, queue.ahead())
+// Gate: nicht mit der Lektion beginnen, bevor ihr Audio bereit ist (neutraler Ladezustand, bei Dauerfehler ruhige Meldung)
+                if (!app.audioCache.ensureReady(examId, com.jonasschnell.quickscope.logic.WarmTarget(book.items.first().lessonId, true))) {
+                    _state.update { it.copy(phase = BookPhase.Error, message = "Gerade nicht möglich. Bitte gleich nochmal.") }
+                    return@launch
+                }
                 val mediaItems = book.items.map { mediaItem(it, lessons[it.lessonId], order[it.chapterId] ?: 0, chapters.size) }
                 connect {
                     it.setMediaItems(mediaItems)
@@ -100,21 +103,28 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
             putInt(LessonExtras.CHAPTER_ORDER, chapterOrder)
             putInt(LessonExtras.CHAPTER_TOTAL, chapterTotal)
             putInt(LessonExtras.EST_SECONDS, item.estSeconds)
+            putString(LessonExtras.TITLE, item.title)
+            putString(LessonExtras.CHAPTER_TITLE, item.chapterTitle)
         }
         return MediaItem.Builder()
             .setMediaId(item.lessonId)
-            .setUri("${BuildConfig.BASE_URL}api/exams/$examId/lessons/${item.lessonId}/audio")
-            .setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).setArtist(item.chapterTitle).setExtras(extras).build())
+            // schon geladene Lektionen kommen aus dem Cache, die uebrigen per Streaming
+            .setUri(cachedUri(item.lessonId) ?: android.net.Uri.parse("${BuildConfig.BASE_URL}api/exams/$examId/lessons/${item.lessonId}/audio"))
+            // generischer Titel: keine Titel oder Kapitel nach aussen (Sperrbildschirm)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle("Quickscope").setExtras(extras).build())
             .build()
+    }
+
+    private fun cachedUri(lessonId: String): android.net.Uri? {
+        val t = com.jonasschnell.quickscope.logic.WarmTarget(lessonId, true)
+        if (!app.audioCache.isCached(examId, t)) return null
+        return android.net.Uri.fromFile(java.io.File(app.cacheDir, "audio/" + com.jonasschnell.quickscope.logic.audioFileName(examId, "lesson_$lessonId", com.jonasschnell.quickscope.logic.VoicePart.Question)))
     }
 
     private fun connect(onReady: (MediaController) -> Unit) {
         controller?.let { onReady(it); return }
         val token = SessionToken(app, ComponentName(app, AudiobookService::class.java))
         val future = MediaController.Builder(app, token).setListener(object : MediaController.Listener {
-            override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
-                _state.update { it.copy(unavailable = extras.getBoolean(LessonExtras.UNAVAILABLE, false)) }
-            }
         }).buildAsync()
         future.addListener({
             val c = runCatching { future.get() }.getOrNull()
@@ -150,8 +160,8 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
                 phase = BookPhase.Playing,
                 index = idx,
                 count = p.mediaItemCount,
-                title = item.mediaMetadata.title?.toString().orEmpty(),
-                chapterTitle = item.mediaMetadata.artist?.toString().orEmpty(),
+                title = extras?.getString(LessonExtras.TITLE).orEmpty(),
+                chapterTitle = extras?.getString(LessonExtras.CHAPTER_TITLE).orEmpty(),
                 chapterLabel = chapterLabel(extras?.getInt(LessonExtras.CHAPTER_ORDER) ?: 0, extras?.getInt(LessonExtras.CHAPTER_TOTAL) ?: 0),
                 keyPoints = extras?.getStringArray(LessonExtras.KEY_POINTS)?.toList().orEmpty(),
                 mnemonic = extras?.getString(LessonExtras.MNEMONIC),
@@ -185,13 +195,6 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
             c.stop()
             _state.update { it.copy(phase = BookPhase.Finished, playing = false) }
         }
-    }
-
-    /** "Nochmal" nach einem Audiofehler: neu laden und weiterspielen. */
-    fun retryPlayback() {
-        val c = controller ?: return
-        c.prepare()
-        c.play()
     }
 
     fun previous() {

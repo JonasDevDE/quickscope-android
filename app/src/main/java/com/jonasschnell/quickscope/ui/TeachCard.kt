@@ -40,18 +40,16 @@ import kotlinx.coroutines.isActive
  * springt direkt zu den Fragen. Gemeldet wird, wie viel gehoert wurde.
  */
 @Composable
-fun TeachCard(task: Task.Teach, examId: String, voice: Voice, muted: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit) {
+fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit) {
     val lesson = task.lesson
     val durationMs = lesson.estSeconds * 1000L
     var replay by remember { mutableIntStateOf(0) }
     var elapsed by remember { mutableLongStateOf(0L) }
     var finished by remember { mutableStateOf(false) }
 
-    LaunchedEffect(lesson.id, muted, replay) {
-        if (muted) {
-            voice.stop()
-            return@LaunchedEffect
-        }
+    LaunchedEffect(lesson.id, replay, replayKey) {
+        if (silent) return@LaunchedEffect // ohne Ton: nur lesen
+        if (!autoplay && replayKey == 0 && replay == 0) return@LaunchedEffect // im Hintergrund gestoppt: erst Play startet wieder
         finished = false
         val t0 = SystemClock.elapsedRealtime()
         elapsed = 0
@@ -63,8 +61,7 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, muted: Boolean, on
                 }
             }
             try {
-                voice.speakLesson(examId, lesson.id)
-                finished = true
+                finished = voice.speakLesson(examId, lesson.id) // nur wenn wirklich bis zum Ende gespielt wurde
             } finally {
                 job.cancel()
             }
@@ -76,10 +73,10 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, muted: Boolean, on
         val active = if (finished) lesson.keyPoints.size - 1 else activeKeyPoint(lesson.keyPoints.size, elapsed, durationMs)
         lesson.keyPoints.forEachIndexed { i, point ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("•", color = if (i == active && !muted) Accent else Muted, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(end = 12.dp))
+                Text("•", color = if (i == active) Accent else Muted, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(end = 12.dp))
                 Text(
                     point, style = MaterialTheme.typography.titleMedium,
-                    color = if (i == active && !muted) Accent else Color.White.copy(alpha = 0.75f),
+                    color = if (i == active) Accent else Color.White.copy(alpha = 0.75f),
                 )
             }
         }
@@ -89,12 +86,6 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, muted: Boolean, on
             modifier = Modifier.fillMaxWidth().height(24.dp),
             maxLines = 1,
         )
-        if (voice.unavailable && !muted) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Audio gerade nicht verfügbar", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                Pill("Nochmal", false, { replay++ })
-            }
-        }
         Spacer(Modifier.height(4.dp))
         PrimaryButton("Weiter zu den Fragen", {
             voice.stop()

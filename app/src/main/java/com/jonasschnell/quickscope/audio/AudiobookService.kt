@@ -24,18 +24,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.jonasschnell.quickscope.logic.FailureAction
+import com.jonasschnell.quickscope.logic.nextAfterFailure
 
 /** Extras je Lektion im MediaItem (Schluessel). */
 object LessonExtras {
     const val EXAM_ID = "examId"
+    const val TITLE = "title"
+    const val CHAPTER_TITLE = "chapterTitle"
     const val KEY_POINTS = "keyPoints"
     const val MNEMONIC = "mnemonic"
     const val CHAPTER_ORDER = "chapterOrder"
     const val CHAPTER_TOTAL = "chapterTotal"
     const val EST_SECONDS = "estSeconds"
-    /** Session-Extras: Audio kam nicht (Fehler, Offline): ruhiger Hinweis mit "Nochmal". */
-    const val UNAVAILABLE = "unavailable"
 }
 
 /**
@@ -49,7 +52,12 @@ class AudiobookService : MediaSessionService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val reported = HashMap<String, Double>()
     private val durations = HashMap<String, Long>()
+    private val failures = HashMap<String, Int>()
     private lateinit var player: ExoPlayer
+
+    private companion object {
+        const val CHANNEL_ID = "audiobook"
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -71,8 +79,22 @@ val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(false)
             .build()
         player.playbackParameters = PlaybackParameters(SPEECH_SPEED, 1f) // feste Geschwindigkeit, Tonhoehe bleibt
         player.addListener(listener)
-        session = MediaSession.Builder(this, player).build()
-        setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build().apply { setSmallIcon(R.drawable.ic_launcher_foreground) })
+        session = MediaSession.Builder(this, player).setCallback(object : MediaSession.Callback {
+            // Fremde Controller (Sperrbildschirm, Systemleiste) duerfen nur Play/Pause, nicht springen
+            override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
+                if (controller.packageName == packageName) return MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
+                val limited = Player.Commands.Builder()
+                    .add(Player.COMMAND_PLAY_PAUSE).add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM).add(Player.COMMAND_GET_METADATA).add(Player.COMMAND_GET_TIMELINE)
+                    .build()
+                return MediaSession.ConnectionResult.AcceptedResultBuilder(session).setAvailablePlayerCommands(limited).build()
+            }
+        }).build()
+        // Benachrichtigung: eigener Kanal, auf dem Sperrbildschirm privat (Inhalt erst nach dem Entsperren)
+        val channel = android.app.NotificationChannel(CHANNEL_ID, "Hörbuch", android.app.NotificationManager.IMPORTANCE_LOW).apply {
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+        }
+        getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(channel)
+        setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).setChannelId(CHANNEL_ID).build().apply { setSmallIcon(R.drawable.ic_launcher_foreground) })
     }
 
     /** Nur die eigene App und vertrauenswuerdige System-Controller (Benachrichtigung, Sperrbildschirm, Medientasten) duerfen steuern. */
@@ -93,10 +115,10 @@ val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(false)
             when (state) {
                 Player.STATE_READY -> {
                     player.duration.takeIf { it > 0 }?.let { durations[item.mediaId] = it }
-                    session?.setSessionExtras(Bundle().apply { putBoolean(LessonExtras.UNAVAILABLE, false) })
+                    failures.remove(item.mediaId)
                 }
-                Player.STATE_ENDED -> report(item, 1.0)
-                Player.STATE_IDLE -> reportPartial(item)
+                Player.STATE_ENDED -> { report(item, 1.0); stopSelf() }   // Hoerbuch zu Ende: Dienst beenden
+                Player.STATE_IDLE -> { reportPartial(item); if (player.mediaItemCount == 0) stopSelf() } // verlassen: Dienst beenden
             }
         }
 
@@ -107,8 +129,20 @@ val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(false)
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            // keine Geraetestimme: still bleiben und den Hinweis "Nochmal" ermoeglichen
-            session?.setSessionExtras(Bundle().apply { putBoolean(LessonExtras.UNAVAILABLE, true) })
+            // leise erneut versuchen (Backoff); nach 3 Fehlern in Folge die Lektion ruhig ueberspringen
+            val id = player.currentMediaItem?.mediaId ?: return
+            val n = (failures[id] ?: 0) + 1
+            failures[id] = n
+            val index = player.currentMediaItemIndex
+            when (val action = nextAfterFailure(n)) {
+                is FailureAction.Retry -> scope.launch {
+                    delay(action.delayMs)
+                    if (player.currentMediaItemIndex == index) { player.prepare(); player.play() }
+                }
+                FailureAction.Skip -> scope.launch {
+                    if (index + 1 < player.mediaItemCount) { player.seekTo(index + 1, 0); player.prepare(); player.play() } else player.stop()
+                }
+            }
         }
     }
 

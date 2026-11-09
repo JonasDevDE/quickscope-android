@@ -124,3 +124,28 @@ enum class NewExamPage { Kind, Name, When, Material, Description, Prior, Daily }
 
 fun newExamPages(open: Boolean): List<NewExamPage> =
     NewExamPage.entries.filter { open.not() || it != NewExamPage.When }
+
+/** Kurzzeile unter dem Pruefungsnamen: "in 12 Tagen", "morgen", "heute", "in 5 Std", "in 20 Min"; "vorbei" nach dem Termin. */
+fun daysUntilLabel(startsAt: Instant?, now: Instant): String {
+    if (startsAt == null || !startsAt.isAfter(now)) return "vorbei"
+    val total = Duration.between(now, startsAt)
+    val days = total.toDays()
+    return when {
+        days >= 2 -> "in $days Tagen"
+        days == 1L -> "morgen"
+        total.toHours() >= 1 -> "in ${total.toHours()} Std"
+        else -> "in ${maxOf(1, total.toMinutes())} Min"
+    }
+}
+
+/** Eintraege hinter "Mehr" auf Heute, in der Reihenfolge ihrer Gruppen (Ueben, Heute, Pruefung). */
+enum class MoreEntry { QuestionsOnly, ListenOnly, Plan, Used, Streak, Material, Settings }
+
+fun moreEntries(hasLessons: Boolean, hasPlan: Boolean, streak: Int?): List<MoreEntry> = buildList {
+    if (hasLessons) { add(MoreEntry.QuestionsOnly); add(MoreEntry.ListenOnly) }
+    if (hasPlan) add(MoreEntry.Plan)
+    add(MoreEntry.Used)
+    if (streak != null && streak > 0) add(MoreEntry.Streak)
+    add(MoreEntry.Material)
+    add(MoreEntry.Settings)
+}

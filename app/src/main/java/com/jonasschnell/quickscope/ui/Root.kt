@@ -77,6 +77,7 @@ private sealed interface Overlay {
     data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
     data class Cheat(val examId: String) : Overlay
     data class Audiobook(val examId: String) : Overlay
+    data class More(val examId: String) : Overlay
 }
 
 @Composable
@@ -157,15 +158,13 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                     HomePage(
                         state, loading = !ready || !state.examsLoaded,
                         onStart = { exam, _ -> sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull()) },
-                        onListen = { overlay = Overlay.Audiobook(it.id) },
-                        onQuestionsOnly = { exam, _ -> sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
+                        onOpenMore = { overlay = Overlay.More(it.id) },
                         onMore = { exam -> sessionVm.start(exam.id, EXTRA_MINUTES, state.activeForecast?.scoreOrNull()) },
                         onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
                         onRetry = vm::refreshExamsNow,
                         onCancelUpload = vm::cancelUpload,
                         onRetryUpload = vm::retryUpload,
-                        dayStreak = vm.dayStreak(),
                     )
                 }
             }
@@ -199,6 +198,17 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
             is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
+            is Overlay.More -> {
+                val exam = state.exams.firstOrNull { it.id == o.examId }
+                if (exam != null) MoreSheet(
+                    state, exam, vm.dayStreak(),
+                    onQuestionsOnly = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
+                    onListen = { overlay = Overlay.Audiobook(exam.id) },
+                    onMaterial = { overlay = Overlay.Settings(exam.id, ExamSetting.Material) },
+                    onSettings = { overlay = Overlay.Settings(exam.id) },
+                    onDismiss = dismiss,
+                )
+            }
             is Overlay.Audiobook -> {
                 val exam = state.exams.firstOrNull { it.id == o.examId }
                 AudiobookScreen(

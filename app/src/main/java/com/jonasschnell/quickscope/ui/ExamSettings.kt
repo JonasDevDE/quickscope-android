@@ -62,15 +62,18 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
     }
     when (sub) {
         null -> QuickscopeSheet(onDismiss, exam.name) {
+            SectionTitle("Inhalt")
             SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value("${exam.materialCount}") }
             SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(if (exam.description.isNullOrBlank()) "–" else "gesetzt") }
-            SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
+            SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
+            SectionTitle("Zeit", Modifier.padding(top = 8.dp))
             SettingsRow("Art", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Dauerhaft" else "Prüfung") }
             if (!isOpen(exam)) SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
-            SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
+            SectionTitle("Mehr", Modifier.padding(top = 8.dp))
+            SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
             SettingsRow("Aufgaben neu erzeugen", null, { sub = ExamSetting.Regenerate }) {}
-            SettingsRow("Fortschritt zurücksetzen", null, { sub = ExamSetting.Reset }) {}
+            SettingsRow("Von vorn beginnen", null, { sub = ExamSetting.Reset }) {}
             SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
         }
         ExamSetting.Material -> MaterialSheet(state, vm, exam) { sub = null }
@@ -86,14 +89,14 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
             titleContentColor = Color.White,
             textContentColor = Color(0xFFCFCFD4),
             title = { Text("Aufgaben neu erzeugen?") },
-            text = { LightSystemIcons(); Text("Dein Lernstand wird zurückgesetzt.") },
+            text = { LightSystemIcons(); Text("Dein Fortschritt bleibt erhalten, nur neue Aufgaben werden angepasst.") },
             confirmButton = { HapticTextButton(onClick = { vm.regenerateItems(exam.id); onDismiss() }) { Text("Neu erzeugen", color = Accent) } },
             dismissButton = { HapticTextButton(onClick = { sub = null }) { Text("Abbrechen", color = Color.White) } },
         )
         ExamSetting.Reset -> TwoStepConfirm(
-            "Fortschritt zurücksetzen?", "Dein Lernstand wird gelöscht. Material und Aufgaben bleiben.",
-            "Wirklich zurücksetzen?", "Letzte Bestätigung: Der Lernstand dieser Prüfung wird jetzt zurückgesetzt.",
-            "Zurücksetzen", { vm.resetProgress(exam.id); onDismiss() }, { sub = null },
+            "Von vorn beginnen?", "Lernstand und Aufgaben dieser Prüfung werden neu aufgebaut.",
+            "Wirklich von vorn beginnen?", "Letzte Bestätigung: Der Lernstand wird jetzt gelöscht.",
+            "Von vorn beginnen", { vm.regenerateItems(exam.id, resetProgress = true); onDismiss() }, { sub = null },
         )
         ExamSetting.Delete -> TwoStepConfirm(
             "Prüfung löschen?", "Material, Aufgaben und Fortschritt dieser Prüfung werden gelöscht.",
@@ -141,6 +144,7 @@ private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit
     var text by remember { mutableStateOf(exam.description.orEmpty()) }
     val saved = AutoSave(text.trim(), true) { v, fail -> vm.updateExam(exam.id, ExamUpdate(description = v), fail) }
     QuickscopeSheet(onDismiss, "Beschreibung", status = if (saved) "Gespeichert" else null) {
+        Text("Dein Fortschritt bleibt erhalten, nur neue Aufgaben werden angepasst.", color = Muted, style = MaterialTheme.typography.bodySmall)
         QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
         Text("${text.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall)
     }

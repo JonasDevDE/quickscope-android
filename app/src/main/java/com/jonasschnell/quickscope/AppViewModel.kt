@@ -522,18 +522,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun resetProgress(id: String) {
-        run("Zurücksetzen fehlgeschlagen") {
-            api.resetProgress(id)
-            buzz(HapticKind.GestureEnd)
-            loadExams()
-        }
-    }
-
-    /** Aufgaben neu erzeugen: Lernstand wird zurueckgesetzt, die Pruefung zeigt danach wieder "Liest Material ...". */
-    fun regenerateItems(id: String) {
+    /** Aufgaben neu erzeugen: der Lernstand bleibt erhalten; [resetProgress] ist der harte Neustart ("Von vorn beginnen"). */
+    fun regenerateItems(id: String, resetProgress: Boolean = false) {
         run("Neu erzeugen fehlgeschlagen") {
-            api.regenerate(id)
+            api.regenerate(id, if (resetProgress) true else null)
             buzz(HapticKind.Confirm)
             loadExams()
         }

@@ -110,7 +110,7 @@ private fun ProfileEditor(state: UiState, vm: AppViewModel, initial: Profile, on
         }
         // Nach einer Aenderung: optional die Aufgaben der aktuellen Pruefung neu erzeugen; neue Pruefungen nutzen es automatisch
         if (changed && exam != null) {
-            Text("Für „${exam.name}“ gilt es nach dem Neuerzeugen.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text("Dein Fortschritt bleibt erhalten, nur neue Aufgaben werden angepasst.", color = Muted, style = MaterialTheme.typography.bodySmall)
             SecondaryButton("Aufgaben jetzt neu erzeugen", { vm.regenerateItems(exam.id); changed = false })
         }
         PrimaryButton("Fertig", onClose)

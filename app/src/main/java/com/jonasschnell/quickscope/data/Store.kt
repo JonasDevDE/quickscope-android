@@ -17,11 +17,6 @@ class Store(context: Context) : QueueStorage {
         get() = prefs.getString("chosenExam", null)
         set(value) = prefs.edit().putString("chosenExam", value).apply()
 
-    /** Audio-Modus (Sprachausgabe) in der Lernrunde: Zustand wird gemerkt. */
-    var audioMode: Boolean
-        get() = prefs.getBoolean("audioMode", true)
-        set(value) = prefs.edit().putBoolean("audioMode", value).apply()
-
     /** Tagesserie (lokal abgeleitet): letzter Tag mit abgeschlossener Runde (ISO) und Tage in Folge. */
     var lastSessionDay: String?
         get() = prefs.getString("lastSessionDay", null)

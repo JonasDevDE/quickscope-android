@@ -8,6 +8,11 @@ import com.jonasschnell.quickscope.logic.PrefetchPlanner
 import com.jonasschnell.quickscope.logic.VoicePart
 import com.jonasschnell.quickscope.logic.audioFileName
 import com.jonasschnell.quickscope.logic.filesToPrune
+import com.jonasschnell.quickscope.logic.FailureAction as F
+import com.jonasschnell.quickscope.logic.GateResult as G
+import com.jonasschnell.quickscope.logic.PlayButtonKind as K
+import com.jonasschnell.quickscope.logic.PlayState as P
+import com.jonasschnell.quickscope.logic.PlayTap as T
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -126,5 +131,96 @@ class AudioTest {
         val a = m.begin(); val b = m.begin(); val c = m.begin()
         assertFalse(m.isCurrent(a)); assertFalse(m.isCurrent(b)); assertTrue(m.isCurrent(c))
         assertEquals(c, m.generation)
+    }
+
+    @Test fun backgroundStopsRoundPlaybackAndAutoplayRestsUntilNextItem() {
+        // Vordergrund: nichts zu tun; Hintergrund: jede laufende, ladende oder pausierte Wiedergabe sofort stoppen
+        assertFalse(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(true, P.Playing))
+        assertTrue(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(false, P.Playing))
+        assertTrue(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(false, P.Loading))
+        assertTrue(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(false, P.Paused))
+        assertFalse(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(false, P.Idle))
+        // nach dem Stopp: kein Auto-Play fuer dieses Item, aber wieder beim naechsten; Play-Knopf startet von vorn
+        assertTrue(com.jonasschnell.quickscope.logic.mayAutoplay(null, 3))
+        assertFalse(com.jonasschnell.quickscope.logic.mayAutoplay(3, 3))
+        assertTrue(com.jonasschnell.quickscope.logic.mayAutoplay(3, 4))
+        assertEquals(com.jonasschnell.quickscope.logic.PlayTap.Restart, com.jonasschnell.quickscope.logic.playTap(P.Idle))
+        // die Maschine bleibt danach sauber: gestoppt = ungueltig, nichts laeuft weiter
+        val m = com.jonasschnell.quickscope.logic.PlaybackMachine()
+        val g = m.begin(); m.playing(g)
+        m.stop()
+        assertFalse(m.isCurrent(g))
+        assertEquals(P.Idle, m.state)
+    }
+
+    @Test fun playButtonShowsOnlyPlayOrPause() {
+        assertEquals(K.Pause, com.jonasschnell.quickscope.logic.playButtonKind(P.Playing))
+        assertEquals(K.Play, com.jonasschnell.quickscope.logic.playButtonKind(P.Idle))
+        assertEquals(K.Play, com.jonasschnell.quickscope.logic.playButtonKind(P.Paused))
+        assertEquals(K.Play, com.jonasschnell.quickscope.logic.playButtonKind(P.Loading))
+        assertEquals(2, K.entries.size) // kein Spinner
+    }
+
+    @Test fun tapPausesResumesOrRestarts() {
+        assertEquals(T.Pause, com.jonasschnell.quickscope.logic.playTap(P.Playing))
+        assertEquals(T.Resume, com.jonasschnell.quickscope.logic.playTap(P.Paused))
+        assertEquals(T.Restart, com.jonasschnell.quickscope.logic.playTap(P.Idle))   // am Ende neu von vorn
+        assertEquals(T.Restart, com.jonasschnell.quickscope.logic.playTap(P.Loading))
+    }
+
+    @Test fun backoffDoublesUpToSixtySecondsAndHonoursRetryAfter() {
+        val seq = (0..9).map { com.jonasschnell.quickscope.logic.retryDelayMs(it) }
+        assertEquals(listOf(1000L, 2000L, 4000L, 8000L, 16000L, 32000L, 60000L, 60000L, 60000L, 60000L), seq)
+        // Retry-After des Servers wird beachtet (aber nie kuerzer als der Backoff)
+        assertEquals(30_000L, com.jonasschnell.quickscope.logic.retryDelayMs(0, 30_000L))
+        assertEquals(8_000L, com.jonasschnell.quickscope.logic.retryDelayMs(3, 2_000L))
+        assertEquals(120_000L, com.jonasschnell.quickscope.logic.retryDelayMs(0, 600_000L)) // vernuenftige Obergrenze
+        assertEquals(1000L, com.jonasschnell.quickscope.logic.retryDelayMs(-3))
+        assertEquals(30_000L, com.jonasschnell.quickscope.logic.parseRetryAfter(" 30 "))
+        assertNull(com.jonasschnell.quickscope.logic.parseRetryAfter(null))
+        assertNull(com.jonasschnell.quickscope.logic.parseRetryAfter("Wed, 21 Oct 2026 07:28:00 GMT"))
+        assertNull(com.jonasschnell.quickscope.logic.parseRetryAfter("-5"))
+    }
+
+    @Test fun audiobookRetriesQuietlyThenSkipsAfterThreeFailures() {
+        assertEquals(F.Retry(1000L), com.jonasschnell.quickscope.logic.nextAfterFailure(1))
+        assertEquals(F.Retry(2000L), com.jonasschnell.quickscope.logic.nextAfterFailure(2))
+        assertEquals(F.Skip, com.jonasschnell.quickscope.logic.nextAfterFailure(3))
+        assertEquals(F.Skip, com.jonasschnell.quickscope.logic.nextAfterFailure(7))
+    }
+
+    @Test fun retryStopsWhenItemChangesOrAppGoesToBackground() {
+        // Itemwechsel oder Hintergrund machen die laufende Wiedergabe ungueltig: die Schleife prueft isCurrent und endet
+        val m = com.jonasschnell.quickscope.logic.PlaybackMachine()
+        val g = m.begin()
+        assertTrue(m.isCurrent(g))
+        val next = m.begin()                       // naechste Karte
+        assertFalse(m.isCurrent(g))
+        assertTrue(m.isCurrent(next))
+        m.stop()                                   // App im Hintergrund
+        assertFalse(m.isCurrent(next))
+        assertTrue(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(false, P.Loading))
+        assertEquals(2, com.jonasschnell.quickscope.logic.PREFETCH_PARALLEL)
+    }
+
+    @Test fun cardAppearsOnlyWithAudioInCacheElseWaitsThenTimesOut() {
+        val gate = { required: Boolean, cached: Boolean, waited: Long -> com.jonasschnell.quickscope.logic.gateDecision(required, cached, waited) }
+        assertEquals(G.Ready, gate(true, true, 0))                       // Cache-Treffer: Karte erscheint sofort
+        assertEquals(G.Wait, gate(true, false, 0))                       // noch nicht da: warten (Shimmer)
+        assertEquals(G.Wait, gate(true, false, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS - 1))
+        assertEquals(G.Timeout, gate(true, false, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS)) // ruhiger Fehlerbildschirm
+        assertEquals(G.Ready, gate(true, true, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS + 1_000)) // kam doch noch
+        // Ohne-Ton-Pfad: keine Audio-Pflicht, nie warten, nie Fehlerbildschirm
+        assertEquals(G.Ready, gate(false, false, 0))
+        assertEquals(G.Ready, gate(false, false, 999_999))
+        assertEquals(45_000L, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS)
+    }
+
+    @Test fun gateTargetIsTheLessonForTeachCardsAndTheQuestionOtherwise() {
+        val lesson = com.jonasschnell.quickscope.data.SessionLesson("L1", "T", listOf("a"), "x", null, 40)
+        val teach = com.jonasschnell.quickscope.logic.Task.Teach(com.jonasschnell.quickscope.logic.teachItem(lesson), lesson)
+        assertEquals(com.jonasschnell.quickscope.logic.WarmTarget("L1", true), com.jonasschnell.quickscope.logic.gateTarget(teach))
+        val q = com.jonasschnell.quickscope.logic.parseTask(com.jonasschnell.quickscope.data.Item(id = "q1", type = "card"))
+        assertEquals(com.jonasschnell.quickscope.logic.WarmTarget("q1", false), com.jonasschnell.quickscope.logic.gateTarget(q))
     }
 }

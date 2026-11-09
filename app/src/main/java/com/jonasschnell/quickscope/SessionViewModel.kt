@@ -9,9 +9,9 @@ import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.backendMessage
 import com.jonasschnell.quickscope.data.HeardRequest
 import com.jonasschnell.quickscope.data.SessionLesson
-import com.jonasschnell.quickscope.logic.FIRST_AUDIO_WAIT_MS
 import com.jonasschnell.quickscope.logic.FeedbackTracker
-import com.jonasschnell.quickscope.logic.audioNeededAtStart
+import com.jonasschnell.quickscope.logic.WarmTarget
+import com.jonasschnell.quickscope.logic.gateTarget
 import com.jonasschnell.quickscope.logic.warmPlan
 import com.jonasschnell.quickscope.logic.StartMode
 import com.jonasschnell.quickscope.logic.filterForMode
@@ -28,12 +28,12 @@ import com.jonasschnell.quickscope.logic.retryInsertIndex
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.topicLabels
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import java.io.IOException
 import java.time.Instant
@@ -54,7 +54,6 @@ data class SessionUi(
     val forecastAfter: Forecast? = null,
     val message: String? = null,
     val feedback: Boolean? = null,
-    val audio: Boolean = false,
     /** Themen-Id -> Titel (ggf. "Gruppe › Titel") fuer die Zeile ueber der Frage. */
     val topics: Map<String, String> = emptyMap(),
     /** Parallel zu [tasks]: true bei "Gleich nochmal"-Wiederholungen (zaehlen nicht gegen Zeit und Fortschritt). */
@@ -73,6 +72,14 @@ data class SessionUi(
     val sits: Sits? = null,
     /** "Weiss nicht": neutrale Rueckmeldung (richtige Antwort markiert, keine Feier). */
     val neutral: Boolean = false,
+    /** Index, bei dem das Auto-Play nach einem Stopp im Hintergrund ruht (bis zum naechsten Item oder bis Play gedrueckt wird). */
+    val autoplaySuppressedAt: Int? = null,
+    /** "Ohne Ton lernen" fuer diese Runde: keine Audio-Pflicht, kein Vorlesen. */
+    val silent: Boolean = false,
+    /** Die naechste Karte wartet auf ihr Audio (neutraler Shimmer statt der Karte). */
+    val waiting: Boolean = false,
+    /** Audio kam nach dem Gate-Timeout nicht: ruhiger Bildschirm "Gerade nicht moeglich" mit Nochmal und Ohne Ton lernen. */
+    val blocked: Boolean = false,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -90,7 +97,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private val sync = app.attemptSync
     private val store = app.store
 
-    private val _state = MutableStateFlow(SessionUi(audio = store.audioMode))
+    private val _state = MutableStateFlow(SessionUi())
     val state: StateFlow<SessionUi> = _state.asStateFlow()
 
     private var shownAt = 0L
@@ -103,9 +110,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private var topicTitles: Map<String, String> = emptyMap()
     private var lastSitsCheck = 0L
 
+    /** Rundenstart, der noch auf das Audio der ersten Karte wartet (oder blockiert ist). */
+    private var pendingEnter: (() -> Unit)? = null
+    private var pendingTarget: WarmTarget? = null
+    private var gateJob: Job? = null
+
     /** [minutes] null = Rest des Tagesbudgets (leer, wenn das Tagesziel geschafft ist); sonst der ausdrueckliche Wunsch. */
     fun start(examId: String, minutes: Int?, scoreBefore: Int?, questionsOnly: Boolean = false) {
-        _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode) }
+        _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore) }
         viewModelScope.launch {
             try {
                 app.audioCache.clearing?.join() // Aufraeumen der letzten Runde abwarten
@@ -121,20 +133,31 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 // "Nur Fragen": Lektionen clientseitig weglassen (das Backend hat dafuer noch keinen Parameter)
                 val mode = if (questionsOnly) StartMode.QuestionsOnly else StartMode.All
                 val tasks = filterForMode(s.items, { it.lesson != null }, mode).mapNotNull(::taskOf)
-                // Ton an (oder Lektion zuerst): Audio der ersten Karten sofort parallel laden und auf die erste hoechstens
-                // FIRST_AUDIO_WAIT_MS warten ("Gleich geht's los"); der Rest laedt im Hintergrund weiter
-                if (audioNeededAtStart(store.audioMode, tasks)) {
-                    val t0 = SystemClock.elapsedRealtime()
-                    val jobs = app.audioCache.warm(examId, warmPlan(tasks))
-                    val ready = withTimeoutOrNull(FIRST_AUDIO_WAIT_MS) { jobs.first().await() }
-                    com.jonasschnell.quickscope.data.AppLog.d("Session", "erstes Audio: ${if (ready == true) "bereit" else "nicht rechtzeitig"} nach ${SystemClock.elapsedRealtime() - t0} ms")
-                }
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
-                    shownAt = SystemClock.elapsedRealtime()
-                    startedAt = shownAt
-                    _state.update { it.copy(phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) }, topics = labels) }
+                    val enter = {
+                        shownAt = SystemClock.elapsedRealtime()
+                        startedAt = shownAt
+                        _state.update {
+                            it.copy(
+                                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, blocked = false,
+                                finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
+                                topics = labels,
+                            )
+                        }
+                    }
+                    // Audio-Gate: die erste Karte erscheint erst, wenn ihr Audio im Cache liegt; die naechsten laden gedrosselt im Hintergrund
+                    val plan = warmPlan(tasks)
+                    app.audioCache.warm(examId, plan.drop(0))
+                    val first = plan.first()
+                    if (app.audioCache.ensureReady(examId, first)) {
+                        enter()
+                    } else {
+                        pendingEnter = enter
+                        pendingTarget = first
+                        _state.update { it.copy(blocked = true) }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -262,19 +285,61 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             }
         } else {
             shownAt = SystemClock.elapsedRealtime()
-            _state.update { it.copy(index = nextIndex, feedback = null, neutral = false) }
+            val nextTask = s.tasks[nextIndex]
+            val needsGate = !s.silent && !app.audioCache.isCached(s.examId, gateTarget(nextTask))
+            _state.update { it.copy(index = nextIndex, feedback = null, neutral = false, autoplaySuppressedAt = null, waiting = needsGate, blocked = false) }
+            if (needsGate) {
+                // naechste Karte erst zeigen, wenn ihr Audio da ist (Shimmer, unsichtbare Wiederholungen); die Runde bleibt erhalten
+                gateJob?.cancel()
+                gateJob = viewModelScope.launch {
+                    if (app.audioCache.ensureReady(s.examId, gateTarget(nextTask))) {
+                        shownAt = SystemClock.elapsedRealtime()
+                        _state.update { it.copy(waiting = false) }
+                    } else {
+                        _state.update { it.copy(blocked = true) }
+                    }
+                }
+            }
         }
     }
 
-    fun setAudio(on: Boolean) {
-        store.audioMode = on
-        _state.update { it.copy(audio = on) }
+    /** "Nochmal" auf dem Fehlerbildschirm: das Laden des Audios neu starten (Start oder naechste Karte). */
+    fun retryGate() {
+        val s = _state.value
+        gateJob?.cancel()
+        gateJob = viewModelScope.launch {
+            _state.update { it.copy(blocked = false) }
+            val target = pendingTarget ?: s.current?.let { gateTarget(it) } ?: return@launch
+            if (app.audioCache.ensureReady(s.examId, target)) {
+                pendingEnter?.let { it(); pendingEnter = null; pendingTarget = null }
+                _state.update { it.copy(waiting = false, blocked = false) }
+            } else {
+                _state.update { it.copy(blocked = true) }
+            }
+        }
+    }
+
+    /** "Ohne Ton lernen": fuer diese Runde kein Vorlesen und keine Audio-Pflicht; die Runde geht weiter. */
+    fun continueSilent() {
+        gateJob?.cancel()
+        _state.update { it.copy(silent = true, waiting = false, blocked = false) }
+        pendingEnter?.let { it(); pendingEnter = null; pendingTarget = null }
+    }
+
+    /** App im Hintergrund: Auto-Play ruht fuer die aktuelle Karte. */
+    fun suppressAutoplay() {
+        _state.update { it.copy(autoplaySuppressedAt = it.index) }
+    }
+
+    /** Play gedrueckt: Auto-Play darf wieder starten. */
+    fun allowAutoplay() {
+        _state.update { it.copy(autoplaySuppressedAt = null) }
     }
 
     /** Schliesst die Runde (Abbruch oder "Fertig"); bereits gegebene Antworten bleiben und werden nachgesendet. */
     fun close() {
         val id = _state.value.examId
-        _state.value = SessionUi(audio = store.audioMode)
+        _state.value = SessionUi()
         app.audioCache.clearing = viewModelScope.launch { app.audioCache.clear() }
         if (id.isNotEmpty()) viewModelScope.launch { sync.flush(id) }
     }

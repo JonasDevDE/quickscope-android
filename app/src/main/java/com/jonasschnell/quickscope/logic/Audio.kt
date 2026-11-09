@@ -119,3 +119,64 @@ fun warmPlan(tasks: List<Task>, count: Int = WARM_COUNT): List<WarmTarget> =
 
 /** Wird beim Start schon vorgeladen und gewartet? Nur wenn vorgelesen wird: Ton an oder die erste Karte ist eine Lektion. */
 fun audioNeededAtStart(audioOn: Boolean, tasks: List<Task>): Boolean = tasks.isNotEmpty() && (audioOn || tasks.first() is Task.Teach)
+
+/** Darstellung des Play-/Pause-Knopfes: nur Play oder Pause (kein Ladesymbol; das Warten passiert vor dem Anzeigen der Karte). */
+enum class PlayButtonKind { Play, Pause }
+
+fun playButtonKind(state: PlayState): PlayButtonKind = if (state == PlayState.Playing) PlayButtonKind.Pause else PlayButtonKind.Play
+
+/** Was ein Tipp auf den Knopf bewirkt. */
+enum class PlayTap { Pause, Resume, Restart }
+
+fun playTap(state: PlayState): PlayTap = when (state) {
+    PlayState.Playing -> PlayTap.Pause
+    PlayState.Paused -> PlayTap.Resume
+    else -> PlayTap.Restart // fertig, gestoppt oder noch nicht gestartet: von vorn
+}
+
+/** Wartezeit vor dem naechsten Versuch: 1 s, 2 s, 4 s, 8 s ... hoechstens 60 s; ein Retry-After des Servers wird beachtet. */
+fun retryDelayMs(attempt: Int, retryAfterMs: Long? = null): Long {
+    val backoff = (1_000L shl attempt.coerceIn(0, 6)).coerceAtMost(60_000L)
+    return maxOf(backoff, retryAfterMs ?: 0L).coerceAtMost(120_000L)
+}
+
+/** Retry-After-Header (Sekunden) in Millisekunden; null bei fehlendem oder unlesbarem Wert. */
+fun parseRetryAfter(header: String?): Long? = header?.trim()?.toLongOrNull()?.takeIf { it >= 0 }?.times(1000)
+
+/** Fehlerpolitik im Hoerbuch: leise erneut versuchen, nach 3 Fehlern in Folge die Lektion ruhig ueberspringen (spaeter wiederholen). */
+sealed interface FailureAction {
+    data class Retry(val delayMs: Long) : FailureAction
+    data object Skip : FailureAction
+}
+
+const val AUDIOBOOK_MAX_FAILURES = 3
+
+fun nextAfterFailure(failuresInRow: Int): FailureAction =
+    if (failuresInRow >= AUDIOBOOK_MAX_FAILURES) FailureAction.Skip else FailureAction.Retry(retryDelayMs(failuresInRow - 1))
+
+/** Hoechstens so viele Vorlade-Downloads gleichzeitig (die aktuelle Karte hat Vorrang und zaehlt nicht mit). */
+const val PREFETCH_PARALLEL = 2
+
+/** So lange wartet das Audio-Gate hoechstens (mit unsichtbaren Wiederholungen), dann erscheint der ruhige Fehlerbildschirm. */
+const val GATE_TIMEOUT_MS = 45_000L
+
+enum class GateResult { Ready, Wait, Timeout }
+
+/**
+ * Audio-Gate: eine Karte erscheint nur, wenn ihr Audio schon im lokalen Cache liegt. Ohne Audio-Pflicht (Ton aus fuer diese Runde)
+ * ist sie sofort bereit; sonst wird gewartet, bis nach [timeoutMs] der Fehlerbildschirm kommt.
+ */
+fun gateDecision(audioRequired: Boolean, cached: Boolean, waitedMs: Long, timeoutMs: Long = GATE_TIMEOUT_MS): GateResult = when {
+    !audioRequired || cached -> GateResult.Ready
+    waitedMs >= timeoutMs -> GateResult.Timeout
+    else -> GateResult.Wait
+}
+
+/** Ziel des Gates fuer eine Karte: Lektion oder Frage. */
+fun gateTarget(task: Task): WarmTarget = if (task is Task.Teach) WarmTarget(task.lesson.id, true) else WarmTarget(task.item.id, false)
+
+/** Wiedergabe der Runde nur im Vordergrund: Hintergrund (Home, App-Wechsel, Bildschirm aus) stoppt sofort. */
+fun shouldStopForLifecycle(inForeground: Boolean, state: PlayState): Boolean = !inForeground && state != PlayState.Idle
+
+/** Nach dem Stopp im Hintergrund startet die Runde nicht von selbst neu: Auto-Play erst wieder beim naechsten Item. */
+fun mayAutoplay(suppressedAt: Int?, index: Int): Boolean = suppressedAt != index

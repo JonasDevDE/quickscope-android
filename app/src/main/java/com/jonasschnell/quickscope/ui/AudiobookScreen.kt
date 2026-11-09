@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -94,10 +95,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.PlayingView(s: BookUi
             if (showMnemonic(s.positionMs, s.durationMs)) s.mnemonic.orEmpty() else "", color = Accent, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.fillMaxWidth().height(24.dp), maxLines = 1,
         )
-        if (s.unavailable) {
-            Text("Audio gerade nicht verfügbar", color = Muted, style = MaterialTheme.typography.bodySmall)
-            HapticTextButton(onClick = vm::retryPlayback) { Text("Nochmal", color = Accent, style = MaterialTheme.typography.labelLarge) }
-        }
     }
     GlowProgress(if (s.count > 0) (s.index + (if (s.durationMs > 0) (s.positionMs.toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f)) / s.count else 0f, Modifier.fillMaxWidth())
     Text("Lektion ${s.index + 1} von ${s.count}", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))

@@ -12,6 +12,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -23,8 +24,8 @@ import java.io.IOException
 @Serializable
 data class AudioPrefetch(val itemIds: List<String> = emptyList(), val parts: List<String> = emptyList(), val lessonIds: List<String>? = null)
 
-/** Cloud-Stimme nicht nutzbar (503, Limit oder nicht eingerichtet); [message] ist die kurze Backend-Meldung. */
-class AudioUnavailable(message: String) : IOException(message)
+/** Cloud-Stimme gerade nicht nutzbar (503 oder 429); [retryAfterMs] aus dem Retry-After-Header. */
+class AudioUnavailable(message: String, val retryAfterMs: Long? = null) : IOException(message)
 
 /**
  * Laedt die vorgelesenen Teile (WAV) mit Anmelde-Header in den App-Cache. Doppelte Anfragen werden zusammengelegt,
@@ -63,6 +64,47 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
         }
     }
 
+    private val prefetchGate = kotlinx.coroutines.sync.Semaphore(com.jonasschnell.quickscope.logic.PREFETCH_PARALLEL)
+
+    /** Wie [fetch], aber gedrosselt (hoechstens 2 gleichzeitig): fuer das Vorladen der naechsten Karten. */
+    suspend fun fetchThrottled(examId: String, itemId: String, part: VoicePart): File =
+        prefetchGate.withPermit { fetch(examId, itemId, part) }
+
+    suspend fun fetchLessonThrottled(examId: String, lessonId: String): File =
+        prefetchGate.withPermit { fetchLesson(examId, lessonId) }
+
+    /** Liegt das Audio schon lokal im Cache? */
+    fun isCached(examId: String, t: com.jonasschnell.quickscope.logic.WarmTarget): Boolean {
+        val f = if (t.lesson) File(dir, audioFileName(examId, "lesson_${t.id}", VoicePart.Question)) else file(examId, t.id, VoicePart.Question)
+        return f.exists() && f.length() > 0
+    }
+
+    /**
+     * Audio-Gate: wartet, bis das Audio im Cache liegt, mit unsichtbaren Wiederholungen (Backoff 1, 2, 4 ... s, Retry-After wird beachtet).
+     * true = bereit, false = nach [com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS] nicht gekommen.
+     */
+    suspend fun ensureReady(examId: String, t: com.jonasschnell.quickscope.logic.WarmTarget): Boolean {
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        var attempt = 0
+        while (true) {
+            when (com.jonasschnell.quickscope.logic.gateDecision(true, isCached(examId, t), android.os.SystemClock.elapsedRealtime() - t0)) {
+                com.jonasschnell.quickscope.logic.GateResult.Ready -> return true
+                com.jonasschnell.quickscope.logic.GateResult.Timeout -> return false
+                com.jonasschnell.quickscope.logic.GateResult.Wait -> Unit
+            }
+            var retryAfter: Long? = null
+            try {
+                if (t.lesson) fetchLesson(examId, t.id) else fetch(examId, t.id, VoicePart.Question)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                retryAfter = (e as? AudioUnavailable)?.retryAfterMs
+                AppLog.w("AudioCache", "Gate: Versuch ${attempt + 1} fehlgeschlagen", e)
+                kotlinx.coroutines.delay(com.jonasschnell.quickscope.logic.retryDelayMs(attempt++, retryAfter))
+            }
+        }
+    }
+
     /** Wird beim Start einer Runde abgewartet, damit das Aufraeumen der letzten Runde nie neue Downloads trifft. */
     @Volatile var clearing: kotlinx.coroutines.Job? = null
 
@@ -74,7 +116,7 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
         val tmp = File(dir, target.name + ".part")
         try {
             client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-                if (resp.code == 503) throw AudioUnavailable(backendText(resp.body.string()) ?: "Stimme gerade nicht verfügbar")
+                if (resp.code == 503 || resp.code == 429) throw AudioUnavailable("HTTP ${resp.code}", com.jonasschnell.quickscope.logic.parseRetryAfter(resp.header("Retry-After")))
                 if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
                 resp.body.byteStream().use { input -> tmp.outputStream().use { input.copyTo(it) } }
             }
@@ -125,10 +167,14 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
             requestPrefetch(examId, plan.filter { !it.lesson }.map { it.id })
             requestLessonPrefetch(examId, plan.filter { it.lesson }.map { it.id })
         }
-        return plan.map { t ->
+        return plan.mapIndexed { index, t ->
             scope.async {
                 val t0 = android.os.SystemClock.elapsedRealtime()
-                val ok = runCatching { if (t.lesson) fetchLesson(examId, t.id) else fetch(examId, t.id, VoicePart.Question) }
+                // die erste Karte hat Vorrang, die uebrigen laden gedrosselt
+                val ok = runCatching {
+                    if (t.lesson) (if (index == 0) fetchLesson(examId, t.id) else fetchLessonThrottled(examId, t.id))
+                    else (if (index == 0) fetch(examId, t.id, VoicePart.Question) else fetchThrottled(examId, t.id, VoicePart.Question))
+                }
                     .onFailure { com.jonasschnell.quickscope.data.AppLog.w("AudioCache", "warm ${t.id} fehlgeschlagen", it) }.isSuccess
                 com.jonasschnell.quickscope.data.AppLog.d("AudioCache", "warm ${if (t.lesson) "Lektion" else "Aufgabe"} ${t.id}: ${if (ok) "bereit" else "Fehler"} nach ${android.os.SystemClock.elapsedRealtime() - t0} ms")
                 ok

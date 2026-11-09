@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,12 +42,8 @@ import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.neutralMessage
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.logic.examStart
-import com.jonasschnell.quickscope.logic.StartMode
-import com.jonasschnell.quickscope.logic.budgetLine
 import com.jonasschnell.quickscope.logic.dayGoalReached
-import com.jonasschnell.quickscope.logic.formatRemaining
-import com.jonasschnell.quickscope.logic.secondaryModes
-import com.jonasschnell.quickscope.logic.planLine
+import com.jonasschnell.quickscope.logic.daysUntilLabel
 import com.jonasschnell.quickscope.logic.forecastReliable
 import com.jonasschnell.quickscope.logic.isOpen
 import com.jonasschnell.quickscope.logic.isOver
@@ -69,19 +66,17 @@ fun HomePage(
     state: UiState,
     loading: Boolean,
     onStart: (Exam, Int) -> Unit,
-    onListen: (Exam) -> Unit,
-    onQuestionsOnly: (Exam, Int) -> Unit,
+    onOpenMore: (Exam) -> Unit,
     onMore: (Exam) -> Unit,
     onMaterial: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
     onRetry: () -> Unit,
     onCancelUpload: () -> Unit,
     onRetryUpload: () -> Unit,
-    dayStreak: Int? = null,
 ) {
     val exam = state.activeExam
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -95,7 +90,7 @@ fun HomePage(
             exam.status == "processing" -> ProcessingView()
             exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
             exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onListen, onQuestionsOnly, onMore, onCheatsheet)
+            else -> ReadyView(exam, state.activeForecast, onStart, onOpenMore, onMore, onCheatsheet)
         }
     }
 }
@@ -176,69 +171,56 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
     Text("Dein Fortschritt bleibt hier lesbar.", color = Muted, style = MaterialTheme.typography.bodyMedium)
 }
 
+/**
+ * Heute, radikal reduziert: oben eine Zeile "in 12 Tagen", in der Mitte der Ring mit EINER Prognosezeile, unten ein grosser
+ * Knopf "Los (N min)" und ein kleines "Mehr". Alles andere liegt hinter "Mehr". Kein Scrollen.
+ */
 @Composable
-private fun ReadyView(
+private fun ColumnScope.ReadyView(
     exam: Exam,
     forecast: Forecast?,
-    dayStreak: Int?,
     onStart: (Exam, Int) -> Unit,
-    onListen: (Exam) -> Unit,
-    onQuestionsOnly: (Exam, Int) -> Unit,
+    onOpenMore: (Exam) -> Unit,
     onMore: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
     val open = isOpen(exam)
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
-    if (forecast == null) {
-        SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
-        SkeletonLine(200.dp)
-    } else if (forecastReliable(exam, forecast)) {
-        ForecastRing(ringPercent(exam, forecast))
-        if (open) Text("Wissensstand", color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
-        else Text(projectionLine(forecast, exam.dailyMinutes), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
-    } else {
-        // Noch keine belastbare Prognose: ruhiger Platzhalter statt einer Zahl
-        ForecastPlaceholder()
-        Text(if (open) "Wissensstand nach der ersten Runde" else "Prognose nach der ersten Runde", style = MaterialTheme.typography.titleSmall, color = Muted, textAlign = TextAlign.Center)
+    // oben: Countdown als eine Zeile (bei dauerhaftem Lernen nichts)
+    Text(
+        if (open) "" else daysUntilLabel(examStart(exam), Instant.now()),
+        color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(24.dp),
+    )
+    // Mitte: Ring und EINE Zeile
+    Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        if (forecast == null) {
+            SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
+        } else if (forecastReliable(exam, forecast)) {
+            ForecastRing(ringPercent(exam, forecast))
+            Spacer(Modifier.height(12.dp))
+            Text(
+                if (open) "Wissensstand" else projectionLine(forecast, exam.dailyMinutes),
+                color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
+            )
+        } else {
+            ForecastPlaceholder()
+        }
     }
-    // Offenes Lernen: kein Countdown
-    if (!open) Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-    planLine(forecast?.plan)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
-    if (dayStreak != null && dayStreak > 0) Text("$dayStreak ${if (dayStreak == 1) "Tag" else "Tage"}", color = Accent, style = MaterialTheme.typography.labelLarge)
-    if (forecast != null) Text(budgetLine(exam.dailyMinutes, forecast.doneSecondsToday), color = Muted, style = MaterialTheme.typography.bodySmall)
+    // dezent und nur kurz vor der Pruefung: EINE Zeile fuer den Merkzettel
+    if (forecast?.showCheatsheetSuggestion == true && !open) {
+        Text(
+            "Letzte Runde: Merkzettel lesen", color = Accent, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().hapticClickable { onCheatsheet(exam) }.padding(vertical = 8.dp),
+        )
+    }
+    // unten: EIN grosser Knopf (Tagesziel erreicht: Haken mit kleinem "Noch eine Runde")
     if (forecast != null && dayGoalReached(exam.dailyMinutes, forecast.doneSecondsToday)) {
-        // Tagesziel geschafft: ruhiger Abschluss, freiwillig geht mehr
-        Text("✓ Tagesziel geschafft", color = Accent, style = MaterialTheme.typography.titleMedium)
-        HapticTextButton(onClick = { onMore(exam) }) { Text("Noch eine Runde", color = Muted, style = MaterialTheme.typography.labelLarge) }
+        Text("✓ Tagesziel geschafft", color = Accent, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 14.dp))
+        HapticTextButton(onClick = { onMore(exam) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Noch eine Runde", color = Muted, style = MaterialTheme.typography.labelLarge) }
     } else {
         PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
+        HapticTextButton(onClick = { onOpenMore(exam) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Mehr", color = Muted, style = MaterialTheme.typography.labelLarge) }
     }
-    val modes = secondaryModes((forecast?.plan?.chaptersTotal ?: 0) > 0)
-    if (modes.isNotEmpty()) {
-        // Ablauf nur zur Info (nicht klickbar), dazu zwei kleine ruhige Textknoepfe
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            FlowStep("Hören"); Text("→", color = Muted); FlowStep("Üben")
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            if (StartMode.QuestionsOnly in modes) HapticTextButton(onClick = { onQuestionsOnly(exam, minutes) }) { Text("Nur Fragen", color = Muted, style = MaterialTheme.typography.labelLarge) }
-            if (StartMode.ListenOnly in modes) HapticTextButton(onClick = { onListen(exam) }) { Text("Nur zuhören", color = Muted, style = MaterialTheme.typography.labelLarge) }
-        }
-    }
-    if (forecast?.showCheatsheetSuggestion == true && !open) {
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable { onCheatsheet(exam) }.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text("Letzte Runde: 5 Minuten lesen", style = MaterialTheme.typography.titleMedium)
-            Text("Der Merkzettel mit dem Wichtigsten", color = Muted, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-/** Ein Schritt der Ablaufzeile (nur Info). */
-@Composable
-private fun FlowStep(text: String) {
-    Text(text, color = Muted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.clip(RoundedCornerShape(50)).background(CardHigh).padding(horizontal = 12.dp, vertical = 4.dp))
 }
 
 /** Leerer Ring ohne Zahl, solange es keine belastbare Prognose gibt. */

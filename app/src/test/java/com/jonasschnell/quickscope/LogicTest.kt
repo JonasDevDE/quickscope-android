@@ -7,6 +7,7 @@ import com.jonasschnell.quickscope.data.Item
 import com.jonasschnell.quickscope.data.Projection
 import com.jonasschnell.quickscope.logic.AttemptQueue
 import com.jonasschnell.quickscope.logic.MatchResult
+import com.jonasschnell.quickscope.logic.MoreEntry as M
 import com.jonasschnell.quickscope.logic.MatchState
 import com.jonasschnell.quickscope.logic.OrderState
 import com.jonasschnell.quickscope.logic.QueueStorage
@@ -308,5 +309,23 @@ class LogicTest {
         // Migration: nur wenn ein alter Klartextwert da ist
         assertTrue(com.jonasschnell.quickscope.logic.needsSecretMigration("bst_x"))
         assertFalse(com.jonasschnell.quickscope.logic.needsSecretMigration(null))
+    }
+
+    @Test fun todayShowsOnlyCountdownRingAndStartWithTheRestBehindMore() {
+        val now = Instant.parse("2026-11-09T12:00:00Z")
+        assertEquals("in 12 Tagen", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-21T16:00:00Z"), now))
+        assertEquals("morgen", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-10T13:00:00Z"), now))
+        assertEquals("in 5 Std", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-09T17:20:00Z"), now))
+        assertEquals("in 20 Min", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-09T12:20:00Z"), now))
+        assertEquals("vorbei", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-09T11:00:00Z"), now))
+        assertEquals("vorbei", com.jonasschnell.quickscope.logic.daysUntilLabel(null, now))
+        // mit Lektionen und Plan: alles hinter "Mehr", in Gruppen (Ueben, Heute, Pruefung)
+        assertEquals(
+            listOf(M.QuestionsOnly, M.ListenOnly, M.Plan, M.Used, M.Streak, M.Material, M.Settings),
+            com.jonasschnell.quickscope.logic.moreEntries(hasLessons = true, hasPlan = true, streak = 3),
+        )
+        // ohne Lektionen, Plan und Serie bleibt nur das Noetigste
+        assertEquals(listOf(M.Used, M.Material, M.Settings), com.jonasschnell.quickscope.logic.moreEntries(false, false, null))
+        assertEquals(listOf(M.Used, M.Material, M.Settings), com.jonasschnell.quickscope.logic.moreEntries(false, false, 0))
     }
 }
