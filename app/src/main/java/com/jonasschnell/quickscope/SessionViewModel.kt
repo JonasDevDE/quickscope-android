@@ -84,6 +84,8 @@ data class SessionUi(
     val lessonsOnly: Boolean = false,
     /** Kapitelliste fuer die Kopfzeile der Lektionskarten (kann leer sein). */
     val chapters: List<com.jonasschnell.quickscope.data.Chapter> = emptyList(),
+    /** Schon gehoerte/gelesene Lektionen (fuer den Kapitelstatus und den Start in "Verstehen"). */
+    val heardIds: Set<String> = emptySet(),
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -132,6 +134,16 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     startOffline(examId, minutes, questionsOnly, lessonsOnly)
                     return@launch
                 }
+                if (lessonsOnly) {
+                    try {
+                        startUnderstand(examId)
+                    } catch (e: IOException) {
+                        if (app.local.pack(examId) == null) throw e
+                        app.connectivity.markOffline()
+                        startOffline(examId, minutes, questionsOnly, true)
+                    }
+                    return@launch
+                }
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
                 val s = try {
                     api.session(examId, minutes, if (questionsOnly) false else null)
@@ -151,13 +163,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 tracker = FeedbackTracker()
                 // "Nur Fragen": Lektionen clientseitig weglassen (das Backend hat dafuer noch keinen Parameter)
                 val mode = if (questionsOnly) StartMode.QuestionsOnly else StartMode.All
-                var lessonEntries: List<com.jonasschnell.quickscope.data.SessionEntry>? = null
-                if (lessonsOnly) {
-                    var e = com.jonasschnell.quickscope.logic.understandEntries(s.items)
-                    if (e.isEmpty()) e = com.jonasschnell.quickscope.logic.lessonEntriesFrom(runCatching { api.lessons(examId) }.getOrDefault(emptyList()))
-                    lessonEntries = e
-                }
-                val rawTasks = (lessonEntries ?: filterForMode(s.items, { it.lesson != null }, mode)).mapNotNull(::taskOf)
+                val rawTasks = filterForMode(s.items, { it.lesson != null }, mode).mapNotNull(::taskOf)
                 // Kapitelangaben fuer die Kopfzeile: fehlen sie in der Session, aus Kapitel- und Lektionsliste ableiten (nur wenn es Lektionen gibt)
                 var chapters = emptyList<com.jonasschnell.quickscope.data.Chapter>()
                 val tasks = if (rawTasks.any { it is Task.Teach }) {
@@ -176,7 +182,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     _state.update {
                         it.copy(
                             phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, audio = false, lessonsOnly = lessonsOnly, chapters = chapters,
-                            finalRoundStart = if (lessonEntries != null) null else s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
+                            finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
                             topics = labels,
                         )
                     }
@@ -188,6 +194,35 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 _state.update { it.copy(phase = SessionPhase.Error, message = errorText(e)) }
             }
         }
+    }
+
+    /** Verstehen online: ALLE Lektionen aus GET /lessons (mit Kapiteln aus GET /chapters), ohne Limit, Start bei der ersten ungehoerten. */
+    private suspend fun startUnderstand(examId: String) {
+        val chapters = runCatching { api.chapters(examId) }.getOrDefault(emptyList())
+        val lessons = api.lessons(examId)
+        val heard = lessons.filter { it.heard }.map { it.id }.toSet()
+        val list = com.jonasschnell.quickscope.logic.buildUnderstandList(
+            chapters, lessons.map { SessionLesson(it.id, it.title, it.keyPoints, it.ttsText, it.mnemonic, it.estSeconds, chapterId = it.chapterId) }, heard,
+        )
+        finishUnderstandStart(examId, list, chapters, heard, offline = false)
+    }
+
+    private fun finishUnderstandStart(examId: String, list: com.jonasschnell.quickscope.logic.UnderstandList, chapters: List<com.jonasschnell.quickscope.data.Chapter>, heard: Set<String>, offline: Boolean) {
+        val tasks = list.lessons.map { Task.Teach(teachItem(it), it) }
+        if (tasks.isEmpty()) {
+            _state.update { it.copy(phase = SessionPhase.Empty, offline = offline) }
+            return
+        }
+        shownAt = SystemClock.elapsedRealtime()
+        startedAt = shownAt
+        lastAudioCheck = shownAt
+        _state.update {
+            it.copy(
+                phase = SessionPhase.Running, tasks = tasks, index = list.start, isRetry = List(tasks.size) { false }, audio = false, offline = offline,
+                lessonsOnly = true, chapters = chapters, heardIds = heard,
+            )
+        }
+        if (!offline) checkAudioLater()
     }
 
     /** Lektionskarten mit Kapitelangaben versehen (vorhandene Angaben bleiben). */
@@ -203,10 +238,17 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             _state.update { it.copy(phase = SessionPhase.Error, message = com.jonasschnell.quickscope.logic.NEEDS_INTERNET) }
             return
         }
+        if (lessonsOnly) {
+            // Verstehen offline: alle Lektionen des Pakets in Kapitel-Reihenfolge, Start bei der ersten noch nicht gelesenen
+            val lessons = (pack.entries + pack.reserve).mapNotNull { it.lesson }.distinctBy { it.id }
+            val doneIds = app.local.doneKeys(examId).filter { it.startsWith("l:") }.map { it.removePrefix("l:") }.toSet()
+            finishUnderstandStart(examId, com.jonasschnell.quickscope.logic.buildUnderstandList(pack.chapters, lessons, doneIds), pack.chapters, doneIds, offline = true)
+            return
+        }
         val exam = app.local.exams()?.firstOrNull { it.id == examId }
         val doneSeconds = app.local.forecast(examId)?.doneSecondsToday ?: 0
         val m = minutes ?: com.jonasschnell.quickscope.logic.remainingMinutes(exam?.dailyMinutes ?: 20, doneSeconds)
-        val entries = if (lessonsOnly) com.jonasschnell.quickscope.logic.offlineLessonRound(pack, app.local.doneKeys(examId)) else com.jonasschnell.quickscope.logic.offlineRound(pack, app.local.doneKeys(examId), m * 60, questionsOnly)
+        val entries = com.jonasschnell.quickscope.logic.offlineRound(pack, app.local.doneKeys(examId), m * 60, questionsOnly)
         val tasks = withChapters(entries.mapNotNull(::taskOf), emptyMap(), pack.chapters)
         if (tasks.isEmpty()) {
             _state.update { it.copy(phase = SessionPhase.Empty, offline = true) }
@@ -334,7 +376,36 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     fun heard(lessonId: String, fraction: Double) {
         val examId = _state.value.examId
         if (examId.isEmpty()) return
-        viewModelScope.launch { runCatching { api.heard(examId, lessonId, HeardRequest(fraction.coerceIn(0.0, 1.0))) } }
+        val f = fraction.coerceIn(0.0, 1.0)
+        if (f >= 0.8) {
+            _state.update { it.copy(heardIds = it.heardIds + lessonId) }
+            if (_state.value.offline) app.local.markDone(examId, "l:$lessonId")
+        }
+        if (_state.value.offline) return
+        viewModelScope.launch { runCatching { api.heard(examId, lessonId, HeardRequest(f)) } }
+    }
+
+    /** Richtung des letzten Wechsels (fuer die Meldung "gelesen": nur bei Weiter). */
+    var lastMoveForward = true
+        private set
+
+    /** Verstehen: vorherige Lektion (ueber Kapitelgrenzen hinweg); auf der ersten passiert nichts. */
+    fun previous() {
+        val s = _state.value
+        if (s.phase != SessionPhase.Running || !s.lessonsOnly) return
+        val to = com.jonasschnell.quickscope.logic.stepIndex(s.index, s.tasks.size, -1) ?: return
+        lastMoveForward = false
+        shownAt = SystemClock.elapsedRealtime()
+        _state.update { it.copy(index = to, feedback = null, neutral = false, autoplaySuppressedAt = null) }
+    }
+
+    /** Verstehen: Sprung zu einer Lektion (Kapitelliste). */
+    fun jumpTo(index: Int) {
+        val s = _state.value
+        if (s.phase != SessionPhase.Running || !s.lessonsOnly || index !in s.tasks.indices || index == s.index) return
+        lastMoveForward = index > s.index
+        shownAt = SystemClock.elapsedRealtime()
+        _state.update { it.copy(index = index, feedback = null, neutral = false, autoplaySuppressedAt = null) }
     }
 
     /** Pruefen, ob durch die letzten Antworten ein Thema ueber die Schwelle gekommen ist ("Thema sitzt"). */
@@ -356,7 +427,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val s = _state.value
         if (s.phase != SessionPhase.Running) return
         val nextIndex = s.index + 1
-        if (s.offline) (s.current as? Task.Teach)?.let { app.local.markDone(s.examId, "l:${it.lesson.id}") }
+        lastMoveForward = true
         if (nextIndex >= s.tasks.size) {
             val today = LocalDate.now()
             val streakDays = nextDayStreak(store.lastSessionDay?.let { runCatching { LocalDate.parse(it) }.getOrNull() }, store.dayStreak, today)

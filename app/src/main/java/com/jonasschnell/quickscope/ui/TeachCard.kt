@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import com.jonasschnell.quickscope.logic.LessonHeader
 import com.jonasschnell.quickscope.ui.theme.CardHigh
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,12 +48,23 @@ import kotlinx.coroutines.isActive
  * springt direkt zu den Fragen. Gemeldet wird, wie viel gehoert wurde.
  */
 @Composable
-fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit, lessonsOnly: Boolean = false, header: LessonHeader? = null) {
+fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit, lessonsOnly: Boolean = false, header: LessonHeader? = null, onChapterClick: (() -> Unit)? = null, wasForward: () -> Boolean = { true }) {
     val lesson = task.lesson
     val durationMs = lesson.estSeconds * 1000L
     var replay by remember { mutableIntStateOf(0) }
     var elapsed by remember { mutableLongStateOf(0L) }
     var finished by remember { mutableStateOf(false) }
+
+    // "Verstehen": gehoert/gelesen wird beim Verlassen der Lektion gemeldet (Ton-Anteil; ohne Ton nur bei Weiter nach mindestens 5 s)
+    val shownAtMs = remember(lesson.id) { SystemClock.elapsedRealtime() }
+    val elapsedNow = androidx.compose.runtime.rememberUpdatedState(elapsed)
+    val finishedNow = androidx.compose.runtime.rememberUpdatedState(finished)
+    if (lessonsOnly) androidx.compose.runtime.DisposableEffect(lesson.id) {
+        onDispose {
+            val f = com.jonasschnell.quickscope.logic.heardToReport(elapsedNow.value > 0, elapsedNow.value, durationMs, finishedNow.value, SystemClock.elapsedRealtime() - shownAtMs, wasForward())
+            if (f != null) onHeard(lesson.id, f)
+        }
+    }
 
     LaunchedEffect(lesson.id, replay, replayKey, silent) {
         if (silent) return@LaunchedEffect // ohne Ton: nur lesen
@@ -77,7 +89,6 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
         }
         // "Verstehen": nach dem Ende des Streams von selbst zur naechsten Lektion
         if (com.jonasschnell.quickscope.logic.autoAdvance(lessonsOnly, played)) {
-            onHeard(lesson.id, 1.0)
             onNext()
         }
     }
@@ -89,7 +100,8 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
         header?.chapterLine?.let {
             Text(
                 it, color = if (highlightChapter) Accent else Muted, textAlign = TextAlign.Center, maxLines = 2,
-                style = if (lessonsOnly) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium, modifier = Modifier.fillMaxWidth(),
+                style = if (lessonsOnly) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
+                modifier = Modifier.fillMaxWidth().then(if (onChapterClick != null) Modifier.defaultMinSize(minHeight = 48.dp).hapticClickable { onChapterClick() }.padding(vertical = 12.dp) else Modifier),
             )
         }
         Text(
@@ -122,12 +134,14 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
             maxLines = 1,
         )
         Spacer(Modifier.height(4.dp))
-        PrimaryButton(if (lessonsOnly) "Weiter" else "Weiter zum Test", {
+        if (!lessonsOnly) {
+        PrimaryButton("Weiter zum Test", {
             voice.stop()
             // Ueberspringen zaehlt nicht als gehoert: nur melden, wenn wirklich etwas gehoert wurde
             val fraction = heardFraction(elapsed, durationMs, finished)
             if (fraction > 0.05) onHeard(lesson.id, fraction)
             onNext()
         })
+        }
     }
 }

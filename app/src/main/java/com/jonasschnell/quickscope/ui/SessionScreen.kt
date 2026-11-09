@@ -136,6 +136,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
     // Audio-Modus: nur die Frage vorlesen (nie Antwort oder Rueckmeldung)
     var retry by remember { mutableIntStateOf(0) }
+    var showChapters by remember { mutableStateOf(false) }
     LaunchedEffect(s.index, s.feedback != null, voice, retry, s.audio) {
         if (task is Task.Teach) return@LaunchedEffect // Lektionskarte spielt sich selbst ab
         if (shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach) && mayAutoplay(s.autoplaySuppressedAt, s.index)) voice.speak(s.examId, task.item.id, task.item.question)
@@ -182,7 +183,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
     val shownItems = s.tasks.filterIndexed { i, _ -> !s.isRetry.getOrElse(i) { false } }.map { it.item }
     val done = (0 until s.index).count { !s.isRetry.getOrElse(it) { false } }
-    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio || !voice.buttonVisible) null else ({
+    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio || !voice.buttonVisible || s.lessonsOnly) null else ({
         PlayPauseButton(voice.playState, {
             // Pause gilt nur fuer die aktuelle Karte; die naechste Karte startet von selbst
             when (playTap(voice.playState)) {
@@ -203,12 +204,36 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm, s.lessonsOnly, s.tasks.mapNotNull { (it as? Task.Teach)?.lesson })
+                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm, s.lessonsOnly, s.tasks.mapNotNull { (it as? Task.Teach)?.lesson }, if (s.lessonsOnly) ({ showChapters = true }) else null)
                 }
             }
         }
         s.fx?.takeIf { s.feedback != null }?.let { fx -> if (fx.outcome.correct) CorrectFx(fx) }
         s.sits?.let { SitsBanner(it, Modifier.align(Alignment.TopCenter)) }
+    }
+    // Verstehen: drei grosse Knoepfe in fester Position (Zurueck, Abspielen/Pause nur bei moeglichem Ton, Weiter); Kapitelwechsel ergeben sich aus der Reihenfolge
+    if (s.lessonsOnly && task is Task.Teach) {
+        val last = s.index >= s.tasks.size - 1
+        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.weight(1f)) { SecondaryButton("Zurück", vm::previous, color = if (s.index == 0) Muted else androidx.compose.ui.graphics.Color.White) }
+            if (s.audio && voice.buttonVisible) Column(Modifier.weight(1.3f)) {
+                PrimaryButton(if (voice.playState == PlayState.Playing) "Pause" else "Abspielen", {
+                    when (playTap(voice.playState)) {
+                        PlayTap.Pause -> voice.pause()
+                        PlayTap.Resume -> voice.resume()
+                        PlayTap.Restart -> { vm.allowAutoplay(); retry++ }
+                    }
+                })
+            }
+            Column(Modifier.weight(1f)) { SecondaryButton(if (last) "Fertig" else "Weiter", vm::next) }
+        }
+        if (showChapters) {
+            val lessons = s.tasks.mapNotNull { (it as? Task.Teach)?.lesson }
+            ChapterSheet(
+                com.jonasschnell.quickscope.logic.chapterEntries(lessons, s.chapters, s.heardIds), task.lesson.chapterId,
+                onPick = { vm.jumpTo(it.jumpIndex) }, onDismiss = { showChapters = false },
+            )
+        }
     }
     // Feste Position unten: vor der Antwort "Weiss nicht" (klein, unauffaellig), danach "Weiter"; die Hoehe bleibt gleich
     if (task is Task.Choice || task is Task.Cloze || task is Task.Spot || task is Task.Match || task is Task.Order) {
@@ -224,7 +249,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
 /** Die Aufgabe je Typ. Lektionskarten und Loesungswege haben ihren eigenen "Weiter"-Knopf. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel, lessonsOnly: Boolean = false, runLessons: List<com.jonasschnell.quickscope.data.SessionLesson> = emptyList()) {
+private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel, lessonsOnly: Boolean = false, runLessons: List<com.jonasschnell.quickscope.data.SessionLesson> = emptyList(), onChapterClick: (() -> Unit)? = null) {
     val header = (task as? Task.Teach)?.let { com.jonasschnell.quickscope.logic.lessonHeader(it.lesson, runLessons, lessonsOnly) }
     val answered = feedback != null
     val revealed = neutral
@@ -232,7 +257,7 @@ private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: S
     when (task) {
         is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
-        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next, lessonsOnly = lessonsOnly, header = header)
+        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next, lessonsOnly = lessonsOnly, header = header, onChapterClick = onChapterClick, wasForward = { vm.lastMoveForward })
         is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
         is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
         is Task.Spot -> SpotTask(task, revealed, onAnswer)

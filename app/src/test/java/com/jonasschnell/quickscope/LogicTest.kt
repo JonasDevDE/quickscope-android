@@ -463,4 +463,65 @@ class LogicTest {
         assertEquals(null, none.chapterTitle)
         assertEquals(null, none.chapterCount)
     }
+
+    // --- Verstehen: Navigation ueber Kapitel und Lektionen ---
+
+    private fun ch(id: String, order: Int, status: String = "new", title: String = "K$order") = com.jonasschnell.quickscope.data.Chapter(chapterId = id, title = title, order = order, status = status)
+
+    private fun sl(id: String, chapterId: String?) = com.jonasschnell.quickscope.data.SessionLesson(id, "L$id", listOf("a"), "t", null, 30, chapterId = chapterId)
+
+    @Test fun understandListIsOrderedByChapterAndStartsAtFirstUnheard() {
+        val chapters = listOf(ch("c2", 2), ch("c1", 1))
+        // gelieferte Reihenfolge durcheinander: Kapitel 2 zuerst
+        val lessons = listOf(sl("3", "c2"), sl("1", "c1"), sl("4", "c2"), sl("2", "c1"))
+        val u = com.jonasschnell.quickscope.logic.buildUnderstandList(chapters, lessons, heard = setOf("1"))
+        assertEquals(listOf("1", "2", "3", "4"), u.lessons.map { it.id })     // ohne Limit, nach Kapitelreihenfolge
+        assertEquals(1, u.start)                                               // erste ungehoerte
+        assertEquals(1 to 2, u.lessons[0].lessonIndexInChapter to u.lessons[0].lessonCountInChapter)
+        assertEquals(2 to 2, u.lessons[3].lessonIndexInChapter to u.lessons[3].lessonCountInChapter)
+        assertEquals(2, u.lessons[2].chapterOrder)
+        assertEquals(2, u.lessons[0].chapterCount)
+        // alles gehoert: Start bei der ersten Lektion
+        assertEquals(0, com.jonasschnell.quickscope.logic.buildUnderstandList(chapters, lessons, setOf("1", "2", "3", "4")).start)
+        // mehr als 8 Lektionen: kein Limit
+        val many = (1..20).map { sl("$it", "c1") }
+        assertEquals(20, com.jonasschnell.quickscope.logic.buildUnderstandList(listOf(ch("c1", 1)), many, emptySet()).lessons.size)
+    }
+
+    @Test fun stepsCrossChapterBoundariesAndStopAtTheEnds() {
+        val step = { i: Int, d: Int -> com.jonasschnell.quickscope.logic.stepIndex(i, 5, d) }
+        assertEquals(3, step(2, 1))
+        assertEquals(1, step(2, -1))      // Zurueck auf der ersten Lektion eines Kapitels = letzte des vorherigen (flache Liste)
+        assertEquals(null, step(0, -1))   // erste Lektion: Zurueck tut nichts
+        assertEquals(null, step(4, 1))    // letzte Lektion: Weiter = fertig
+        // Kapitelgrenze in der Liste: letzte von c1 -> erste von c2 und zurueck
+        val u = com.jonasschnell.quickscope.logic.buildUnderstandList(listOf(ch("c1", 1), ch("c2", 2)), listOf(sl("1", "c1"), sl("2", "c1"), sl("3", "c2")), emptySet())
+        val next = com.jonasschnell.quickscope.logic.stepIndex(1, u.lessons.size, 1)!!
+        assertEquals("c2", u.lessons[next].chapterId)
+        assertEquals("c1", u.lessons[com.jonasschnell.quickscope.logic.stepIndex(next, u.lessons.size, -1)!!].chapterId)
+    }
+
+    @Test fun chapterListShowsStatusAndJumpsToFirstUnheard() {
+        val chapters = listOf(ch("c1", 1, "solid"), ch("c2", 2, "heard"), ch("c3", 3, "new"))
+        val u = com.jonasschnell.quickscope.logic.buildUnderstandList(chapters, listOf(sl("1", "c1"), sl("2", "c2"), sl("3", "c2"), sl("4", "c3")), setOf("2"))
+        val e = com.jonasschnell.quickscope.logic.chapterEntries(u.lessons, chapters, setOf("2"))
+        assertEquals(listOf("sitzt", "gehört", "neu"), e.map { it.status })
+        assertEquals(listOf(0, 2, 3), e.map { it.jumpIndex })     // Kapitel 2: Lektion 2 gehoert, Sprung auf die ungehoerte 3
+        // Status ohne Backend-Angabe: alle gehoert = gehoert
+        val noApi = com.jonasschnell.quickscope.logic.chapterEntries(u.lessons, emptyList(), setOf("2", "3"))
+        assertEquals("gehört", noApi.first { it.chapterId == "c2" }.status)
+        assertEquals("neu", noApi.first { it.chapterId == "c3" }.status)
+        // alle gehoert: Sprung auf die erste Lektion des Kapitels
+        assertEquals(1, com.jonasschnell.quickscope.logic.chapterEntries(u.lessons, chapters, setOf("2", "3")).first { it.chapterId == "c2" }.jumpIndex)
+    }
+
+    @Test fun heardReportRules() {
+        val r = { played: Boolean, pos: Long, dur: Long, fin: Boolean, shown: Long, fwd: Boolean -> com.jonasschnell.quickscope.logic.heardToReport(played, pos, dur, fin, shown, fwd) }
+        assertEquals(1.0, r(true, 30_000, 30_000, true, 31_000, true)!!, 0.0001)         // Audio bis zum Ende
+        assertEquals(0.5, r(true, 15_000, 30_000, false, 16_000, true)!!, 0.0001)        // nur der gehoerte Anteil
+        assertEquals(null, r(true, 500, 30_000, false, 600, true))                       // kaum etwas gehoert
+        assertEquals(0.8, r(false, 0, 30_000, false, 5_000, true)!!, 0.0001)             // Lesemodus: Weiter nach 5 s
+        assertEquals(null, r(false, 0, 30_000, false, 4_999, true))                      // zu kurz
+        assertEquals(null, r(false, 0, 30_000, false, 20_000, false))                    // Zurueck meldet nichts
+    }
 }

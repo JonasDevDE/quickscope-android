@@ -192,23 +192,6 @@ class AudioTest {
         assertFalse(adv(false, true))    // normale Runde blaettert nie von selbst
     }
 
-    @Test fun understandEntriesAndFallbackAndOfflineRound() {
-        val l1 = com.jonasschnell.quickscope.data.SessionLesson("L1", "A", listOf("x"), "t", null, 30)
-        val l2 = com.jonasschnell.quickscope.data.SessionLesson("L2", "B", listOf("y"), "t", null, 30)
-        val card = com.jonasschnell.quickscope.data.SessionEntry(item = com.jonasschnell.quickscope.data.Item(id = "q1", type = "card"))
-        val items = listOf(card, com.jonasschnell.quickscope.data.SessionEntry(lesson = l1), card, com.jonasschnell.quickscope.data.SessionEntry(lesson = l2))
-        assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.understandEntries(items).map { it.lesson!!.id })
-        val all = listOf(
-            com.jonasschnell.quickscope.data.Lesson(id = "H", title = "gehoert", heard = true),
-            com.jonasschnell.quickscope.data.Lesson(id = "N", title = "neu", heard = false),
-        )
-        assertEquals(listOf("N", "H"), com.jonasschnell.quickscope.logic.lessonEntriesFrom(all).map { it.lesson!!.id })
-        val pack = com.jonasschnell.quickscope.logic.OfflinePack(items, emptyList())
-        assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, emptySet()).map { it.lesson!!.id })
-        assertEquals(listOf("L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, setOf("l:L1")).map { it.lesson!!.id })
-        assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, setOf("l:L1", "l:L2")).map { it.lesson!!.id })   // alles gelesen: nochmal
-    }
-
     @Test fun streamTimeoutsDifferForQuestionAndLesson() {
         assertEquals(12_000L, com.jonasschnell.quickscope.logic.streamStartTimeoutMs(false))
         assertEquals(35_000L, com.jonasschnell.quickscope.logic.streamStartTimeoutMs(true))
