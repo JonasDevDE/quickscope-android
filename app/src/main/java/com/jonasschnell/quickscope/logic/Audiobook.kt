@@ -63,3 +63,13 @@ class AudiobookQueue(val items: List<AudiobookItem>) {
     /** Restzeit in Sekunden (nach Schaetzung), fuer eine ruhige Anzeige. */
     fun remainingSeconds(): Int = items.drop(index).sumOf { it.estSeconds }
 }
+
+/** Wie eine Runde gestartet wird: "Los" (Lektionen, dann Fragen), nur Fragen oder nur Zuhoeren (Hoerbuch). */
+enum class StartMode { All, QuestionsOnly, ListenOnly }
+
+/** Zusaetzliche kleine Aktionen unter "Los": nur wenn es Lektionen gibt; "Nur Fragen" ist immer nutzbar, auch ohne gehoerte Lektion. */
+fun secondaryModes(hasLessons: Boolean): List<StartMode> = if (hasLessons) listOf(StartMode.QuestionsOnly, StartMode.ListenOnly) else emptyList()
+
+/** Eintraege der Session je Modus: "Nur Fragen" laesst alle Lektionen weg (bis das Backend einen Parameter dafuer hat). */
+fun <T> filterForMode(entries: List<T>, isLesson: (T) -> Boolean, mode: StartMode): List<T> =
+    if (mode == StartMode.QuestionsOnly) entries.filterNot(isLesson) else entries

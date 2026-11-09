@@ -67,7 +67,7 @@ fun filesToPrune(files: List<Pair<String, Pair<Long, Long>>>, maxBytes: Long): L
 }
 
 /** So lange wird auf die Cloud-Stimme gewartet (Audio laedt noch), danach liest die Geraetestimme statt zu verwerfen. */
-const val CLOUD_WAIT_MS = 8_000L
+const val CLOUD_WAIT_MS = 15_000L
 
 /**
  * Soll die Frage jetzt vorgelesen werden? Immer wenn ein Item sichtbar wird und der Ton an ist (auch das erste, auch nach
@@ -81,3 +81,19 @@ fun shouldSpeakQuestion(audioOn: Boolean, feedback: Boolean?, isTeach: Boolean):
  */
 fun voiceSource(readyAfterMs: Long?, waitMs: Long = CLOUD_WAIT_MS): VoiceKind =
     if (readyAfterMs != null && readyAfterMs <= waitMs) VoiceKind.Cloud else VoiceKind.Device
+
+/** Wie viele Aufgaben/Lektionen beim Rundenstart sofort vorgeladen werden. */
+const val WARM_COUNT = 4
+
+/** So lange wartet der Rundenstart ("Gleich geht's los") hoechstens auf das Audio der ersten Karte. */
+const val FIRST_AUDIO_WAIT_MS = 6_000L
+
+/** Ziel fuers Vorladen: eine Aufgabe (Frage-Audio) oder eine Lektion. */
+data class WarmTarget(val id: String, val lesson: Boolean)
+
+/** Reihenfolge des Vorladens beim Rundenstart: die ersten [count] Karten, die erste zuerst. */
+fun warmPlan(tasks: List<Task>, count: Int = WARM_COUNT): List<WarmTarget> =
+    tasks.take(count).map { t -> if (t is Task.Teach) WarmTarget(t.lesson.id, true) else WarmTarget(t.item.id, false) }
+
+/** Wird beim Start schon vorgeladen und gewartet? Nur wenn vorgelesen wird: Ton an oder die erste Karte ist eine Lektion. */
+fun audioNeededAtStart(audioOn: Boolean, tasks: List<Task>): Boolean = tasks.isNotEmpty() && (audioOn || tasks.first() is Task.Teach)

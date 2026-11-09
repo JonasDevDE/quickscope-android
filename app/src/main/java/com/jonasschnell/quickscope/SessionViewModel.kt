@@ -9,7 +9,12 @@ import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.backendMessage
 import com.jonasschnell.quickscope.data.HeardRequest
 import com.jonasschnell.quickscope.data.SessionLesson
+import com.jonasschnell.quickscope.logic.FIRST_AUDIO_WAIT_MS
 import com.jonasschnell.quickscope.logic.FeedbackTracker
+import com.jonasschnell.quickscope.logic.audioNeededAtStart
+import com.jonasschnell.quickscope.logic.warmPlan
+import com.jonasschnell.quickscope.logic.StartMode
+import com.jonasschnell.quickscope.logic.filterForMode
 import com.jonasschnell.quickscope.logic.dontKnowOutcome
 import com.jonasschnell.quickscope.logic.lessonInsertIndex
 import com.jonasschnell.quickscope.logic.taskOf
@@ -28,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import java.io.IOException
 import java.time.Instant
@@ -97,7 +103,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private var topicTitles: Map<String, String> = emptyMap()
     private var lastSitsCheck = 0L
 
-    fun start(examId: String, minutes: Int, scoreBefore: Int?) {
+    fun start(examId: String, minutes: Int, scoreBefore: Int?, questionsOnly: Boolean = false) {
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode) }
         viewModelScope.launch {
             try {
@@ -111,15 +117,23 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 topicTitles = topicList.associate { it.id to it.title }
                 prevMastery = topicList.filter { it.id in leafIds }.associate { it.id to it.mastery }
                 tracker = FeedbackTracker()
-                val tasks = s.items.mapNotNull(::taskOf)
-                val lessonIds = tasks.filterIsInstance<Task.Teach>().map { it.lesson.id }
-                if (lessonIds.isNotEmpty()) app.audioCache.requestLessonPrefetch(examId, lessonIds.take(3))
+                // "Nur Fragen": Lektionen clientseitig weglassen (das Backend hat dafuer noch keinen Parameter)
+                val mode = if (questionsOnly) StartMode.QuestionsOnly else StartMode.All
+                val tasks = filterForMode(s.items, { it.lesson != null }, mode).mapNotNull(::taskOf)
+                // Ton an (oder Lektion zuerst): Audio der ersten Karten sofort parallel laden und auf die erste hoechstens
+                // FIRST_AUDIO_WAIT_MS warten ("Gleich geht's los"); der Rest laedt im Hintergrund weiter
+                if (audioNeededAtStart(store.audioMode, tasks)) {
+                    val t0 = SystemClock.elapsedRealtime()
+                    val jobs = app.audioCache.warm(examId, warmPlan(tasks))
+                    val ready = withTimeoutOrNull(FIRST_AUDIO_WAIT_MS) { jobs.first().await() }
+                    android.util.Log.d("Session", "erstes Audio: ${if (ready == true) "bereit" else "nicht rechtzeitig"} nach ${SystemClock.elapsedRealtime() - t0} ms")
+                }
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
                     shownAt = SystemClock.elapsedRealtime()
                     startedAt = shownAt
-                    _state.update { it.copy(phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, finalRoundStart = s.finalRoundStart, topics = labels) }
+                    _state.update { it.copy(phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) }, topics = labels) }
                 }
             } catch (e: CancellationException) {
                 throw e

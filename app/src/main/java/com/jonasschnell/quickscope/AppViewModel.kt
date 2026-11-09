@@ -9,6 +9,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.jonasschnell.quickscope.data.CheatSheet
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.ExamCreate
 import com.jonasschnell.quickscope.data.ExamUpdate
@@ -68,6 +69,8 @@ data class UiState(
     val materials: List<Material> = emptyList(),
     val materialsExamId: String? = null,
     val upload: UploadState? = null,
+    /** Onboarding: laeuft nur bei onboardingDone == false (nach dem Login geholt). */
+    val onboarding: com.jonasschnell.quickscope.logic.OnboardingGate = com.jonasschnell.quickscope.logic.OnboardingGate.Unknown,
 ) {
     val activeExam: Exam? get() = pickActiveExam(exams, chosenExamId, java.time.Instant.now())
     val activeForecast: Forecast? get() = forecast?.takeIf { forecastExamId == activeExam?.id }
@@ -281,7 +284,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val me = api.me()
                 val exams = api.exams()
-                _state.update { it.copy(phase = Phase.Ready, me = me, failure = null, serverStarting = false, exams = exams, examsLoaded = true, chosenExamId = store.chosenExamId) }
+                val gate = com.jonasschnell.quickscope.logic.gateFor(try { api.profile() } catch (e: CancellationException) { throw e } catch (_: Exception) { null })
+                _state.update { it.copy(phase = Phase.Ready, me = me, failure = null, serverStarting = false, exams = exams, examsLoaded = true, chosenExamId = store.chosenExamId, onboarding = gate) }
                 viewModelScope.launch {
                     loadForecast()
                     exams.forEach { sync.flush(it.id) } // offene Antworten aus frueheren Runden nachsenden
@@ -383,6 +387,72 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         ?: com.jonasschnell.quickscope.logic.visibleDayStreak(
             store.lastSessionDay?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }, store.dayStreak, java.time.LocalDate.now(),
         )
+
+    /** Profil laden; null bei Fehler (ruhig, ohne Meldung). */
+    suspend fun loadProfile(): com.jonasschnell.quickscope.data.Profile? = try {
+        api.profile()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Profil in den Einstellungen speichern (Teil-Aenderung); Fehler erscheinen als Snackbar. */
+    fun saveProfile(draft: com.jonasschnell.quickscope.logic.ProfileDraft, onDone: () -> Unit = {}, onFailure: () -> Unit = {}) {
+        run("Speichern fehlgeschlagen", onFailure) {
+            api.putProfile(
+                com.jonasschnell.quickscope.data.ProfileUpdate(
+                    about = com.jonasschnell.quickscope.logic.normalizeAbout(draft.about), age = draft.age, educationLevel = draft.education,
+                ),
+            )
+            onDone()
+        }
+    }
+
+    /** Onboarding erneut pruefen (nach Netzfehler). */
+    fun retryOnboardingCheck() {
+        viewModelScope.launch {
+            val gate = com.jonasschnell.quickscope.logic.gateFor(loadProfile())
+            _state.update { it.copy(onboarding = gate) }
+        }
+    }
+
+    /** Netzfehler beim Profil: spaeter nochmal, die App blockiert nicht. */
+    fun skipOnboardingCheck() {
+        _state.update { it.copy(onboarding = com.jonasschnell.quickscope.logic.OnboardingGate.Done) }
+    }
+
+    /** Onboarding abschliessen: alles in einem PUT, danach nie wieder erreichbar. */
+    fun finishOnboarding(age: Int, education: String?, about: String, onFailure: () -> Unit = {}) {
+        run("Speichern fehlgeschlagen", onFailure) {
+            api.putProfile(
+                com.jonasschnell.quickscope.data.ProfileUpdate(
+                    about = com.jonasschnell.quickscope.logic.normalizeAbout(about).ifEmpty { null },
+                    age = com.jonasschnell.quickscope.logic.clampAge(age), educationLevel = education, onboardingDone = true,
+                ),
+            )
+            _state.update { it.copy(onboarding = com.jonasschnell.quickscope.logic.OnboardingGate.Done) }
+            buzz(HapticKind.Confirm)
+        }
+    }
+
+    /** Sprachnachricht hochladen; die Datei wird danach immer geloescht. [onResult] bekommt die Zusammenfassung oder null. */
+    fun uploadVoice(file: java.io.File, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            val result = try {
+                val part = okhttp3.MultipartBody.Part.createFormData("file", "voice.m4a", okhttp3.RequestBody.create("audio/mp4".toMediaTypeOrNull(), file))
+                api.profileVoice(part).about
+            } catch (e: CancellationException) {
+                file.delete()
+                throw e
+            } catch (e: Exception) {
+                say(if (e is HttpException) (backendMessage(e) ?: "Aufnahme konnte nicht verarbeitet werden.") else "Keine Verbindung zum Server.")
+                null
+            }
+            file.delete() // Aufnahme nie lokal behalten
+            onResult(result)
+        }
+    }
 
     fun openMaterials(examId: String) {
         viewModelScope.launch { loadMaterials(examId) }

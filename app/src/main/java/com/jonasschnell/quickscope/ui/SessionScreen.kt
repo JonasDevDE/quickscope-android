@@ -77,6 +77,7 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit
             SessionPhase.Done -> DoneView(s, onClose)
             SessionPhase.Loading, SessionPhase.Closed -> {
                 TopRow(0f, false, 0, null, onClose)
+                Text("Gleich geht's los", color = Muted, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
                 Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SkeletonCard(80.dp)
                     SkeletonCard(56.dp)

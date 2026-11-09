@@ -277,3 +277,26 @@ data class WordTiming(val start: Int = 0, val end: Int = 0, val fromMs: Long = 0
 
 @Serializable
 data class AudioTimings(val text: String = "", val durationMs: Long = 0, val words: List<WordTiming> = emptyList())
+
+/** Profil: Alter, Bildung und kurze Beschreibung; nur als Inspiration fuer passende Beispiele und Erklaerungen. */
+@Serializable
+data class Profile(
+    val about: String = "",
+    val age: Int? = null,
+    /** hauptschule, realschule, abitur, ausbildung, studium, other */
+    val educationLevel: String? = null,
+    val onboardingDone: Boolean = false,
+)
+
+/** Teil-Aenderung des Profils: nur gesetzte Felder werden gesendet. onboardingDone nur false -> true. */
+@Serializable
+data class ProfileUpdate(
+    val about: String? = null,
+    val age: Int? = null,
+    val educationLevel: String? = null,
+    val onboardingDone: Boolean? = null,
+)
+
+/** Antwort der Sprachnachricht: Zusammenfassung zum Pruefen (wird nicht gespeichert). */
+@Serializable
+data class VoiceSummary(val about: String = "")

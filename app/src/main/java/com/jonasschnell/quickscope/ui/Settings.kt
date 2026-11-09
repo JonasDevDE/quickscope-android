@@ -37,7 +37,7 @@ import com.jonasschnell.quickscope.ui.theme.Muted
 
 /** Privat: Konto (Name, E-Mail), Version mit Update-Zeile, Abmelden und der kleine Link "Konto löschen" (zweistufig bestaetigt). */
 @Composable
-fun MeSheet(state: UiState, vm: AppViewModel, onDismiss: () -> Unit) {
+fun MeSheet(state: UiState, vm: AppViewModel, onAbout: () -> Unit, onDismiss: () -> Unit) {
     var accountStep by remember { mutableIntStateOf(0) }
     val me = state.me
 
@@ -49,6 +49,7 @@ fun MeSheet(state: UiState, vm: AppViewModel, onDismiss: () -> Unit) {
                 if (me?.name != null && me.email != null) Text(me.email, maxLines = 1, color = Muted, style = MaterialTheme.typography.bodySmall)
             }
         }
+        SettingsRow("Über mich", null, onAbout) {}
         UpdateRow(state, vm)
         Column(
             Modifier.fillMaxWidth().padding(top = 16.dp),

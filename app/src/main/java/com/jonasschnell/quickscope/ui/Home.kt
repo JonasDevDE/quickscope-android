@@ -38,9 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jonasschnell.quickscope.UiState
 import com.jonasschnell.quickscope.data.Exam
+import com.jonasschnell.quickscope.data.neutralMessage
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.logic.examStart
+import com.jonasschnell.quickscope.logic.StartMode
 import com.jonasschnell.quickscope.logic.formatRemaining
+import com.jonasschnell.quickscope.logic.secondaryModes
 import com.jonasschnell.quickscope.logic.planLine
 import com.jonasschnell.quickscope.logic.forecastReliable
 import com.jonasschnell.quickscope.logic.isOver
@@ -63,6 +66,7 @@ fun HomePage(
     loading: Boolean,
     onStart: (Exam, Int) -> Unit,
     onListen: (Exam) -> Unit,
+    onQuestionsOnly: (Exam, Int) -> Unit,
     onMaterial: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
     onRetry: () -> Unit,
@@ -86,7 +90,7 @@ fun HomePage(
             exam.status == "processing" -> ProcessingView()
             exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
             exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onListen, onCheatsheet)
+            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onListen, onQuestionsOnly, onCheatsheet)
         }
     }
 }
@@ -135,7 +139,7 @@ private fun FailedExamView(exam: Exam, onMaterial: (Exam) -> Unit, onRetry: () -
     val text = when {
         exam.error?.contains("Limit", ignoreCase = true) == true -> "Gerade ausgelastet. Später nochmal."
         exam.error?.contains("nicht eingerichtet", ignoreCase = true) == true -> "Noch nicht eingerichtet."
-        else -> exam.error ?: "Material nicht lesbar."
+        else -> exam.error?.let { neutralMessage(it) } ?: "Material nicht lesbar."
     }
     Spacer(Modifier.height(24.dp))
     LearnMark(56.dp)
@@ -174,6 +178,7 @@ private fun ReadyView(
     dayStreak: Int?,
     onStart: (Exam, Int) -> Unit,
     onListen: (Exam) -> Unit,
+    onQuestionsOnly: (Exam, Int) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
@@ -192,7 +197,17 @@ private fun ReadyView(
     planLine(forecast?.plan)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
     if (dayStreak != null && dayStreak > 0) Text("$dayStreak ${if (dayStreak == 1) "Tag" else "Tage"}", color = Accent, style = MaterialTheme.typography.labelLarge)
     PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
-    if ((forecast?.plan?.chaptersTotal ?: 0) > 0) SecondaryButton("Zuhören", { onListen(exam) })
+    val modes = secondaryModes((forecast?.plan?.chaptersTotal ?: 0) > 0)
+    if (modes.isNotEmpty()) {
+        // Ablauf nur zur Info (nicht klickbar), dazu zwei kleine ruhige Textknoepfe
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            FlowStep("Hören"); Text("→", color = Muted); FlowStep("Üben")
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            if (StartMode.QuestionsOnly in modes) HapticTextButton(onClick = { onQuestionsOnly(exam, minutes) }) { Text("Nur Fragen", color = Muted, style = MaterialTheme.typography.labelLarge) }
+            if (StartMode.ListenOnly in modes) HapticTextButton(onClick = { onListen(exam) }) { Text("Nur zuhören", color = Muted, style = MaterialTheme.typography.labelLarge) }
+        }
+    }
     if (forecast?.showCheatsheetSuggestion == true) {
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable { onCheatsheet(exam) }.padding(20.dp),
@@ -202,6 +217,12 @@ private fun ReadyView(
             Text("Der Merkzettel mit dem Wichtigsten", color = Muted, style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+/** Ein Schritt der Ablaufzeile (nur Info). */
+@Composable
+private fun FlowStep(text: String) {
+    Text(text, color = Muted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.clip(RoundedCornerShape(50)).background(CardHigh).padding(horizontal = 12.dp, vertical = 4.dp))
 }
 
 /** Leerer Ring ohne Zahl, solange es keine belastbare Prognose gibt. */

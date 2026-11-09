@@ -19,6 +19,14 @@ interface QuickscopeApi {
 
     @DELETE("api/me") suspend fun deleteMe()
 
+    @GET("api/me/profile") suspend fun profile(): Profile
+    @PUT("api/me/profile") suspend fun putProfile(@Body body: ProfileUpdate): Profile
+
+    /** Sprachnachricht (aac/m4a, bis ca. 60 s) -> Zusammenfassung zum Bearbeiten. */
+    @Multipart
+    @POST("api/me/profile/voice")
+    suspend fun profileVoice(@Part file: MultipartBody.Part): VoiceSummary
+
     @GET("api/app/latest") suspend fun latestRelease(): AppRelease
 
     @GET("api/exams") suspend fun exams(): List<Exam>

@@ -95,9 +95,11 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, onHeard: (String, 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (muted || finished) Pill("Anhören", false, { muted = false; replay++ }) else Pill("Stumm", false, { muted = true })
         }
-        PrimaryButton("Weiter", {
+        PrimaryButton("Weiter zu den Fragen", {
             voice.stop()
-            onHeard(lesson.id, heardFraction(elapsed, durationMs, finished))
+            // Ueberspringen zaehlt nicht als gehoert: nur melden, wenn wirklich etwas gehoert wurde
+            val fraction = heardFraction(elapsed, durationMs, finished)
+            if (fraction > 0.05) onHeard(lesson.id, fraction)
             onNext()
         })
     }

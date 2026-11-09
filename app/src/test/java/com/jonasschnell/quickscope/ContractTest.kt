@@ -310,9 +310,9 @@ class ContractTest {
         assertNotNull(msg("error-400-time.json", 400))
         assertNotNull(msg("error-400-attempt-outcome.json", 400))
         assertNotNull(msg("error-400-broken-pdf.json", 400))
-        assertEquals("Sprach-Limit erreicht", msg("error-503-audio-limit.json", 503))
-        assertEquals("KI nicht eingerichtet", msg("error-503-audio-not-configured.json", 503))
-        assertEquals("KI nicht eingerichtet", msg("error-503-timings-not-configured.json", 503))
+        assertEquals("Gerade nicht verfügbar.", msg("error-503-audio-limit.json", 503))
+        assertEquals("Gerade nicht verfügbar.", msg("error-503-audio-not-configured.json", 503))
+        assertEquals("Gerade nicht verfügbar.", msg("error-503-timings-not-configured.json", 503))
         assertNotNull(msg("error-503-prefetch-not-configured.json", 503))
         assertEquals("Noch keine Themen", msg("error-409-regenerate-no-topics.json", 409))
         assertEquals("part: question oder answer", msg("error-400-audio-part.json", 400))
@@ -470,5 +470,29 @@ class ContractTest {
         val s = AppJson.decodeFromString(LearnSession.serializer(), """{"items":[],"plannedSeconds":0,"kind":"daily","reason":"x","forecast":{"confidence":"none","coveragePercent":0}}""")
         assertNull(s.forecast!!.scoreOrNull())
         assertEquals("none", s.forecast!!.confidence)
+    }
+
+    @Test fun profileContract() {
+        val p = parse("me-profile.json", com.jonasschnell.quickscope.data.Profile.serializer())
+        assertEquals("Ich bin Snowboarder, arbeite im Marketing und mag Autos.", p.about)
+        assertEquals(24, p.age)
+        assertEquals("ausbildung", p.educationLevel)
+        assertTrue(p.onboardingDone)
+        assertTrue(com.jonasschnell.quickscope.logic.aboutValid(p.about))
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Done, com.jonasschnell.quickscope.logic.gateFor(p))
+        // frisches Profil: age und educationLevel fehlen, onboardingDone false -> Onboarding laeuft
+        val fresh = parse("me-profile-new.json", com.jonasschnell.quickscope.data.Profile.serializer())
+        assertNull(fresh.age)
+        assertNull(fresh.educationLevel)
+        assertFalse(fresh.onboardingDone)
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Needed, com.jonasschnell.quickscope.logic.gateFor(fresh))
+        assertEquals("", AppJson.decodeFromString(com.jonasschnell.quickscope.data.Profile.serializer(), "{}").about)
+        // Sprachnachricht: nur die Zusammenfassung
+        val v = parse("me-profile-voice.json", com.jonasschnell.quickscope.data.VoiceSummary.serializer())
+        assertEquals("Snowboarder, arbeitet im Marketing, mag Autos.", v.about)
+        assertTrue(com.jonasschnell.quickscope.logic.aboutValid(v.about))
+        // Teil-Aenderung sendet nur gesetzte Felder
+        val up = AppJson.encodeToString(com.jonasschnell.quickscope.data.ProfileUpdate.serializer(), com.jonasschnell.quickscope.data.ProfileUpdate(age = 20, onboardingDone = true))
+        assertEquals("""{"age":20,"onboardingDone":true}""", up)
     }
 }

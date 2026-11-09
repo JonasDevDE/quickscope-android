@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,6 +70,7 @@ fun Context.findActivity(): Activity? {
 /** Was gerade ueber der Startseite liegt. */
 private sealed interface Overlay {
     data object Me : Overlay
+    data object About : Overlay
     data object Exams : Overlay
     data object NewExam : Overlay
     data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
@@ -123,6 +125,8 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
         session.forecastAfter?.let { vm.applyForecast(session.examId, it) }
     }
     val ready = state.phase == Phase.Ready && !forced
+    val onboarding = ready && state.onboarding == com.jonasschnell.quickscope.logic.OnboardingGate.Needed
+    val profileCheckFailed = ready && state.onboarding == com.jonasschnell.quickscope.logic.OnboardingGate.Failed
     val noExams = ready && state.examsLoaded && state.exams.isEmpty()
 
     Scaffold(
@@ -153,6 +157,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                         state, loading = !ready || !state.examsLoaded,
                         onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreOrNull()) },
                         onListen = { overlay = Overlay.Audiobook(it.id) },
+                        onQuestionsOnly = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
                         onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
                         onRetry = vm::refreshExamsNow,
@@ -165,6 +170,19 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
         }
     }
 
+    if (onboarding) OnboardingFlow(vm, state.me?.name)
+    if (profileCheckFailed) {
+        // Netzfehler beim Profil: nicht blockieren, nochmal versuchen oder spaeter
+        Column(Modifier.fillMaxSize().background(Black).statusBarsPadding().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            LearnMark(56.dp)
+            Spacer(Modifier.size(16.dp))
+            Text("Gerade nicht erreichbar", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+            Spacer(Modifier.size(24.dp))
+            PrimaryButton("Nochmal", vm::retryOnboardingCheck)
+            Spacer(Modifier.size(10.dp))
+            SecondaryButton("Später", vm::skipOnboardingCheck)
+        }
+    }
     if (forced) {
         // Alle Dialoge/Sheets sind weg; nur der Update-Screen bleibt (unten).
     } else if (state.phase == Phase.NeedsLogin) {
@@ -173,7 +191,8 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
         val dismiss = { overlay = null }
         when (val o = overlay) {
             null -> Unit
-            Overlay.Me -> MeSheet(state, vm, onDismiss = dismiss)
+            Overlay.Me -> MeSheet(state, vm, onAbout = { overlay = Overlay.About }, onDismiss = dismiss)
+            Overlay.About -> AboutScreen(state, vm, onClose = dismiss)
             Overlay.Exams -> ExamsSheet(state, vm, onNew = { overlay = Overlay.NewExam }, onSettings = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
             is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)

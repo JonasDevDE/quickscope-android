@@ -10,6 +10,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -113,6 +114,26 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
     suspend fun requestPrefetch(examId: String, itemIds: List<String>) {
         if (itemIds.isEmpty()) return
         runCatching { api.audioPrefetch(examId, AudioPrefetch(itemIds, VoicePart.entries.map { it.query })) }
+    }
+
+    /**
+     * Rundenstart: das Backend sofort bitten, die ersten Audios zu erzeugen, und sie parallel laden. Die Jobs stehen in der
+     * Reihenfolge des Plans (der erste gehoert zur ersten Karte); sie laufen auch weiter, wenn niemand mehr wartet.
+     */
+    fun warm(examId: String, plan: List<com.jonasschnell.quickscope.logic.WarmTarget>): List<Deferred<Boolean>> {
+        scope.launch {
+            requestPrefetch(examId, plan.filter { !it.lesson }.map { it.id })
+            requestLessonPrefetch(examId, plan.filter { it.lesson }.map { it.id })
+        }
+        return plan.map { t ->
+            scope.async {
+                val t0 = android.os.SystemClock.elapsedRealtime()
+                val ok = runCatching { if (t.lesson) fetchLesson(examId, t.id) else fetch(examId, t.id, VoicePart.Question) }
+                    .onFailure { android.util.Log.w("AudioCache", "warm ${t.id} fehlgeschlagen", it) }.isSuccess
+                android.util.Log.d("AudioCache", "warm ${if (t.lesson) "Lektion" else "Aufgabe"} ${t.id}: ${if (ok) "bereit" else "Fehler"} nach ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+                ok
+            }
+        }
     }
 
     /** Lektionen vorab erzeugen lassen (Hoerbuch und Session). */

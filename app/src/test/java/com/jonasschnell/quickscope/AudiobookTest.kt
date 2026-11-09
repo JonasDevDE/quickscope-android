@@ -72,4 +72,28 @@ class AudiobookTest {
         assertNull(lessonInsertIndex(0, tasks + teach, "L1")) // schon in der Runde
         assertEquals(2, lessonInsertIndex(1, tasks + teach, "L2"))
     }
+
+    @Test fun startModesAndLessonFiltering() {
+        // ohne Lektionen: nur "Los", keine zusaetzlichen Knoepfe
+        assertTrue(com.jonasschnell.quickscope.logic.secondaryModes(false).isEmpty())
+        // mit Lektionen: "Nur Fragen" und "Nur zuhoeren", "Nur Fragen" immer nutzbar
+        assertEquals(
+            listOf(com.jonasschnell.quickscope.logic.StartMode.QuestionsOnly, com.jonasschnell.quickscope.logic.StartMode.ListenOnly),
+            com.jonasschnell.quickscope.logic.secondaryModes(true),
+        )
+        val entries = listOf("L1", "q1", "q2", "L2", "q3")
+        val isLesson = { s: String -> s.startsWith("L") }
+        assertEquals(entries, com.jonasschnell.quickscope.logic.filterForMode(entries, isLesson, com.jonasschnell.quickscope.logic.StartMode.All))
+        assertEquals(listOf("q1", "q2", "q3"), com.jonasschnell.quickscope.logic.filterForMode(entries, isLesson, com.jonasschnell.quickscope.logic.StartMode.QuestionsOnly))
+        assertEquals(entries, com.jonasschnell.quickscope.logic.filterForMode(entries, isLesson, com.jonasschnell.quickscope.logic.StartMode.ListenOnly))
+        assertEquals(emptyList<String>(), com.jonasschnell.quickscope.logic.filterForMode(emptyList(), isLesson, com.jonasschnell.quickscope.logic.StartMode.QuestionsOnly))
+    }
+
+    @Test fun neutralMessagesHideProviderHints() {
+        assertEquals("Gerade nicht verfügbar.", com.jonasschnell.quickscope.data.neutralMessage("KI nicht eingerichtet"))
+        assertEquals("Gerade nicht verfügbar.", com.jonasschnell.quickscope.data.neutralMessage("Sprach-Limit erreicht"))
+        assertEquals("Gerade nicht verfügbar.", com.jonasschnell.quickscope.data.neutralMessage("Gemini antwortet nicht"))
+        assertEquals("Die Datei ist größer als 30 MB", com.jonasschnell.quickscope.data.neutralMessage("Die Datei ist größer als 30 MB"))
+        assertEquals("Skizze fertig", com.jonasschnell.quickscope.data.neutralMessage("Skizze fertig")) // "KI" nur als ganzes Wort
+    }
 }

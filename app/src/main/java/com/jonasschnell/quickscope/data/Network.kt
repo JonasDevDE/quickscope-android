@@ -132,12 +132,16 @@ class Network(private val auth: AuthManager, private val store: Store) {
     }
 }
 
+/** Meldungen ohne Hinweise auf KI oder Dienstleister: solche Texte werden neutral ersetzt. */
+fun neutralMessage(text: String): String =
+    if (Regex("\\bKI\\b|Gemini|Google|Sprach-Limit|nicht eingerichtet", RegexOption.IGNORE_CASE).containsMatchIn(text)) "Gerade nicht verfügbar." else text
+
 /** Liest das Feld `message` aus dem Spring-Fehlerbody (`{timestamp,status,error,message,path}`); null, wenn nicht vorhanden. */
 fun backendMessage(e: retrofit2.HttpException): String? = try {
     val body = e.response()?.errorBody()?.string().orEmpty()
     (AppJson.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject)
         ?.get("message")?.let { it as? kotlinx.serialization.json.JsonPrimitive }
-        ?.takeIf { it.isString }?.content?.trim()?.takeIf { it.isNotEmpty() }
+        ?.takeIf { it.isString }?.content?.trim()?.takeIf { it.isNotEmpty() }?.let { neutralMessage(it) }
 } catch (_: Exception) {
     null
 }

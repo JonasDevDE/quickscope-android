@@ -254,4 +254,59 @@ class LogicTest {
         assertEquals(1f, sessionProgress(items, 2), 0.001f)
         assertNotEquals(0f, sessionProgress(items, 1))
     }
+
+    @Test fun aboutCounterValidationAndSaveLogic() {
+        assertEquals("0/600", com.jonasschnell.quickscope.logic.aboutCounter(""))
+        assertEquals("12/600", com.jonasschnell.quickscope.logic.aboutCounter("a".repeat(12)))
+        assertTrue(com.jonasschnell.quickscope.logic.aboutValid(""))
+        assertTrue(com.jonasschnell.quickscope.logic.aboutValid("a".repeat(600)))
+        assertFalse(com.jonasschnell.quickscope.logic.aboutValid("a".repeat(601)))
+        assertEquals(600, com.jonasschnell.quickscope.logic.clampAbout("a".repeat(900)).length)
+        assertEquals("Snowboarder", com.jonasschnell.quickscope.logic.normalizeAbout("  Snowboarder \n"))
+        assertFalse(com.jonasschnell.quickscope.logic.aboutNeedsSave("abc", " abc "))
+        assertTrue(com.jonasschnell.quickscope.logic.aboutNeedsSave("abc", ""))
+    }
+
+    @Test fun ageAndProfileDraftValidation() {
+        val l = com.jonasschnell.quickscope.logic.AGE_MIN
+        assertEquals(18, com.jonasschnell.quickscope.logic.AGE_DEFAULT)
+        assertTrue(com.jonasschnell.quickscope.logic.ageValid(null))
+        assertTrue(com.jonasschnell.quickscope.logic.ageValid(10))
+        assertTrue(com.jonasschnell.quickscope.logic.ageValid(99))
+        assertFalse(com.jonasschnell.quickscope.logic.ageValid(9))
+        assertFalse(com.jonasschnell.quickscope.logic.ageValid(100))
+        assertEquals(10, com.jonasschnell.quickscope.logic.clampAge(l - 5))
+        assertEquals(99, com.jonasschnell.quickscope.logic.clampAge(120))
+        val saved = com.jonasschnell.quickscope.logic.ProfileDraft(18, "abitur", "x")
+        assertFalse(com.jonasschnell.quickscope.logic.draftNeedsSave(saved, saved.copy(about = " x ")))
+        assertTrue(com.jonasschnell.quickscope.logic.draftNeedsSave(saved, saved.copy(age = 19)))
+        assertTrue(com.jonasschnell.quickscope.logic.draftNeedsSave(saved, saved.copy(education = "studium")))
+        assertFalse(com.jonasschnell.quickscope.logic.draftNeedsSave(saved, saved.copy(age = 120)))
+        assertFalse(com.jonasschnell.quickscope.logic.draftNeedsSave(saved, saved.copy(about = "a".repeat(601))))
+        assertEquals("Studium", com.jonasschnell.quickscope.logic.educationLabel("studium"))
+        assertEquals("Anderes", com.jonasschnell.quickscope.logic.educationLabel("other"))
+        assertEquals("–", com.jonasschnell.quickscope.logic.educationLabel(null))
+        assertEquals(6, com.jonasschnell.quickscope.logic.EDUCATION.size)
+    }
+
+    @Test fun onboardingRunsOnlyWhenNotDoneAndNeverAgain() {
+        val gate = { p: com.jonasschnell.quickscope.data.Profile? -> com.jonasschnell.quickscope.logic.gateFor(p) }
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Needed, gate(com.jonasschnell.quickscope.data.Profile(onboardingDone = false)))
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Done, gate(com.jonasschnell.quickscope.data.Profile(onboardingDone = true)))
+        // Netzfehler: nie endlos blockieren, sondern Retry
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingGate.Failed, gate(null))
+    }
+
+    @Test fun onboardingPagesFollowAFixedOrder() {
+        val p = com.jonasschnell.quickscope.logic.OnboardingPage.entries
+        assertEquals(listOf("Welcome", "Age", "Education", "Voice"), p.map { it.name })
+        assertEquals(com.jonasschnell.quickscope.logic.OnboardingPage.Age, com.jonasschnell.quickscope.logic.nextPage(p[0]))
+        assertNull(com.jonasschnell.quickscope.logic.nextPage(p.last()))
+        assertNull(com.jonasschnell.quickscope.logic.previousPage(p.first()))
+        assertEquals("Hi Lena", com.jonasschnell.quickscope.logic.greeting("Lena Beispiel"))
+        assertEquals("Hi", com.jonasschnell.quickscope.logic.greeting(null))
+        assertEquals("Hi", com.jonasschnell.quickscope.logic.greeting("  "))
+        assertEquals("0:07", com.jonasschnell.quickscope.logic.recordTime(7))
+        assertEquals("1:00", com.jonasschnell.quickscope.logic.recordTime(com.jonasschnell.quickscope.logic.RECORD_MAX_SECONDS))
+    }
 }

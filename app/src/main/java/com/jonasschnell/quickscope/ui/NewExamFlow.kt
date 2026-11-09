@@ -145,10 +145,6 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                     }
                     3 -> {
                         PageTitle("Kurz beschreiben?")
-                        Text(
-                            "Optional. Ohne Material: allgemeines Wissen.",
-                            color = Muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
-                        )
                         QuickscopeField(description, { description = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
                         Text("${description.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.End))
                         if (jobs.isEmpty() && description.isBlank()) {

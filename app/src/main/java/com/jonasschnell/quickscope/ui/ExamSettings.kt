@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.jonasschnell.quickscope.AppViewModel
 import com.jonasschnell.quickscope.UiState
 import com.jonasschnell.quickscope.data.Exam
+import com.jonasschnell.quickscope.data.neutralMessage
 import com.jonasschnell.quickscope.data.ExamUpdate
 import com.jonasschnell.quickscope.data.Material
 import com.jonasschnell.quickscope.logic.DAILY_MINUTE_CHOICES
@@ -137,7 +138,6 @@ private fun DescriptionSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit
     var text by remember { mutableStateOf(exam.description.orEmpty()) }
     val saved = AutoSave(text.trim(), true) { v, fail -> vm.updateExam(exam.id, ExamUpdate(description = v), fail) }
     QuickscopeSheet(onDismiss, "Beschreibung", status = if (saved) "Gespeichert" else null) {
-        Text("Ohne Material: allgemeines Wissen.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         QuickscopeField(text, { text = it.take(2000) }, "z. B. IHK AP2, Schwerpunkt Kalkulation", singleLine = false)
         Text("${text.length} / 2000", color = Muted, style = MaterialTheme.typography.bodySmall)
     }
@@ -214,7 +214,6 @@ private fun MaterialSheet(state: UiState, vm: AppViewModel, exam: Exam, onDismis
             SkeletonCard(70.dp)
         } else if (list.isEmpty()) {
             EmptyHint("Noch kein Material")
-            if (!exam.description.isNullOrBlank()) Text("Ohne Material, Inhalte aus allgemeinem Wissen.", color = Muted, style = MaterialTheme.typography.bodySmall)
         } else {
             list.forEach { m ->
                 Column(
@@ -231,7 +230,7 @@ private fun MaterialSheet(state: UiState, vm: AppViewModel, exam: Exam, onDismis
                         m.pages?.let { Chip("$it ${if (it == 1) "Seite" else "Seiten"}") }
                     }
                     m.warning?.let { Text("$it. Am besten neu aufnehmen.", color = com.jonasschnell.quickscope.ui.theme.Warn, style = MaterialTheme.typography.bodySmall) }
-                    if (m.status == "failed") m.error?.let { Text(it, color = Danger, style = MaterialTheme.typography.bodySmall) }
+                    if (m.status == "failed") m.error?.let { Text(neutralMessage(it), color = Danger, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }

@@ -79,4 +79,39 @@ class AudioTest {
         assertEquals(VoiceKind.Device, voiceSource(CLOUD_WAIT_MS + 1)) // zu spaet: Geraetestimme statt verwerfen
         assertEquals(VoiceKind.Device, voiceSource(null))              // nie fertig (Fehler/Offline)
     }
+
+    private fun card(id: String) = com.jonasschnell.quickscope.logic.parseTask(com.jonasschnell.quickscope.data.Item(id = id, type = "card"))
+
+    private fun teach(id: String): com.jonasschnell.quickscope.logic.Task {
+        val l = com.jonasschnell.quickscope.data.SessionLesson(id, "T", listOf("a"), "text", null, 40)
+        return com.jonasschnell.quickscope.logic.Task.Teach(com.jonasschnell.quickscope.logic.teachItem(l), l)
+    }
+
+    @Test fun roundStartWarmsTheFirstFourWithTheFirstFirst() {
+        val tasks = listOf(teach("L1"), card("q1"), card("q2"), card("q3"), card("q4"), card("q5"))
+        val plan = com.jonasschnell.quickscope.logic.warmPlan(tasks)
+        assertEquals(4, plan.size)
+        assertEquals(com.jonasschnell.quickscope.logic.WarmTarget("L1", true), plan[0])   // erste Karte zuerst
+        assertEquals(listOf("q1", "q2", "q3"), plan.drop(1).map { it.id })
+        assertTrue(plan.drop(1).none { it.lesson })
+        assertTrue(com.jonasschnell.quickscope.logic.warmPlan(emptyList()).isEmpty())
+        assertEquals(2, com.jonasschnell.quickscope.logic.warmPlan(listOf(card("a"), card("b"))).size) // weniger Karten als 4
+    }
+
+    @Test fun startupWaitsOnlyWhenSpeechIsExpected() {
+        val tasks = listOf(card("q1"))
+        assertTrue(com.jonasschnell.quickscope.logic.audioNeededAtStart(true, tasks))
+        assertFalse(com.jonasschnell.quickscope.logic.audioNeededAtStart(false, tasks))
+        assertTrue(com.jonasschnell.quickscope.logic.audioNeededAtStart(false, listOf(teach("L1"), card("q1")))) // Lektion spielt sich selbst ab
+        assertFalse(com.jonasschnell.quickscope.logic.audioNeededAtStart(true, emptyList()))
+    }
+
+    @Test fun firstCardWaitsLongerForCloudBeforeDeviceVoice() {
+        // Start wartet hoechstens 6 s, die Karte wartet danach weiter auf die Cloud-Stimme (bis 15 s), erst dann Geraetestimme
+        assertTrue(com.jonasschnell.quickscope.logic.FIRST_AUDIO_WAIT_MS < CLOUD_WAIT_MS)
+        assertEquals(VoiceKind.Cloud, voiceSource(9_000))        // kam nach dem Start-Timeout: wird nachgereicht und gespielt
+        assertEquals(VoiceKind.Cloud, voiceSource(CLOUD_WAIT_MS))
+        assertEquals(VoiceKind.Device, voiceSource(CLOUD_WAIT_MS + 1))
+        assertTrue(shouldSpeakQuestion(true, null, false))        // sobald die Karte sichtbar ist, ohne jede Interaktion
+    }
 }

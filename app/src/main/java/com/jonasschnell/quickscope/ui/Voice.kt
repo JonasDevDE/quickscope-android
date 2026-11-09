@@ -10,6 +10,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.PlaybackParams
 import android.os.Handler
+import android.util.Log
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
@@ -107,10 +108,12 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
      */
     suspend fun speak(examId: String, itemId: String, part: VoicePart, fallbackText: String, displayText: String? = null) {
         stop()
+        val t0 = SystemClock.elapsedRealtime()
         if (chooseVoice(health, SystemClock.elapsedRealtime()) == VoiceKind.Cloud) {
             try {
                 loading = true
                 val file = withTimeoutOrNull(CLOUD_WAIT_MS) { cache.fetch(examId, itemId, part) } ?: throw SlowCloud()
+                Log.d("Voice", "Frage $itemId: Audio bereit nach ${SystemClock.elapsedRealtime() - t0} ms")
                 loading = false
                 val timings = if (part == VoicePart.Question && displayText != null) cache.timings(examId, itemId, part) else null
                 val usable = if (timings != null && displayText != null && timingsMatch(displayText, timings)) timings else null
