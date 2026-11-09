@@ -378,6 +378,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Tagesserie fuer die Heute-Ansicht: vom Backend, sonst lokal abgeleitet; null = ausblenden. */
+    fun dayStreak(): Int? = _state.value.activeForecast?.streakDays?.takeIf { it > 0 }
+        ?: com.jonasschnell.quickscope.logic.visibleDayStreak(
+            store.lastSessionDay?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }, store.dayStreak, java.time.LocalDate.now(),
+        )
+
     fun openMaterials(examId: String) {
         viewModelScope.launch { loadMaterials(examId) }
     }

@@ -65,6 +65,7 @@ fun HomePage(
     onRetry: () -> Unit,
     onCancelUpload: () -> Unit,
     onRetryUpload: () -> Unit,
+    dayStreak: Int? = null,
 ) {
     val exam = state.activeExam
     Column(
@@ -82,7 +83,7 @@ fun HomePage(
             exam.status == "processing" -> ProcessingView()
             exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
             exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, onStart, onCheatsheet)
+            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onCheatsheet)
         }
     }
 }
@@ -167,6 +168,7 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
 private fun ReadyView(
     exam: Exam,
     forecast: Forecast?,
+    dayStreak: Int?,
     onStart: (Exam, Int) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
@@ -180,6 +182,7 @@ private fun ReadyView(
         Text(projectionLine(forecast, exam.dailyMinutes), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
     }
     Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    if (dayStreak != null && dayStreak > 0) Text("$dayStreak ${if (dayStreak == 1) "Tag" else "Tage"}", color = Accent, style = MaterialTheme.typography.labelLarge)
     PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
     if (forecast != null && forecast.weakTopics.isNotEmpty()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {

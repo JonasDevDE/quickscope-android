@@ -21,15 +21,15 @@
   "hoursLeft" : 230,
   "doneSecondsToday" : 0,
   "weakTopics" : [ {
-    "topicId" : "6af1f56efdd6f59243f51603",
+    "topicId" : "6af1f6b79fee891876118e40",
     "title" : "Zinsrechnung",
     "mastery" : 0.46
   }, {
-    "topicId" : "6af1f56efdd6f59243f51606",
+    "topicId" : "6af1f6b79fee891876118e43",
     "title" : "Vertragsrecht",
     "mastery" : 0.77
   }, {
-    "topicId" : "6af1f56efdd6f59243f51605",
+    "topicId" : "6af1f6b79fee891876118e42",
     "title" : "Kalkulation",
     "mastery" : 1.0
   } ],

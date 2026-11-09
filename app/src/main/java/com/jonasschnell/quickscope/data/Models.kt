@@ -110,6 +110,8 @@ data class Forecast(
     val expectedGainPercentThisSession: Double? = null,
     val milestones: List<Milestone> = emptyList(),
     val showCheatsheetSuggestion: Boolean = false,
+    /** Tage in Folge mit mindestens einer abgeschlossenen Runde (Backend, optional). */
+    val streakDays: Int? = null,
     val note: String = "Schätzung, keine Garantie",
 )
 

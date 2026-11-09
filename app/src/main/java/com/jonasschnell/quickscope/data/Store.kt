@@ -22,6 +22,15 @@ class Store(context: Context) : QueueStorage {
         get() = prefs.getBoolean("audioMode", false)
         set(value) = prefs.edit().putBoolean("audioMode", value).apply()
 
+    /** Tagesserie (lokal abgeleitet): letzter Tag mit abgeschlossener Runde (ISO) und Tage in Folge. */
+    var lastSessionDay: String?
+        get() = prefs.getString("lastSessionDay", null)
+        set(value) = prefs.edit().putString("lastSessionDay", value).apply()
+
+    var dayStreak: Int
+        get() = prefs.getInt("dayStreak", 0)
+        set(value) = prefs.edit().putInt("dayStreak", value).apply()
+
     // Warteschlange fuer Antworten (siehe AttemptQueue)
     override fun read(key: String): String? = prefs.getString("q_$key", null)
 

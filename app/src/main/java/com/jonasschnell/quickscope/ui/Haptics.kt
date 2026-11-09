@@ -52,6 +52,27 @@ class Haptics(private val view: View?) {
         v.performHapticFeedback(constant(kind))
     }
 
+    /**
+     * Haptik-Muster fuer richtige Antworten und Feiern: 0 = kurzer Doppelklick, 1 = Serie (dreistufig),
+     * 2 = grosse Serie (laenger, staerker), 3 = Rundenabschluss. Ohne Amplituden-Steuerung ein kraeftiger Einzelimpuls.
+     */
+    fun celebrate(level: Int) {
+        val v = view ?: return
+        if (!enabled) return
+        val vibrator = v.context.getSystemService(android.os.Vibrator::class.java)
+        if (vibrator == null || !vibrator.hasAmplitudeControl()) {
+            v.performHapticFeedback(constant(HapticKind.Confirm))
+            return
+        }
+        val (timings, amps) = when (level) {
+            0 -> longArrayOf(0, 18, 45, 22) to intArrayOf(0, 170, 0, 255)
+            1 -> longArrayOf(0, 20, 40, 25, 40, 35) to intArrayOf(0, 160, 0, 210, 0, 255)
+            2 -> longArrayOf(0, 25, 40, 30, 40, 40, 40, 70) to intArrayOf(0, 150, 0, 190, 0, 230, 0, 255)
+            else -> longArrayOf(0, 30, 50, 30, 50, 40, 60, 110) to intArrayOf(0, 170, 0, 200, 0, 230, 0, 255)
+        }
+        runCatching { vibrator.vibrate(android.os.VibrationEffect.createWaveform(timings, amps, -1)) }
+    }
+
     fun tick() = perform(HapticKind.Tick)
     fun confirm() = perform(HapticKind.Confirm)
     fun reject() = perform(HapticKind.Reject)

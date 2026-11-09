@@ -151,6 +151,17 @@ class ContractTest {
         assertTrue(over.projections.isEmpty())
     }
 
+    @Test fun streakDaysIsOptional() {
+        val without = parse("forecast-far.json", Forecast.serializer())
+        // Backend liefert streakDays (noch) optional: fehlt es, bleibt es null und die App blendet die Serie aus
+        if (without.streakDays == null) {
+            val with = AppJson.decodeFromString(Forecast.serializer(), """{"scoreNowPercent":50,"scoreAtExamPercent":70,"streakDays":7}""")
+            assertEquals(7, with.streakDays)
+        } else {
+            assertTrue(without.streakDays!! >= 0)
+        }
+    }
+
     @Test fun attemptsResponse() {
         val r = parse("attempts.json", AttemptsResponse.serializer())
         assertEquals(55, r.forecast.scoreNowPercent)
@@ -285,7 +296,7 @@ class ContractTest {
         assertTrue(msg("error-415-legacy-format.json", 415)!!.contains(".docx"))
         assertEquals("Die Prüfung ist vorbei", msg("error-409-attempt-over.json", 409))
         assertEquals("Höchstens 20 Prüfungen je Nutzer", msg("error-409-exam-limit.json", 409))
-        assertTrue(msg("error-400-validation.json", 400)!!.startsWith("dailyMinutes"))
+        assertTrue(msg("error-400-validation.json", 400)!!.startsWith("date"))
         assertNotNull(msg("error-400-time.json", 400))
         assertNotNull(msg("error-400-attempt-outcome.json", 400))
         assertNotNull(msg("error-400-broken-pdf.json", 400))
@@ -296,6 +307,8 @@ class ContractTest {
         assertEquals("Noch keine Themen", msg("error-409-regenerate-no-topics.json", 409))
         assertEquals("part: question oder answer", msg("error-400-audio-part.json", 400))
         assertEquals("part: question oder answer", msg("error-400-timings-part.json", 400))
+        assertEquals("Aufgabe nicht gefunden", msg("error-404-audio-item.json", 404))
+        assertEquals("Aufgabe nicht gefunden", msg("error-404-timings-item.json", 404))
         assertNotNull(msg("error-404-exam.json", 404))
         assertNotNull(msg("error-404-material.json", 404))
         assertEquals("Bitte aktualisiere die App.", msg("error-426-upgrade.json", 426))

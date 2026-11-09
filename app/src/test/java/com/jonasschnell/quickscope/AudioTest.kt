@@ -1,17 +1,14 @@
 package com.jonasschnell.quickscope
 
-import com.jonasschnell.quickscope.data.Item
 import com.jonasschnell.quickscope.logic.CardFlow
 import com.jonasschnell.quickscope.logic.CloudHealth
 import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.PrefetchPlanner
 import com.jonasschnell.quickscope.logic.VoiceKind
 import com.jonasschnell.quickscope.logic.VoicePart
-import com.jonasschnell.quickscope.logic.audioFeedback
 import com.jonasschnell.quickscope.logic.audioFileName
 import com.jonasschnell.quickscope.logic.chooseVoice
 import com.jonasschnell.quickscope.logic.filesToPrune
-import com.jonasschnell.quickscope.logic.parseTask
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -54,7 +51,7 @@ class AudioTest {
         assertEquals(listOf("old", "mid"), filesToPrune(files, 500))
         assertTrue(filesToPrune(files, 5000).isEmpty())
         assertEquals("e1_i-1_question.wav", audioFileName("e1", "i-1", VoicePart.Question))
-        assertEquals("e1_i_1_answer.wav", audioFileName("e1", "i/1", VoicePart.Answer))
+        assertEquals("e1_i_1_question.wav", audioFileName("e1", "i/1", VoicePart.Question))
     }
 
     @Test fun cardFlowNeedsRevealBeforeAnswer() {
@@ -64,11 +61,5 @@ class AudioTest {
         f.reveal()
         assertEquals("known", f.answer(true))
         assertEquals("unknown", f.answer(false))
-    }
-
-    @Test fun deviceVoiceFeedbackIsShort() {
-        val t = parseTask(Item(id = "a", type = "card", question = "Q?", answer = "42", explanation = "Weil so."))
-        assertEquals("Richtig. Weil so.", audioFeedback(t, true))
-        assertEquals("Falsch. 42. Weil so.", audioFeedback(t, false))
     }
 }

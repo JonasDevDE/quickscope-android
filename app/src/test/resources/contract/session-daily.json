@@ -2,7 +2,7 @@
   "items" : [ {
     "id" : "i-card",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51603",
+    "topicId" : "6af1f6b79fee891876118e40",
     "type" : "card",
     "question" : "Zinsen?",
     "answer" : "Preis für Kapital",
@@ -22,7 +22,7 @@
   }, {
     "id" : "i-spot",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51606",
+    "topicId" : "6af1f6b79fee891876118e43",
     "type" : "spot",
     "question" : "Fehler finden:",
     "answer" : "Verträge: immer Schriftform.",
@@ -43,7 +43,7 @@
   }, {
     "id" : "i-order",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51605",
+    "topicId" : "6af1f6b79fee891876118e42",
     "type" : "order",
     "question" : "Kalkulation, Reihenfolge:",
     "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
@@ -63,7 +63,7 @@
   }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51603",
+    "topicId" : "6af1f6b79fee891876118e40",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -88,7 +88,7 @@
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51606",
+    "topicId" : "6af1f6b79fee891876118e43",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -102,7 +102,7 @@
   }, {
     "id" : "i-match",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51605",
+    "topicId" : "6af1f6b79fee891876118e42",
     "type" : "match",
     "question" : "Zuordnen:",
     "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
@@ -131,7 +131,7 @@
   }, {
     "id" : "i-lesson",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51603",
+    "topicId" : "6af1f6b79fee891876118e40",
     "type" : "card",
     "question" : "So geht: Zinseszins berechnen",
     "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
@@ -151,7 +151,7 @@
   }, {
     "id" : "i-choice2",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51606",
+    "topicId" : "6af1f6b79fee891876118e43",
     "type" : "choice2",
     "question" : "Transportrisiko: Käufer oder Verkäufer?",
     "answer" : "Käufer",
@@ -172,7 +172,7 @@
   }, {
     "id" : "i-cloze",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51605",
+    "topicId" : "6af1f6b79fee891876118e42",
     "type" : "cloze",
     "question" : "Selbstkosten + ___ = Verkaufspreis.",
     "answer" : "Gewinn",
@@ -194,7 +194,7 @@
   }, {
     "id" : "i-number",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51603",
+    "topicId" : "6af1f6b79fee891876118e40",
     "type" : "number",
     "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
     "answer" : "30 €",
@@ -215,7 +215,7 @@
   }, {
     "id" : "i-tf",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51606",
+    "topicId" : "6af1f6b79fee891876118e43",
     "type" : "truefalse",
     "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
     "answer" : "wahr",
@@ -232,7 +232,7 @@
   }, {
     "id" : "i-mc",
     "examId" : "e-ready",
-    "topicId" : "6af1f56efdd6f59243f51603",
+    "topicId" : "6af1f6b79fee891876118e40",
     "type" : "mc",
     "question" : "Jahreszins-Formel?",
     "answer" : "K × p / 100",
@@ -275,15 +275,15 @@
     "hoursLeft" : 230,
     "doneSecondsToday" : 0,
     "weakTopics" : [ {
-      "topicId" : "6af1f56efdd6f59243f51603",
+      "topicId" : "6af1f6b79fee891876118e40",
       "title" : "Zinsrechnung",
       "mastery" : 0.58
     }, {
-      "topicId" : "6af1f56efdd6f59243f51606",
+      "topicId" : "6af1f6b79fee891876118e43",
       "title" : "Vertragsrecht",
       "mastery" : 0.54
     }, {
-      "topicId" : "6af1f56efdd6f59243f51605",
+      "topicId" : "6af1f6b79fee891876118e42",
       "title" : "Kalkulation",
       "mastery" : 0.39
     } ],

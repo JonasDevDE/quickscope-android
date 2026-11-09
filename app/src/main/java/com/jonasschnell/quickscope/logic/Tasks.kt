@@ -189,10 +189,6 @@ fun sessionProgress(items: List<Item>, doneCount: Int): Float {
 fun audioPrompt(task: Task): String =
     if (task is Task.Cloze) task.item.question.replace(Regex("_{3,}"), "Lücke") else task.item.question
 
-/** Vorlesetext fuer das Feedback (Rueckfall auf die Geraetestimme): richtig/falsch, richtige Antwort, Erklaerung wenn vorhanden. */
-fun audioFeedback(task: Task, correct: Boolean): String =
-    listOfNotNull(if (correct) "Richtig." else "Falsch. ${correctText(task)}.", shortExplanation(task.item.explanation)).joinToString(" ")
-
 /** Ablauf einer Karte ohne Wisch: erst aufdecken, dann "gewusst"/"nicht gewusst"; vorher gibt es kein Ergebnis. */
 class CardFlow {
     var revealed = false

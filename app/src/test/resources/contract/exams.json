@@ -11,7 +11,7 @@
   "topicCount" : 3,
   "itemCount" : 13,
   "materialCount" : 0,
-  "createdAt" : "2026-11-09T16:31:43.019454800Z",
+  "createdAt" : "2026-11-09T16:37:11.475354700Z",
   "daysLeft" : 0
 }, {
   "id" : "e-failed",
@@ -26,7 +26,7 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 1,
-  "createdAt" : "2026-11-09T16:31:43.019454800Z",
+  "createdAt" : "2026-11-09T16:37:11.475354700Z",
   "daysLeft" : 5,
   "error" : "Im Material wurden keine Themen gefunden"
 }, {
@@ -42,7 +42,7 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 1,
-  "createdAt" : "2026-11-09T16:31:43.019454800Z",
+  "createdAt" : "2026-11-09T16:37:11.475354700Z",
   "daysLeft" : 12
 }, {
   "id" : "e-ready",
@@ -58,7 +58,7 @@
   "topicCount" : 3,
   "itemCount" : 13,
   "materialCount" : 5,
-  "createdAt" : "2026-11-09T16:31:43.019454800Z",
+  "createdAt" : "2026-11-09T16:37:11.475354700Z",
   "daysLeft" : 21
 }, {
   "id" : "e-empty",
@@ -73,6 +73,6 @@
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 0,
-  "createdAt" : "2026-11-09T16:31:43.019454800Z",
+  "createdAt" : "2026-11-09T16:37:11.474344200Z",
   "daysLeft" : 30
 } ]

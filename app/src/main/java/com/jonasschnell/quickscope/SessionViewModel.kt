@@ -7,7 +7,12 @@ import androidx.lifecycle.viewModelScope
 import com.jonasschnell.quickscope.data.AttemptRequest
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.backendMessage
+import com.jonasschnell.quickscope.logic.FeedbackTracker
+import com.jonasschnell.quickscope.logic.Outcome
 import com.jonasschnell.quickscope.logic.Task
+import com.jonasschnell.quickscope.logic.newlySitting
+import com.jonasschnell.quickscope.logic.nextDayStreak
+import com.jonasschnell.quickscope.logic.retryInsertIndex
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.topicLabels
 import com.jonasschnell.quickscope.logic.parseTask
@@ -20,6 +25,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import java.time.Instant
+import java.time.LocalDate
 
 enum class SessionPhase { Closed, Loading, Running, Done, Empty, Error }
 
@@ -39,10 +45,29 @@ data class SessionUi(
     val audio: Boolean = false,
     /** Themen-Id -> Titel (ggf. "Gruppe › Titel") fuer die Zeile ueber der Frage. */
     val topics: Map<String, String> = emptyMap(),
+    /** Parallel zu [tasks]: true bei "Gleich nochmal"-Wiederholungen (zaehlen nicht gegen Zeit und Fortschritt). */
+    val isRetry: List<Boolean> = emptyList(),
+    /** Einmaliges Feedback-Ereignis der letzten Antwort (neue [Fx.id] = neu abspielen). */
+    val fx: Fx? = null,
+    val streak: Int = 0,
+    val bestStreak: Int = 0,
+    val xp: Int = 0,
+    val correctCount: Int = 0,
+    val answerCount: Int = 0,
+    val elapsedSeconds: Int = 0,
+    /** Tagesserie nach dieser Runde (Tage in Folge). */
+    val dayStreak: Int = 0,
+    /** Ein Thema "sitzt" jetzt (Banner). */
+    val sits: Sits? = null,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
+    val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
     val inFinalRound: Boolean get() = finalRoundStart?.let { index >= it } == true
 }
+
+data class Fx(val id: Int, val outcome: Outcome)
+
+data class Sits(val id: Int, val title: String)
 
 /** Lernrunde: laedt die Session, merkt Antworten lokal vor (offline-fest) und sendet sie batchweise. */
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
@@ -55,6 +80,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val state: StateFlow<SessionUi> = _state.asStateFlow()
 
     private var shownAt = 0L
+    private var startedAt = 0L
+    private var tracker = FeedbackTracker()
+    private var fxId = 0
+    private var sitsId = 0
+    private var prevMastery: Map<String, Double> = emptyMap()
+    private var leafIds: Set<String> = emptySet()
+    private var topicTitles: Map<String, String> = emptyMap()
+    private var lastSitsCheck = 0L
 
     fun start(examId: String, minutes: Int, scoreBefore: Int?) {
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode) }
@@ -62,13 +95,20 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             try {
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
                 val s = api.session(examId, minutes)
-                val labels = runCatching { topicLabels(api.topics(examId)) }.getOrDefault(emptyMap())
+                val topicList = runCatching { api.topics(examId) }.getOrDefault(emptyList())
+                val labels = topicLabels(topicList)
+                val parents = topicList.mapNotNull { it.parentId }.toSet()
+                leafIds = topicList.filter { it.id !in parents }.map { it.id }.toSet()
+                topicTitles = topicList.associate { it.id to it.title }
+                prevMastery = topicList.filter { it.id in leafIds }.associate { it.id to it.mastery }
+                tracker = FeedbackTracker()
                 val tasks = s.items.map(::parseTask)
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
                     shownAt = SystemClock.elapsedRealtime()
-                    _state.update { it.copy(phase = SessionPhase.Running, tasks = tasks, reason = s.reason, finalRoundStart = s.finalRoundStart, topics = labels) }
+                    startedAt = shownAt
+                    _state.update { it.copy(phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, finalRoundStart = s.finalRoundStart, topics = labels) }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -78,15 +118,61 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Antwort zur aktuellen Aufgabe: sofort vormerken und Feedback zeigen; gesendet wird im Hintergrund. */
+    /**
+     * Antwort zur aktuellen Aufgabe: sofort vormerken und Feedback zeigen; gesendet wird im Hintergrund.
+     * Falsche Antworten kommen nach 3 bis 5 Aufgaben als "Gleich nochmal" wieder (nur lokal, ohne erneutes Senden).
+     */
     fun answer(correct: Boolean) {
         val s = _state.value
         val task = s.current ?: return
         if (s.feedback != null) return
         val ms = (SystemClock.elapsedRealtime() - shownAt).toInt().coerceIn(0, 10 * 60 * 1000)
-        sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, correct), ms, Instant.now().toString()))
-        _state.update { it.copy(feedback = correct) }
-        viewModelScope.launch { sync.flush(s.examId) }
+        if (task is Task.Lesson) {
+            // Loesungsweg: wird als gelernt vermerkt, aber ohne Punkte und Feier
+            sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, true), ms, Instant.now().toString()))
+            _state.update { it.copy(feedback = true) }
+            viewModelScope.launch { sync.flush(s.examId) }
+            return
+        }
+        val retry = s.currentIsRetry
+        val outcome = tracker.record(correct, task.item.difficulty, retry)
+        var tasks = s.tasks
+        var flags = s.isRetry
+        var finalStart = s.finalRoundStart
+        if (!retry) {
+            sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, correct), ms, Instant.now().toString()))
+            viewModelScope.launch {
+                val f = sync.flush(s.examId)
+                if (f != null) checkSits(s.examId)
+            }
+            if (!correct) {
+                val at = retryInsertIndex(s.index, tasks.size, task.item.id)
+                tasks = tasks.toMutableList().apply { add(at, task) }
+                flags = flags.toMutableList().apply { add(at, true) }
+                if (finalStart != null && at <= finalStart) finalStart += 1
+            }
+        }
+        fxId++
+        _state.update {
+            it.copy(
+                feedback = correct, tasks = tasks, isRetry = flags, finalRoundStart = finalStart, fx = Fx(fxId, outcome),
+                streak = tracker.streak, bestStreak = tracker.best, xp = tracker.xp, correctCount = tracker.correct, answerCount = tracker.answers,
+            )
+        }
+    }
+
+    /** Pruefen, ob durch die letzten Antworten ein Thema ueber die Schwelle gekommen ist ("Thema sitzt"). */
+    private suspend fun checkSits(examId: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastSitsCheck < 2_500) return
+        lastSitsCheck = now
+        val list = runCatching { api.topics(examId) }.getOrNull() ?: return
+        val current = list.filter { it.id in leafIds }.associate { it.id to it.mastery }
+        val ids = newlySitting(prevMastery, current)
+        prevMastery = current
+        val id = ids.firstOrNull() ?: return
+        sitsId++
+        _state.update { it.copy(sits = Sits(sitsId, topicTitles[id] ?: "")) }
     }
 
     /** Naechste Aufgabe; nach der letzten der Abschluss mit der neuen Prognose. */
@@ -95,7 +181,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         if (s.phase != SessionPhase.Running) return
         val nextIndex = s.index + 1
         if (nextIndex >= s.tasks.size) {
-            _state.update { it.copy(index = nextIndex, feedback = null, phase = SessionPhase.Done, scoreAfter = it.scoreBefore) }
+            val today = LocalDate.now()
+            val streakDays = nextDayStreak(store.lastSessionDay?.let { runCatching { LocalDate.parse(it) }.getOrNull() }, store.dayStreak, today)
+            store.lastSessionDay = today.toString()
+            store.dayStreak = streakDays
+            val seconds = ((SystemClock.elapsedRealtime() - startedAt) / 1000).toInt()
+            _state.update {
+                it.copy(index = nextIndex, feedback = null, phase = SessionPhase.Done, scoreAfter = it.scoreBefore, elapsedSeconds = seconds, dayStreak = streakDays)
+            }
             viewModelScope.launch {
                 val f = sync.flush(s.examId)
                 if (f != null) _state.update { it.copy(forecastAfter = f, scoreAfter = f.scoreNowPercent) }

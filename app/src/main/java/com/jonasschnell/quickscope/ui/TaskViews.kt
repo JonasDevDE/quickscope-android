@@ -38,7 +38,7 @@ import com.jonasschnell.quickscope.logic.shortExplanation
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Card
 import com.jonasschnell.quickscope.ui.theme.CardHigh
-import com.jonasschnell.quickscope.ui.theme.Danger
+import com.jonasschnell.quickscope.ui.theme.Soft
 import com.jonasschnell.quickscope.ui.theme.Muted
 import com.jonasschnell.quickscope.ui.theme.OnAccent
 
@@ -68,7 +68,7 @@ private fun AnswerBox(text: String, state: Int, onClick: () -> Unit, enabled: Bo
     // state: 0 neutral, 1 richtig, 2 falsch, 3 gedimmt
     val border = when (state) {
         1 -> BorderStroke(2.dp, Accent)
-        2 -> BorderStroke(2.dp, Danger)
+        2 -> BorderStroke(2.dp, Soft)
         else -> null
     }
     Box(
@@ -83,19 +83,19 @@ private fun AnswerBox(text: String, state: Int, onClick: () -> Unit, enabled: Bo
 
 /** Karte: Tipp zum Aufdecken, danach zwei grosse Knoepfe "Gewusst" / "Nicht gewusst". */
 @Composable
-fun CardTask(task: Task.Card, onAnswer: (Boolean) -> Unit, onReveal: (String) -> Unit) {
+fun CardTask(task: Task.Card, onAnswer: (Boolean) -> Unit) {
     val flow = remember { CardFlow() }
     var shown by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         QuestionText(task.item.question)
         if (!shown) {
-            AnswerBox("Aufdecken", 0, { flow.reveal(); shown = true; onReveal(task.answer) })
+            AnswerBox("Aufdecken", 0, { flow.reveal(); shown = true })
         } else {
             Text(task.answer, style = MaterialTheme.typography.titleLarge, color = Accent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             task.item.mnemonic?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
             shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1f)) { SecondaryButton("Nicht gewusst", { flow.answer(false)?.let { onAnswer(false) } }, color = Danger) }
+                Box(Modifier.weight(1f)) { SecondaryButton("Nicht gewusst", { flow.answer(false)?.let { onAnswer(false) } }, color = Soft) }
                 Box(Modifier.weight(1f)) { PrimaryButton("Gewusst", { flow.answer(true)?.let { onAnswer(true) } }) }
             }
         }
@@ -263,17 +263,21 @@ fun OrderTask(task: Task.Order, onAnswer: (Boolean) -> Unit) {
     }
 }
 
-/** Sofortiges Feedback: "Richtig" bzw. "Falsch" + richtige Antwort kurz; Erklaerung nur wenn vorhanden, klein; ein Knopf "Weiter". */
+/**
+ * Sofortiges Feedback: bei falsch sanft ("Falsch" in warmem Orange) mit der richtigen Antwort in einer Zeile;
+ * Erklaerung nur wenn vorhanden, klein. [again] = die Aufgabe kommt gleich nochmal. Ein Knopf "Weiter".
+ */
 @Composable
-fun FeedbackPanel(task: Task, correct: Boolean, onNext: () -> Unit) {
+fun FeedbackPanel(task: Task, correct: Boolean, again: Boolean, onNext: () -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(if (correct) "Richtig" else "Falsch", color = if (correct) Accent else Danger, style = MaterialTheme.typography.titleMedium)
+        Text(if (correct) "Richtig" else "Falsch", color = if (correct) Accent else Soft, style = MaterialTheme.typography.titleMedium)
         if (!correct) Text(correctText(task), style = MaterialTheme.typography.bodyLarge)
         shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall) }
         // Loesungsweg (hoechstens 3 kurze Schritte) und Merkregel, wenn die Aufgabe einen mitbringt
         lessonSteps(task.item).forEachIndexed { i, step -> Text("${i + 1}. $step", color = Muted, style = MaterialTheme.typography.bodySmall) }
         task.item.trick?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodySmall) }
         task.item.mnemonic?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodySmall) }
+        if (!correct && again) Text("Kommt gleich nochmal", color = Muted, style = MaterialTheme.typography.bodySmall)
         PrimaryButton("Weiter", onNext, Modifier.padding(top = 6.dp))
     }
 }

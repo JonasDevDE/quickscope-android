@@ -1,7 +1,7 @@
 package com.jonasschnell.quickscope.logic
 
-/** Teile einer Aufgabe, die vorgelesen werden: die Frage und die Antwort (mit Kurzerklaerung). */
-enum class VoicePart(val query: String) { Question("question"), Answer("answer") }
+/** Vorgelesen wird nur die Frage. */
+enum class VoicePart(val query: String) { Question("question") }
 
 /** Feste Wiedergabegeschwindigkeit der Stimme (Cloud-Stimme mit erhaltener Tonhoehe, Geraetestimme als Sprechrate). Nur hier festgelegt. */
 const val SPEECH_SPEED = 1.15f

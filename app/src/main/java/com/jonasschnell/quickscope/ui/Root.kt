@@ -155,6 +155,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                         onRetry = vm::refreshExamsNow,
                         onCancelUpload = vm::cancelUpload,
                         onRetryUpload = vm::retryUpload,
+                        dayStreak = vm.dayStreak(),
                     )
                 }
             }

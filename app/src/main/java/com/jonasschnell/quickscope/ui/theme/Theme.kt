@@ -24,6 +24,8 @@ val OnAccent = Color(0xFF000000)
 val Muted = Color(0xFF8C8C92)
 val Danger = Color(0xFFFF6B6B)
 val Warn = Color(0xFFFFC857)
+/** Warmes Orange fuer "nicht ganz": sanft statt hartem Rot. */
+val Soft = Color(0xFFFF9F5A)
 
 private val Scheme = darkColorScheme(
     primary = Accent,

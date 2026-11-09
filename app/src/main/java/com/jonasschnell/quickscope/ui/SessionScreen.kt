@@ -2,6 +2,18 @@ package com.jonasschnell.quickscope.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.jonasschnell.quickscope.logic.Celebration
+import com.jonasschnell.quickscope.logic.Tones
+import com.jonasschnell.quickscope.logic.floor5
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +51,6 @@ import com.jonasschnell.quickscope.SessionPhase
 import com.jonasschnell.quickscope.SessionUi
 import com.jonasschnell.quickscope.SessionViewModel
 import com.jonasschnell.quickscope.logic.Task
-import com.jonasschnell.quickscope.logic.audioFeedback
 import com.jonasschnell.quickscope.logic.audioPrompt
 import com.jonasschnell.quickscope.logic.beforeAfterLine
 import com.jonasschnell.quickscope.logic.lessonSteps
@@ -62,7 +73,7 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit
             SessionPhase.Running -> RunningView(s, vm, onClose)
             SessionPhase.Done -> DoneView(s, onClose)
             SessionPhase.Loading, SessionPhase.Closed -> {
-                TopRow(0f, false, null, onClose)
+                TopRow(0f, false, 0, null, onClose)
                 Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SkeletonCard(80.dp)
                     SkeletonCard(56.dp)
@@ -77,10 +88,11 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit
 }
 
 @Composable
-private fun TopRow(progress: Float, audio: Boolean, onAudio: ((Boolean) -> Unit)?, onClose: () -> Unit) {
+private fun TopRow(progress: Float, audio: Boolean, streak: Int, onAudio: ((Boolean) -> Unit)?, onClose: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("✕", style = MaterialTheme.typography.titleLarge, color = Muted, modifier = Modifier.hapticClickable(onClick = onClose).padding(horizontal = 8.dp, vertical = 4.dp))
-        LinearProgressIndicator(progress = { progress }, color = Accent, trackColor = CardHigh, modifier = Modifier.weight(1f).height(6.dp))
+        GlowProgress(progress, Modifier.weight(1f))
+        StreakChip(streak)
         if (onAudio != null) Pill("Ton", audio, { onAudio(!audio) })
     }
 }
@@ -107,33 +119,48 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
     val task = s.current ?: return
     val voice = if (s.audio) rememberVoice() else null
     val haptics = LocalHaptics.current
+    val sfx = rememberSfx()
+    val shake = remember { Animatable(0f) }
     val ids = remember(s.tasks) { s.tasks.map { it.item.id } }
 
     // Audio-Modus: naechste Aufgaben vorab laden
     LaunchedEffect(s.index, s.audio) {
         if (s.audio) voice?.prefetch(s.examId, ids, s.index)
     }
-    // Audio-Modus: Frage vorlesen; sobald geantwortet ist, Antwort (mit Kurzerklaerung) vorlesen und danach weiter.
+    // Audio-Modus: nur die Frage vorlesen (nie Antwort oder Rueckmeldung)
     LaunchedEffect(s.index, s.audio, s.feedback != null) {
-        val fb = s.feedback
-        if (voice == null) return@LaunchedEffect
-        if (fb == null) {
-            voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task), displayText = task.item.question)
+        if (voice != null && s.feedback == null) voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task), displayText = task.item.question)
+        else voice?.stop()
+    }
+    // Rueckmeldung: Ton und Haptik; richtig deutlich groesser als falsch
+    LaunchedEffect(s.fx?.id) {
+        val o = s.fx?.outcome ?: return@LaunchedEffect
+        if (o.correct) {
+            when (o.celebration) {
+                Celebration.Small -> { sfx.play(Tones.correct); haptics.celebrate(0) }
+                Celebration.Medium -> { sfx.play(Tones.medium); haptics.celebrate(1) }
+                Celebration.Big -> { sfx.play(Tones.big); haptics.celebrate(2) }
+            }
         } else {
-            voice.speak(s.examId, task.item.id, VoicePart.Answer, audioFeedback(task, fb))
-            delay(500)
-            vm.next()
+            sfx.play(Tones.wrong)
+            haptics.tick()
+            shake.animateTo(0f, keyframes {
+                durationMillis = 340
+                0f at 0; -14f at 60; 12f at 120; -8f at 190; 5f at 250; 0f at 340
+            })
         }
     }
-    // Feedback: Haptik, ohne Audio nach kurzer Zeit automatisch weiter
+    LaunchedEffect(s.sits?.id) {
+        if (s.sits != null) { sfx.play(Tones.medium); haptics.celebrate(1) }
+    }
+    // automatisch weiter nach kurzer Zeit (auch per "Weiter"); Karten brauchen keine Lesezeit
     LaunchedEffect(s.feedback, s.index) {
         val fb = s.feedback ?: return@LaunchedEffect
-        if (fb) haptics.confirm() else haptics.reject()
-        if (s.audio) return@LaunchedEffect
         delay(
             when {
+                task is Task.Card -> if (fb) 1000L else 1500L
                 lessonSteps(task.item).isNotEmpty() -> 4500L
-                fb && task.item.explanation.isNullOrBlank() && task.item.mnemonic.isNullOrBlank() -> 1000L
+                fb && task.item.explanation.isNullOrBlank() && task.item.mnemonic.isNullOrBlank() -> 1100L
                 fb -> 2400L
                 else -> 3200L
             },
@@ -141,7 +168,9 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         vm.next()
     }
 
-    TopRow(sessionProgress(s.tasks.map { it.item }, s.index), s.audio, vm::setAudio, onClose)
+    val shownItems = s.tasks.filterIndexed { i, _ -> !s.isRetry.getOrElse(i) { false } }.map { it.item }
+    val done = (0 until s.index).count { !s.isRetry.getOrElse(it) { false } }
+    TopRow(sessionProgress(shownItems, done), s.audio, s.streak, vm::setAudio, onClose)
     if (voice != null) {
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (voice.loading) SkeletonBox(Modifier.size(10.dp), CircleShape)
@@ -149,27 +178,37 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         }
     }
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
-    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
-        key(s.index) {
-            s.topics[task.item.topicId]?.let {
-                Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    Box(Modifier.weight(1f).fillMaxWidth()) {
+        Column(
+            Modifier.fillMaxSize().graphicsLayer { translationX = shake.value }.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            key(s.index) {
+                if (s.currentIsRetry) Text("Gleich nochmal", color = Accent, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                s.topics[task.item.topicId]?.let {
+                    Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                }
+                CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
+                    TaskBody(task, s.feedback, vm)
+                }
+                // Karten zeigen die Antwort schon selbst; alle anderen Typen zeigen die Rueckmeldung mit der richtigen Antwort
+                if (task !is Task.Card) s.feedback?.let { Spacer(Modifier.height(16.dp)); FeedbackPanel(task, it, again = !s.currentIsRetry, onNext = vm::next) }
             }
-            CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                TaskBody(task, s.feedback, voice, s.examId, vm)
-            }
-            s.feedback?.let { Spacer(Modifier.height(16.dp)); FeedbackPanel(task, it, vm::next) }
         }
+        s.fx?.takeIf { s.feedback != null }?.let { fx ->
+            if (fx.outcome.correct) CorrectFx(fx) else SoftFx(fx)
+        }
+        s.sits?.let { SitsBanner(it, Modifier.align(Alignment.TopCenter)) }
     }
 }
 
-/** Die Aufgabe je Typ. Karten und Loesungswege gehen direkt weiter, alle anderen zeigen erst das Feedback. */
+/** Die Aufgabe je Typ. Loesungswege gehen direkt weiter, alle anderen zeigen erst die Rueckmeldung. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, voice: Voice?, examId: String, vm: SessionViewModel) {
-    val scope = rememberCoroutineScope()
+private fun TaskBody(task: Task, feedback: Boolean?, vm: SessionViewModel) {
     val answered = feedback != null
     val onAnswer: (Boolean) -> Unit = { ok -> vm.answer(ok) }
     when (task) {
-        is Task.Card -> CardTask(task, { ok -> vm.answer(ok); vm.next() }, { ans -> if (voice != null) scope.launch { voice.speak(examId, task.item.id, VoicePart.Answer, ans) } })
+        is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
         is Task.Choice -> ChoiceTask(task, answered, onAnswer)
         is Task.Cloze -> ClozeTask(task, onAnswer)
@@ -179,25 +218,64 @@ private fun TaskBody(task: Task, feedback: Boolean?, voice: Voice?, examId: Stri
     }
 }
 
-/** Ruhiger Abschluss: Heute geschafft, Prognose vorher/nachher, ein Satz zur Auswahl. */
+/** Zaehlt einen Wert beim Erscheinen von 0 hoch. */
+@Composable
+private fun countUp(target: Int): Int {
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+    val v by animateIntAsState(if (started) target else 0, tween(1100), label = "countUp")
+    return v
+}
+
+@Composable
+private fun StatCell(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier.clip(RoundedCornerShape(20.dp)).background(CardHigh).padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = Accent)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Muted)
+    }
+}
+
+/** Feier-Bildschirm: Werte zaehlen hoch, Konfetti, Abschlussklang; Prognose nur, wenn sie sich geaendert hat. */
 @Composable
 private fun DoneView(s: SessionUi, onClose: () -> Unit) {
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        LearnMark(56.dp)
-        Spacer(Modifier.height(16.dp))
-        Text("Heute geschafft", style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(12.dp))
-        val before = s.scoreBefore
-        val after = s.scoreAfter
-        if (after != null) {
-            Text(beforeAfterLine(before ?: after, after), style = MaterialTheme.typography.titleMedium, color = Accent)
-            Text("Schätzung, keine Garantie", color = Muted, style = MaterialTheme.typography.bodySmall)
-        }
-        if (s.reason.isNotBlank()) {
+    val sfx = rememberSfx()
+    val haptics = LocalHaptics.current
+    LaunchedEffect(Unit) {
+        sfx.play(Tones.done)
+        haptics.celebrate(3)
+    }
+    val correct = countUp(s.correctCount)
+    val xp = countUp(s.xp)
+    val best = countUp(s.bestStreak)
+    val seconds = countUp(s.elapsedSeconds)
+    Box(Modifier.fillMaxSize()) {
+        Confetti(Unit)
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            LearnMark(56.dp)
             Spacer(Modifier.height(16.dp))
-            Text(s.reason, color = Muted, textAlign = TextAlign.Center)
+            Text("Heute geschafft", style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(20.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatCell("$correct / ${s.answerCount}", "richtig", Modifier.weight(1f))
+                StatCell("%d:%02d".format(seconds / 60, seconds % 60), "Zeit", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatCell("$best", "Serie", Modifier.weight(1f))
+                StatCell("+$xp", "Punkte", Modifier.weight(1f))
+            }
+            val before = s.scoreBefore
+            val after = s.scoreAfter
+            if (before != null && after != null && floor5(before) != floor5(after)) {
+                Spacer(Modifier.height(16.dp))
+                Text(beforeAfterLine(before, after), style = MaterialTheme.typography.titleMedium, color = Accent)
+            }
+            if (s.dayStreak >= 2) {
+                Spacer(Modifier.height(8.dp))
+                Text("${s.dayStreak} Tage in Folge", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            }
+            Spacer(Modifier.height(32.dp))
+            PrimaryButton("Fertig", onClose)
         }
-        Spacer(Modifier.height(32.dp))
-        PrimaryButton("Fertig", onClose)
     }
 }
