@@ -42,3 +42,7 @@ Die App erwartet ein Backend mit diesen Endpunkten:
 ## Lizenz
 
 MIT, siehe `LICENSE`.
+
+---
+
+Powered by Darkstone Cloud
