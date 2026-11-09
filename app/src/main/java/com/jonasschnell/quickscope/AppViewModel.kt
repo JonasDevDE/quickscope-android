@@ -79,7 +79,19 @@ data class UiState(
 }
 
 /** Stand eines laufenden Uploads: [progress] 0..1 oder null (unbekannt); [error] bei Abbruch/Fehler. */
-data class UploadState(val examId: String, val progress: Float? = null, val error: String? = null, val done: Boolean = false)
+data class UploadState(
+    val examId: String,
+    /** Fortschritt der laufenden Datei (0..1) oder null. */
+    val progress: Float? = null,
+    /** Zusammenfassung bei Fehlern, z. B. "8 von 10 hochgeladen". */
+    val error: String? = null,
+    val done: Boolean = false,
+    /** Laufende Datei (1-basiert) und Gesamtzahl der Queue: "3 von 10". */
+    val current: Int = 0,
+    val total: Int = 0,
+    /** Fehlgeschlagene Dateien mit ruhigem Klartext (nur am Ende der Queue). */
+    val failedItems: List<com.jonasschnell.quickscope.logic.UploadItem> = emptyList(),
+)
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as QuickscopeApp
@@ -668,68 +680,118 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------------------------------------------------------- Upload
 
-    private var uploadJob: Job? = null
-    private var lastUpload: Pair<String, List<UploadJob>>? = null
+    // --- Upload-Warteschlange: strikt eine Datei nach der anderen, Fehler stoppen die anderen nicht ---
 
-    /**
-     * Laedt Material nacheinander hoch (Streaming, mit Gesamtfortschritt). Bei einem Fehler bleiben der Fehlertext und
-     * die noch offenen Auftraege erhalten: "Nochmal" macht dort weiter.
-     */
+    private class UploadUnit(val examId: String, val job: UploadJob, var item: com.jonasschnell.quickscope.logic.UploadItem)
+
+    private val units = mutableListOf<UploadUnit>()
+    private var queueJob: Job? = null
+
+    private fun unitName(job: UploadJob) = if (job.files.size == 1) job.files.first().name else "Scan (${job.files.size} Seiten)"
+
+    /** Neue Dateien an die Queue haengen (laeuft schon eine, kommen sie danach dran). */
     fun upload(examId: String, jobs: List<UploadJob>) {
         if (jobs.isEmpty()) return
         if (!app.connectivity.isOnline()) { needInternet(); return }
-        uploadJob?.cancel()
-        val tooBig = jobs.flatMap { it.files }.firstOrNull { it.size > MAX_FILE_BYTES }
-        if (tooBig != null) {
-            lastUpload = null
-            _state.update { it.copy(upload = UploadState(examId, error = "„${tooBig.name}“ ist zu groß (höchstens 30 MB).")) }
-            return
+        if (queueJob?.isActive != true) units.clear()
+        units += jobs.map { UploadUnit(examId, it, com.jonasschnell.quickscope.logic.UploadItem(unitName(it))) }
+        publishUpload(examId)
+        if (queueJob?.isActive != true) queueJob = viewModelScope.launch { processQueue() }
+    }
+
+    private fun publishUpload(examId: String, progress: Float? = null, finished: Boolean = false) {
+        val total = units.size
+        val currentIdx = units.indexOfFirst { it.item.state == com.jonasschnell.quickscope.logic.UploadItemState.Uploading }
+        val failed = units.filter { it.item.state == com.jonasschnell.quickscope.logic.UploadItemState.Failed }.map { it.item }
+        val done = units.count { it.item.state == com.jonasschnell.quickscope.logic.UploadItemState.Done }
+        _state.update {
+            it.copy(
+                upload = UploadState(
+                    examId, progress = progress, current = if (currentIdx >= 0) currentIdx + 1 else total, total = total,
+                    error = if (finished && failed.isNotEmpty()) com.jonasschnell.quickscope.logic.uploadSummaryText(done, total) else null,
+                    failedItems = if (finished) failed else emptyList(),
+                ),
+            )
         }
-        lastUpload = examId to jobs
-        _state.update { it.copy(upload = UploadState(examId, progress = 0f)) }
-        uploadJob = viewModelScope.launch {
-            val total = jobs.sumOf { totalSize(it) }
-            var finished = 0L
-            for ((i, job) in jobs.withIndex()) {
-                try {
-                    var sent = 0L
-                    val parts = buildParts(getApplication(), job) { n ->
-                        sent += n
-                        if (total > 0) {
-                            val p = ((finished + sent).toFloat() / total).coerceIn(0f, 1f)
-                            _state.update { s -> s.copy(upload = UploadState(examId, progress = p)) }
+    }
+
+    private suspend fun processQueue() {
+        val examId = units.firstOrNull()?.examId ?: return
+        val ctx = getApplication<Application>()
+        val summary = try {
+            com.jonasschnell.quickscope.logic.runUploadQueue(
+                size = { units.size }, itemAt = { units[it] },
+                onState = { i, st, err ->
+                    units[i].item = com.jonasschnell.quickscope.logic.UploadItem(units[i].item.name, st, err?.let { e -> if (e is Exception) uploadErrorText(e) else "Hochladen fehlgeschlagen." })
+                    if (st == com.jonasschnell.quickscope.logic.UploadItemState.Failed) buzz(HapticKind.Reject)
+                    publishUpload(examId)
+                },
+                upload = { _, unit ->
+                    var prepared: List<com.jonasschnell.quickscope.data.UploadFile> = emptyList()
+                    try {
+                        unit.job.files.firstOrNull { it.size > ABSOLUTE_MAX_BYTES }?.let { throw IllegalArgumentException("„${it.name}“ ist zu groß.") }
+                        // Fotos klein rechnen (nicht im Hauptthread); Dokumente bleiben unberuehrt
+                        prepared = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { unit.job.files.map { f -> com.jonasschnell.quickscope.data.compressForUpload(ctx, f) } }
+                        val job = unit.job.copy(files = prepared)
+                        val total = totalSize(job)
+                        var sent = 0L
+                        val parts = buildParts(ctx, job) { n ->
+                            sent += n
+                            if (total > 0) publishUpload(unit.examId, progress = (sent.toFloat() / total).coerceIn(0f, 1f))
                         }
+                        api.uploadMaterial(unit.examId, parts)
+                    } finally {
+                        com.jonasschnell.quickscope.data.cleanupUploadCopies(prepared.filter { p -> unit.job.files.none { it.uri == p.uri } })
                     }
-                    api.uploadMaterial(examId, parts)
-                    finished += totalSize(job)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    buzz(HapticKind.Reject)
-                    lastUpload = examId to jobs.drop(i)
-                    _state.update { it.copy(upload = UploadState(examId, error = uploadErrorText(e))) }
-                    return@launch
+                    // schon fertige Dateien sofort in der Materialliste zeigen; die Verarbeitung startet das Backend je Material selbst
+                    loadMaterials(unit.examId)
+                },
+            )
+        } catch (e: CancellationException) {
+            units.forEachIndexed { i, u ->
+                if (u.item.state == com.jonasschnell.quickscope.logic.UploadItemState.Waiting || u.item.state == com.jonasschnell.quickscope.logic.UploadItemState.Uploading) {
+                    units[i].item = u.item.copy(state = com.jonasschnell.quickscope.logic.UploadItemState.Cancelled)
                 }
             }
-            lastUpload = null
+            throw e
+        }
+        if (summary.failed.isEmpty()) {
             buzz(HapticKind.Confirm)
-            _state.update { it.copy(upload = UploadState(examId, done = true)) }
-            loadMaterials(examId)
-            try {
-                loadExams()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-            }
+            _state.update { it.copy(upload = UploadState(examId, done = true, total = summary.total)) }
+            units.clear()
+        } else {
+            publishUpload(examId, finished = true)
+        }
+        loadMaterials(examId)
+        try {
+            loadExams()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
+    /** "Nochmal": nur die fehlgeschlagenen Dateien erneut, die erledigten bleiben. */
     fun retryUpload() {
-        lastUpload?.let { (id, jobs) -> upload(id, jobs) }
+        if (queueJob?.isActive == true) return
+        var any = false
+        units.forEach { u ->
+            if (u.item.state == com.jonasschnell.quickscope.logic.UploadItemState.Failed) {
+                u.item = com.jonasschnell.quickscope.logic.UploadItem(u.item.name)
+                any = true
+            }
+        }
+        val examId = units.firstOrNull()?.examId ?: return
+        if (!any) return
+        if (!app.connectivity.isOnline()) { needInternet(); return }
+        publishUpload(examId)
+        queueJob = viewModelScope.launch { processQueue() }
     }
 
+    /** Abbrechen: die laufende und alle wartenden Dateien; schon erledigte bleiben im Material. */
     fun cancelUpload() {
-        uploadJob?.cancel()
+        queueJob?.cancel()
+        units.clear()
         _state.update { it.copy(upload = null) }
     }
 
@@ -737,17 +799,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(upload = null) }
     }
 
+    /** Servermeldung im Klartext (z. B. "Datei X ist groesser als 40 MB"), sonst ein neutraler Satz. */
     private fun uploadErrorText(e: Exception): String = when (e) {
-        is HttpException -> when (e.code()) {
-            413 -> "Die Datei ist zu groß (höchstens 30 MB)."
-            else -> backendMessage(e) ?: errorText(e)
-        }
-        is IOException -> "Kein Netz. Bitte Verbindung prüfen und nochmal versuchen."
-        else -> e.message ?: "Hochladen fehlgeschlagen."
+        is HttpException -> com.jonasschnell.quickscope.logic.uploadFailureText(backendMessage(e), e.code(), false)
+        is IOException -> com.jonasschnell.quickscope.logic.uploadFailureText(null, null, true)
+        else -> e.message ?: com.jonasschnell.quickscope.logic.uploadFailureText(null, null, false)
     }
 
     private companion object {
-        const val MAX_FILE_BYTES = 30L * 1024 * 1024
+        /** Absolute Obergrenze vor dem Senden (das Backend nennt seine Grenzen im Klartext). */
+        const val ABSOLUTE_MAX_BYTES = 100L * 1024 * 1024
         const val RETRY_DELAY_MS = 5_000L
         const val UPDATE_POLL_MS = 2 * 60 * 1000L
     }

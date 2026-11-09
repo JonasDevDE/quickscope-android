@@ -74,7 +74,8 @@ fun MaterialAddButtons(onJobs: (List<UploadJob>) -> Unit) {
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) shoot() }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        if (uris.isNotEmpty()) pending = Pending(uris.map { describeUri(context, it) }, scan = true)
+        // jedes Bild einzeln hochladen (nicht als ein Scan buendeln)
+        if (uris.isNotEmpty()) pending = Pending(uris.map { describeUri(context, it) }, scan = false)
     }
     val files = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) pending = Pending(uris.map { describeUri(context, it) }, scan = false)

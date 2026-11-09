@@ -117,19 +117,25 @@ private fun HomeSkeleton() {
     SkeletonCard(56.dp)
 }
 
-/** Fortschritt/Fehler eines laufenden Uploads, mit Abbrechen und Nochmal. */
+/** Fortschritt der Upload-Queue ("3 von 10") bzw. ruhige Zusammenfassung mit den fehlgeschlagenen Dateien, "Nochmal" nur fuer diese. */
 @Composable
 fun UploadCard(state: UiState, examId: String, onCancel: () -> Unit, onRetry: () -> Unit) {
     val up = state.upload?.takeIf { it.examId == examId && !it.done } ?: return
     CardColumn(verticalSpacing = 10.dp) {
         if (up.error != null) {
-            Text(up.error, color = Danger, style = MaterialTheme.typography.bodyMedium)
+            Text(up.error, style = MaterialTheme.typography.titleSmall)
+            up.failedItems.forEach { f ->
+                Text("${f.name}: ${f.error.orEmpty()}", color = Danger, style = MaterialTheme.typography.bodySmall)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Pill("Nochmal", true, onRetry)
                 Pill("Verwerfen", false, onCancel)
             }
         } else {
-            Text("Wird hochgeladen", style = MaterialTheme.typography.titleSmall)
+            Text(
+                if (up.total > 1) "Wird hochgeladen · ${com.jonasschnell.quickscope.logic.uploadProgressText(up.current, up.total)}" else "Wird hochgeladen",
+                style = MaterialTheme.typography.titleSmall,
+            )
             if (up.progress != null && up.progress > 0f) {
                 LinearProgressIndicator(progress = { up.progress }, color = Accent, trackColor = CardHigh, modifier = Modifier.fillMaxWidth())
             } else {

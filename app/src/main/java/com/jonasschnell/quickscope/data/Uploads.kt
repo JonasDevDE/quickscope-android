@@ -74,3 +74,55 @@ fun buildParts(context: Context, job: UploadJob, onBytes: (Long) -> Unit): List<
 
 /** Gesamtgroesse in Byte fuer den Fortschritt; 0, wenn eine Groesse unbekannt ist. */
 fun totalSize(job: UploadJob): Long = if (job.files.any { it.size < 0 }) 0 else job.files.sumOf { it.size }
+
+/**
+ * Verkleinert ein Foto vor dem Upload: laengste Kante hoechstens 2560 px, JPEG 85, EXIF-Ausrichtung wird angewendet. Dokumente (PDF, Office, Text,
+ * Audio, Video), GIFs und schon kleine Bilder bleiben unveraendert; bei jedem Problem wird das Original genommen. Die Kopie liegt im Cache.
+ */
+fun compressForUpload(context: Context, file: UploadFile): UploadFile {
+    if (!file.mime.startsWith("image/") || file.mime == "image/gif") return file
+    val resolver = context.contentResolver
+    return try {
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        resolver.openInputStream(file.uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, bounds) }
+        val w = bounds.outWidth
+        val h = bounds.outHeight
+        if (w <= 0 || h <= 0 || !com.jonasschnell.quickscope.logic.needsImageCompression(file.mime, file.size, w, h)) return file
+        val orientation = resolver.openInputStream(file.uri)?.use {
+            android.media.ExifInterface(it).getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL)
+        } ?: android.media.ExifInterface.ORIENTATION_NORMAL
+        var sample = 1
+        while (maxOf(w, h) / (sample * 2) >= com.jonasschnell.quickscope.logic.UPLOAD_MAX_EDGE) sample *= 2
+        val decoded = resolver.openInputStream(file.uri)?.use {
+            android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: return file
+        val (nw, nh) = com.jonasschnell.quickscope.logic.scaledSize(decoded.width, decoded.height)
+        val scaled = if (nw != decoded.width || nh != decoded.height) android.graphics.Bitmap.createScaledBitmap(decoded, nw, nh, true) else decoded
+        val matrix = android.graphics.Matrix().apply {
+            when (orientation) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> postRotate(90f)
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> postRotate(180f)
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> postRotate(270f)
+                android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> postScale(-1f, 1f)
+                android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL -> postScale(1f, -1f)
+                android.media.ExifInterface.ORIENTATION_TRANSPOSE -> { postRotate(90f); postScale(-1f, 1f) }
+                android.media.ExifInterface.ORIENTATION_TRANSVERSE -> { postRotate(270f); postScale(-1f, 1f) }
+            }
+        }
+        val oriented = if (matrix.isIdentity) scaled else android.graphics.Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
+        val dir = java.io.File(context.cacheDir, "uploads").apply { mkdirs() }
+        val out = java.io.File(dir, "u_${System.nanoTime()}.jpg")
+        out.outputStream().use { oriented.compress(android.graphics.Bitmap.CompressFormat.JPEG, com.jonasschnell.quickscope.logic.UPLOAD_JPEG_QUALITY, it) }
+        val name = file.name.substringBeforeLast('.', file.name) + ".jpg"
+        UploadFile(Uri.fromFile(out), name, "image/jpeg", out.length())
+    } catch (_: Exception) {
+        file
+    } catch (_: OutOfMemoryError) {
+        file
+    }
+}
+
+/** Temporaere Kopien aus [compressForUpload] wieder loeschen (nur Dateien im eigenen Upload-Cache). */
+fun cleanupUploadCopies(files: List<UploadFile>) {
+    files.forEach { f -> if (f.uri.scheme == "file") f.uri.path?.let { p -> if (p.contains("/uploads/")) java.io.File(p).delete() } }
+}
