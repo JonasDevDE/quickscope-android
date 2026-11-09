@@ -12,6 +12,7 @@ import com.jonasschnell.quickscope.ui.theme.QuickscopeTheme
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AppViewModel by viewModels()
+    private val sessionViewModel: SessionViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -21,7 +22,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         (application as QuickscopeApp).auth.attach(this)
         setContent {
-            QuickscopeTheme { QuickscopeRoot(viewModel) }
+            QuickscopeTheme { QuickscopeRoot(viewModel, sessionViewModel) }
         }
     }
 

@@ -1,0 +1,6 @@
+{
+  "status" : 426,
+  "message" : "Bitte aktualisiere die App.",
+  "code" : "UPGRADE_REQUIRED",
+  "latestVersionCode" : 5
+}

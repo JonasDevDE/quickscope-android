@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:05:03.345874500Z",
+  "status" : 400,
+  "error" : "Bad Request",
+  "message" : "time: Uhrzeit als HH:MM",
+  "path" : "/api/exams"
+}

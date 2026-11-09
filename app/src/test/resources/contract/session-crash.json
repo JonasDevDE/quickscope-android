@@ -1,0 +1,436 @@
+{
+  "items" : [ {
+    "id" : "i-lesson",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "card",
+    "question" : "So geht: Zinseszins berechnen",
+    "answer" : "1) Zinsfaktor bilden: 1 + p/100 2) Faktor mit der Laufzeit potenzieren 3) Mit dem Kapital multiplizieren",
+    "solutionSteps" : [ "Zinsfaktor bilden: 1 + p/100", "Faktor mit der Laufzeit potenzieren", "Mit dem Kapital multiplizieren" ],
+    "trick" : "Faktor 1,0x merken",
+    "difficulty" : 2,
+    "estSeconds" : 20,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "lesson" : true,
+    "ttsText" : "So geht: Zinseszins berechnen Zinsfaktor bilden: 1 + p/100 Faktor mit der Laufzeit potenzieren Mit dem Kapital multiplizieren"
+  }, {
+    "id" : "i-variant",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "500 € zu 2 % für 3 Jahre mit Zinseszins: Endbetrag?",
+    "answer" : "530,60 €",
+    "payload" : {
+      "options" : [ "510 €", "530,60 €", "530 €", "560 €" ],
+      "correctIndex" : 1
+    },
+    "solutionSteps" : [ "500 × 1,02", "dreimal anwenden", "= 530,60" ],
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "variantOf" : "i-aisol",
+    "lesson" : false,
+    "ttsText" : "500 € zu 2 % für 3 Jahre mit Zinseszins: Endbetrag? Zahlen zur Auswahl: 510 €, 530,60 €, 530 €, 560 €."
+  }, {
+    "id" : "i-aisol",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag?",
+    "answer" : "1.081,60 €",
+    "payload" : {
+      "options" : [ "1.081,60 €", "1.080 €", "1.040 €", "1.160 €" ],
+      "correctIndex" : 0
+    },
+    "solutionSteps" : [ "1000 × 1,04", "noch einmal × 1,04", "= 1081,60" ],
+    "trick" : "Faktor zweimal anwenden",
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam",
+      "page" : 1
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : true,
+    "patternId" : "p-1",
+    "lesson" : false,
+    "ttsText" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag? Zahlen zur Auswahl: 1.081,60 €, 1.080 €, 1.040 €, 1.160 €."
+  }, {
+    "id" : "i-choice2",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "choice2",
+    "question" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung?",
+    "answer" : "Der Käufer",
+    "payload" : {
+      "options" : [ "Der Verkäufer", "Der Käufer" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung? A: Der Verkäufer. B: Der Käufer."
+  }, {
+    "id" : "i-cloze",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "type" : "cloze",
+    "question" : "Selbstkosten plus ___ ergeben den Verkaufspreis.",
+    "answer" : "Gewinn",
+    "payload" : {
+      "text" : "Selbstkosten plus ___ ergeben den Verkaufspreis.",
+      "bank" : [ "Skonto", "Rabatt", "Gewinn" ],
+      "answer" : "Gewinn"
+    },
+    "difficulty" : 3,
+    "estSeconds" : 13,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Selbstkosten plus Lücke ergeben den Verkaufspreis. Wortbank: Skonto, Rabatt, Gewinn."
+  }, {
+    "id" : "i-card",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "card",
+    "question" : "Was sind Zinsen?",
+    "answer" : "Preis für geliehenes Geld",
+    "explanation" : "Der Preis steigt mit Betrag und Laufzeit.",
+    "mnemonic" : "Zins = Miete für Geld",
+    "difficulty" : 1,
+    "estSeconds" : 9,
+    "source" : {
+      "materialId" : "m-pdf",
+      "page" : 2
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Was sind Zinsen?"
+  }, {
+    "id" : "i-tf",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "truefalse",
+    "question" : "Ein mündlicher Vertrag ist grundsätzlich gültig.",
+    "answer" : "wahr",
+    "difficulty" : 3,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Ein mündlicher Vertrag ist grundsätzlich gültig. Wahr oder falsch?"
+  }, {
+    "id" : "i-order",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "type" : "order",
+    "question" : "Bringe das Kalkulationsschema in Reihenfolge",
+    "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpreis",
+    "payload" : {
+      "steps" : [ "Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis" ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 19,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Bringe das Kalkulationsschema in Reihenfolge Schritte durcheinander: Listenpreis; Selbstkosten; Gewinnzuschlag; Barverkaufspreis."
+  }, {
+    "id" : "i-mc",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "mc",
+    "question" : "Welche Formel berechnet Jahreszinsen?",
+    "answer" : "K × p / 100",
+    "options" : [ "K × p / 100", "K + p", "K / p", "p × 100" ],
+    "correctIndex" : 0,
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Welche Formel berechnet Jahreszinsen? A: K × p / 100. B: K + p. C: K / p. D: p × 100."
+  }, {
+    "id" : "i-ai",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "card",
+    "question" : "Was ist ein Verbrauchsgüterkauf?",
+    "answer" : "Kauf einer beweglichen Sache durch einen Verbraucher von einem Unternehmer",
+    "difficulty" : 3,
+    "estSeconds" : 12,
+    "sourceType" : "ai_knowledge",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Was ist ein Verbrauchsgüterkauf?"
+  }, {
+    "id" : "i-match",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "type" : "match",
+    "question" : "Ordne den Begriff zu",
+    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – Preis vor Rabatt; Zielpreis – Preis vor Skonto",
+    "payload" : {
+      "pairs" : [ {
+        "left" : "Selbstkosten",
+        "right" : "Herstellkosten + Verwaltung"
+      }, {
+        "left" : "Listenpreis",
+        "right" : "Preis vor Rabatt"
+      }, {
+        "left" : "Zielpreis",
+        "right" : "Preis vor Skonto"
+      } ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 21,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Ordne den Begriff zu Begriffe: Selbstkosten, Listenpreis, Zielpreis. Zur Auswahl: Preis vor Skonto, Herstellkosten + Verwaltung, Preis vor Rabatt."
+  }, {
+    "id" : "i-number",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr?",
+    "answer" : "30 €",
+    "payload" : {
+      "options" : [ "0,3 €", "30 €", "300 €", "3 €" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr? Zahlen zur Auswahl: 0,3 €, 30 €, 300 €, 3 €."
+  }, {
+    "id" : "i-spot",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "spot",
+    "question" : "Welche Aussage ist falsch?",
+    "answer" : "Verträge brauchen immer die Schriftform.",
+    "payload" : {
+      "statements" : [ "Angebote sind verbindlich.", "Schweigen gilt meist nicht als Zustimmung.", "Verträge brauchen immer die Schriftform." ],
+      "falseIndex" : 2
+    },
+    "difficulty" : 3,
+    "estSeconds" : 17,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Welche Aussage ist falsch? A: Angebote sind verbindlich.. B: Schweigen gilt meist nicht als Zustimmung.. C: Verträge brauchen immer die Schriftform.."
+  }, {
+    "id" : "i-choice2",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "choice2",
+    "question" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung?",
+    "answer" : "Der Käufer",
+    "payload" : {
+      "options" : [ "Der Verkäufer", "Der Käufer" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung? A: Der Verkäufer. B: Der Käufer."
+  }, {
+    "id" : "i-tf",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "truefalse",
+    "question" : "Ein mündlicher Vertrag ist grundsätzlich gültig.",
+    "answer" : "wahr",
+    "difficulty" : 3,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Ein mündlicher Vertrag ist grundsätzlich gültig. Wahr oder falsch?"
+  }, {
+    "id" : "i-aisol",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag?",
+    "answer" : "1.081,60 €",
+    "payload" : {
+      "options" : [ "1.081,60 €", "1.080 €", "1.040 €", "1.160 €" ],
+      "correctIndex" : 0
+    },
+    "solutionSteps" : [ "1000 × 1,04", "noch einmal × 1,04", "= 1081,60" ],
+    "trick" : "Faktor zweimal anwenden",
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam",
+      "page" : 1
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : true,
+    "patternId" : "p-1",
+    "lesson" : false,
+    "ttsText" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag? Zahlen zur Auswahl: 1.081,60 €, 1.080 €, 1.040 €, 1.160 €."
+  }, {
+    "id" : "i-mc",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "mc",
+    "question" : "Welche Formel berechnet Jahreszinsen?",
+    "answer" : "K × p / 100",
+    "options" : [ "K × p / 100", "K + p", "K / p", "p × 100" ],
+    "correctIndex" : 0,
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Welche Formel berechnet Jahreszinsen? A: K × p / 100. B: K + p. C: K / p. D: p × 100."
+  }, {
+    "id" : "i-number",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr?",
+    "answer" : "30 €",
+    "payload" : {
+      "options" : [ "0,3 €", "30 €", "300 €", "3 €" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr? Zahlen zur Auswahl: 0,3 €, 30 €, 300 €, 3 €."
+  }, {
+    "id" : "i-variant",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "500 € zu 2 % für 3 Jahre mit Zinseszins: Endbetrag?",
+    "answer" : "530,60 €",
+    "payload" : {
+      "options" : [ "510 €", "530,60 €", "530 €", "560 €" ],
+      "correctIndex" : 1
+    },
+    "solutionSteps" : [ "500 × 1,02", "dreimal anwenden", "= 530,60" ],
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "variantOf" : "i-aisol",
+    "lesson" : false,
+    "ttsText" : "500 € zu 2 % für 3 Jahre mit Zinseszins: Endbetrag? Zahlen zur Auswahl: 510 €, 530,60 €, 530 €, 560 €."
+  } ],
+  "plannedSeconds" : 231,
+  "kind" : "daily",
+  "reason" : "Wenig Zeit: 13 Aufgaben mit dem größten Punktplus, zuerst 1 Aufgabentyp, die bisher am häufigsten vorkamen, am Ende 6 Wiederholungen.",
+  "forecast" : {
+    "scoreNowPercent" : 31,
+    "scoreAtExamPercent" : 99,
+    "targetPercent" : 80,
+    "onTrack" : true,
+    "daysLeft" : 0,
+    "hoursLeft" : 1,
+    "doneSecondsToday" : 0,
+    "weakTopics" : [ {
+      "topicId" : "6af1ef2e73fabf93422cc840",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af1ef2e73fabf93422cc843",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af1ef2e73fabf93422cc842",
+      "title" : "Kalkulation",
+      "mastery" : 0.1
+    } ],
+    "confidence" : "low",
+    "mode" : "crash",
+    "coveragePercent" : 0,
+    "expectedGainPercentThisSession" : 68.2,
+    "showCheatsheetSuggestion" : true,
+    "note" : "Schätzung, keine Garantie"
+  },
+  "showCheatsheetSuggestion" : true,
+  "finalRoundStart" : 13
+}

@@ -115,7 +115,7 @@ private fun UpdateContent(state: UiState, vm: AppViewModel, context: android.con
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            ScopeMark(140.dp)
+            LearnMark(140.dp)
             Spacer(Modifier.height(16.dp))
             Text("Update erforderlich", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))

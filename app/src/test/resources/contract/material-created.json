@@ -1,0 +1,10 @@
+{
+  "id" : "m-new",
+  "examId" : "e-ready",
+  "kind" : "pdf",
+  "role" : "exam",
+  "name" : "Altklausur 2025.pdf",
+  "sizeBytes" : 15,
+  "status" : "queued",
+  "createdAt" : "2026-11-09T16:05:04.196105800Z"
+}

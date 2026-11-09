@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:05:03.419Z",
+  "status" : 409,
+  "error" : "Conflict",
+  "message" : "Höchstens 20 Prüfungen je Nutzer",
+  "path" : "/api/exams"
+}

@@ -12,7 +12,10 @@ import coil3.memory.MemoryCache
 import okio.Path.Companion.toOkioPath
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.jonasschnell.quickscope.data.AttemptSync
 import com.jonasschnell.quickscope.data.AuthManager
+import com.jonasschnell.quickscope.data.MaterialPreview
+import com.jonasschnell.quickscope.logic.AttemptQueue
 import com.jonasschnell.quickscope.data.Network
 import com.jonasschnell.quickscope.data.Store
 import com.jonasschnell.quickscope.data.Updater
@@ -21,6 +24,9 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     val store by lazy { Store(this) }
     val auth by lazy { AuthManager(this, BuildConfig.GOOGLE_WEB_CLIENT_ID) }
     val network by lazy { Network(auth, store) }
+
+    val attemptSync by lazy { AttemptSync(network.api, AttemptQueue(store)) }
+    val preview by lazy { MaterialPreview(this, network.client) }
 
     val updater by lazy { Updater(this, network.client, network.api) }
 

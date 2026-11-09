@@ -46,7 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jonasschnell.quickscope.AppViewModel
 import com.jonasschnell.quickscope.Phase
+import com.jonasschnell.quickscope.SessionPhase
+import com.jonasschnell.quickscope.SessionViewModel
 import com.jonasschnell.quickscope.UiState
+import com.jonasschnell.quickscope.data.ExamUpdate
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Black
 import com.jonasschnell.quickscope.ui.theme.CardHigh
@@ -63,24 +66,34 @@ fun Context.findActivity(): Activity? {
     return null
 }
 
-@Composable
-fun QuickscopeRoot(vm: AppViewModel) {
-    val state by vm.state.collectAsStateWithLifecycle()
-    val haptics = rememberHaptics()
-    LaunchedEffect(haptics) { vm.hapticEvents.collect { haptics.perform(it) } }
-    CompositionLocalProvider(LocalHaptics provides haptics) { QuickscopeRootContent(vm, state) }
+/** Was gerade ueber der Startseite liegt. */
+private sealed interface Overlay {
+    data object Me : Overlay
+    data object Exams : Overlay
+    data object NewExam : Overlay
+    data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
+    data class Cheat(val examId: String) : Overlay
 }
 
 @Composable
-private fun QuickscopeRootContent(vm: AppViewModel, state: UiState) {
+fun QuickscopeRoot(vm: AppViewModel, sessionVm: SessionViewModel) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val haptics = rememberHaptics()
+    LaunchedEffect(haptics) { vm.hapticEvents.collect { haptics.perform(it) } }
+    CompositionLocalProvider(LocalHaptics provides haptics) { QuickscopeRootContent(vm, sessionVm, state) }
+}
+
+@Composable
+private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel, state: UiState) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var showMe by remember { mutableStateOf(false) }
+    var overlay by remember { mutableStateOf<Overlay?>(null) }
+    val session by sessionVm.state.collectAsStateWithLifecycle()
     val forced = state.updateForced
 
     LaunchedEffect(forced) {
         if (forced) {
-            showMe = false
+            overlay = null
             snackbar.currentSnackbarData?.dismiss()
         }
     }
@@ -104,7 +117,12 @@ private fun QuickscopeRootContent(vm: AppViewModel, state: UiState) {
         }
     }
 
+    // Prognose nach der Runde uebernehmen
+    LaunchedEffect(session.forecastAfter) {
+        session.forecastAfter?.let { vm.applyForecast(session.examId, it) }
+    }
     val ready = state.phase == Phase.Ready && !forced
+    val noExams = ready && state.examsLoaded && state.exams.isEmpty()
 
     Scaffold(
         containerColor = Black,
@@ -119,7 +137,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, state: UiState) {
             if (state.phase == Phase.Failed) {
                 FailedView(state.failure, vm::bootstrap)
             } else {
-                Header(state, vm, onMe = { showMe = true })
+                Header(state, vm, onExams = { overlay = Overlay.Exams }, onMe = { overlay = Overlay.Me })
                 if (state.serverStarting) {
                     Text(
                         "Der Server startet gerade neu. Das dauert meist ein bis zwei Minuten.",
@@ -127,7 +145,20 @@ private fun QuickscopeRootContent(vm: AppViewModel, state: UiState) {
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
-                HomePage(loading = !ready)
+                if (noExams) {
+                    NewExamFlow(vm, onClose = null)
+                } else {
+                    HomePage(
+                        state, loading = !ready || !state.examsLoaded,
+                        onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreNowPercent) },
+                        onDaily = { exam, m -> vm.updateExam(exam.id, ExamUpdate(dailyMinutes = m)) },
+                        onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
+                        onCheatsheet = { overlay = Overlay.Cheat(it.id) },
+                        onRetry = vm::refreshExamsNow,
+                        onCancelUpload = vm::cancelUpload,
+                        onRetryUpload = vm::retryUpload,
+                    )
+                }
             }
         }
     }
@@ -136,8 +167,24 @@ private fun QuickscopeRootContent(vm: AppViewModel, state: UiState) {
         // Alle Dialoge/Sheets sind weg; nur der Update-Screen bleibt (unten).
     } else if (state.phase == Phase.NeedsLogin) {
         LoginSheet(state, vm)
-    } else if (showMe) {
-        MeSheet(state, vm, onDismiss = { showMe = false })
+    } else {
+        val dismiss = { overlay = null }
+        when (val o = overlay) {
+            null -> Unit
+            Overlay.Me -> MeSheet(state, vm, onDismiss = dismiss)
+            Overlay.Exams -> ExamsSheet(state, vm, onNew = { overlay = Overlay.NewExam }, onSettings = { overlay = Overlay.Settings(it) }, onDismiss = dismiss)
+            Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
+            is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)
+            is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
+        }
+        if (session.phase != SessionPhase.Closed) {
+            val exam = state.exams.firstOrNull { it.id == session.examId }
+            SessionScreen(
+                sessionVm,
+                onRetry = { exam?.let { e -> sessionVm.start(e.id, com.jonasschnell.quickscope.logic.remainingMinutes(e.dailyMinutes, state.activeForecast?.doneSecondsToday ?: 0), session.scoreBefore) } },
+                onClose = { sessionVm.close(); vm.refreshExamsNow() },
+            )
+        }
     }
     UpdateScreen(state, vm)
 }
@@ -148,7 +195,7 @@ private fun LoginSheet(state: UiState, vm: AppViewModel) {
     val error = state.loginError ?: if (vm.clientIdMissing) "Google-Client-ID fehlt (GOOGLE_WEB_CLIENT_ID in local.properties). Die Anmeldung ist erst nach dem nächsten Build mit ID möglich." else null
     QuickscopeSheet(onDismiss = {}, dismissable = false) {
         Spacer(Modifier.height(12.dp))
-        ScopeMark(56.dp)
+        LearnMark(56.dp)
         Text("Willkommen bei Quickscope", style = MaterialTheme.typography.displaySmall)
         Text("Melde dich an, um loszulegen.", color = Muted)
         Spacer(Modifier.height(12.dp))
@@ -161,15 +208,15 @@ private fun LoginSheet(state: UiState, vm: AppViewModel) {
     }
 }
 
-/** Kopf: Titel links, eigenes Profilbild rechts (oeffnet das Sheet "Privat"). */
+/** Kopf: Pruefungs-Pille links (oeffnet die Liste), eigenes Profilbild rechts (oeffnet das Sheet "Privat"). */
 @Composable
-private fun Header(state: UiState, vm: AppViewModel, onMe: () -> Unit) {
+private fun Header(state: UiState, vm: AppViewModel, onExams: () -> Unit, onMe: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Quickscope", style = MaterialTheme.typography.headlineMedium)
+        ExamPill(state.activeExam?.name ?: "Neue Prüfung", loading = state.phase != Phase.Ready || !state.examsLoaded, onClick = onExams)
         val me = state.me
         Box(Modifier.size(44.dp).clip(CircleShape).hapticClickable(onClick = onMe)) {
             UserAvatar(me?.pictureUrl ?: vm.signInPictureUrl, me?.name ?: me?.email ?: "?", 44.dp)
@@ -180,7 +227,7 @@ private fun Header(state: UiState, vm: AppViewModel, onMe: () -> Unit) {
 @Composable
 private fun FailedView(message: String?, onRetry: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        ScopeMark(56.dp)
+        LearnMark(56.dp)
         Spacer(Modifier.size(16.dp))
         Text("Das hat nicht geklappt", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         Spacer(Modifier.size(8.dp))

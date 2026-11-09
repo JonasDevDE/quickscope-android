@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:05:04.136Z",
+  "status" : 415,
+  "error" : "Unsupported Media Type",
+  "message" : "Dieses Format kann ich noch nicht lesen: .doc (bitte als .docx oder PDF speichern)",
+  "path" : "/api/exams/e-ready/materials"
+}

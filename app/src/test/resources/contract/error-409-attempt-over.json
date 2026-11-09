@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:05:03.402Z",
+  "status" : 409,
+  "error" : "Conflict",
+  "message" : "Die Prüfung ist vorbei",
+  "path" : "/api/exams/e-over/attempts"
+}

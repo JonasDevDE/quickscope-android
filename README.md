@@ -7,6 +7,12 @@ Dieses Repository enthält die **Android-App** (Kotlin, Jetpack Compose).
 ## Funktionen der App
 
 - Anmeldung mit Google und langlebige Sitzung
+- Prüfungen mit Datum und Uhrzeit, Material per Foto, Galerie oder Datei, optional eine Beschreibung
+- Heute-Ansicht mit Prognose-Ring (Schätzung, keine Garantie), Restzeit und einem Knopf für die passende Lernrunde
+- Lernrunde mit einem Tipp oder Wisch pro Aufgabe: Karten, Auswahl, Lückentext, Zahlen, Fehler finden, Zuordnen, Reihenfolge
+- Sofortiges Feedback, Lösungswege, Merkzettel für die letzte Runde, Audio-Modus mit Sprachausgabe
+- Antworten werden offline vorgemerkt und später gesendet
+- Material verwalten, Ziel und Lernzeit pro Tag einstellen
 - Schwarzes, ruhiges Design mit Skeleton-Ladeanzeige und Haptik
 - Pflicht-Updates: Die App prüft beim Start, im Vordergrund und per Live-Ereignis auf neue Versionen
 - Live-Sync

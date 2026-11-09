@@ -1,0 +1,18 @@
+{
+  "id" : "e-new",
+  "name" : "Neue Pruefung",
+  "date" : "2026-12-19",
+  "time" : "09:00",
+  "startsAt" : "2026-12-19T08:00:00Z",
+  "hoursLeft" : 951,
+  "description" : "Abitur Biologie, Schwerpunkt Genetik",
+  "targetPercent" : 80,
+  "dailyMinutes" : 30,
+  "status" : "processing",
+  "mode" : "marathon",
+  "topicCount" : 0,
+  "itemCount" : 0,
+  "materialCount" : 0,
+  "createdAt" : "2026-11-09T16:05:02.892377900Z",
+  "daysLeft" : 40
+}

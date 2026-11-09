@@ -95,7 +95,7 @@ fun MeSheet(state: UiState, vm: AppViewModel, onDismiss: () -> Unit) {
 
 /** Ruhige Einstellungszeile: Titel, optionaler Untertitel, Aktion rechts. */
 @Composable
-private fun SettingsRow(title: String, subtitle: String?, onClick: () -> Unit, trailing: @Composable () -> Unit) {
+internal fun SettingsRow(title: String, subtitle: String?, onClick: () -> Unit, trailing: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 14.dp),

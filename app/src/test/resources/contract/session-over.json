@@ -1,0 +1,35 @@
+{
+  "items" : [ ],
+  "plannedSeconds" : 0,
+  "kind" : "over",
+  "reason" : "Die Prüfung ist vorbei.",
+  "forecast" : {
+    "scoreNowPercent" : 77,
+    "scoreAtExamPercent" : 77,
+    "targetPercent" : 80,
+    "onTrack" : false,
+    "daysLeft" : 0,
+    "hoursLeft" : 0,
+    "doneSecondsToday" : 0,
+    "weakTopics" : [ {
+      "topicId" : "6af1ef2e73fabf93422cc840",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.59
+    }, {
+      "topicId" : "6af1ef2e73fabf93422cc843",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.71
+    }, {
+      "topicId" : "6af1ef2e73fabf93422cc842",
+      "title" : "Kalkulation",
+      "mastery" : 0.92
+    } ],
+    "confidence" : "medium",
+    "mode" : "crash",
+    "coveragePercent" : 75,
+    "showCheatsheetSuggestion" : false,
+    "note" : "Schätzung, keine Garantie"
+  },
+  "showCheatsheetSuggestion" : false,
+  "finalRoundStart" : null
+}

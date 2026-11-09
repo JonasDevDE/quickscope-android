@@ -1,0 +1,46 @@
+{
+  "minutes" : 5,
+  "words" : 105,
+  "bullets" : [ {
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topic" : "Zinsrechnung",
+    "text" : "Zinseszins berechnen: Zinsfaktor bilden: 1 + p/100; Faktor mit der Laufzeit potenzieren; Mit dem Kapital multiplizieren"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topic" : "Zinsrechnung",
+    "text" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag: 1.081,60 €"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topic" : "Zinsrechnung",
+    "text" : "Was sind Zinsen: Preis für geliehenes Geld"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topic" : "Zinsrechnung",
+    "text" : "Welche Formel berechnet Jahreszinsen: K × p / 100"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topic" : "Zinsrechnung",
+    "text" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr: 30 €"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "topic" : "Vertragsrecht",
+    "text" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung: Der Käufer"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "topic" : "Vertragsrecht",
+    "text" : "Ein mündlicher Vertrag ist grundsätzlich gültig."
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topic" : "Kalkulation",
+    "text" : "Selbstkosten plus Gewinn ergeben den Verkaufspreis."
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topic" : "Kalkulation",
+    "text" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – Preis vor Rabatt; Zielpreis – Preis vor Skonto"
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topic" : "Kalkulation",
+    "text" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpreis"
+  } ],
+  "note" : "Nur aus deinem Material. Keine Garantie, dass genau das drankommt."
+}

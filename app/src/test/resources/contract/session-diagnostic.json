@@ -1,0 +1,273 @@
+{
+  "items" : [ {
+    "id" : "i-card",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "card",
+    "question" : "Was sind Zinsen?",
+    "answer" : "Preis für geliehenes Geld",
+    "explanation" : "Der Preis steigt mit Betrag und Laufzeit.",
+    "mnemonic" : "Zins = Miete für Geld",
+    "difficulty" : 1,
+    "estSeconds" : 9,
+    "source" : {
+      "materialId" : "m-pdf",
+      "page" : 2
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Was sind Zinsen?"
+  }, {
+    "id" : "i-cloze",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "type" : "cloze",
+    "question" : "Selbstkosten plus ___ ergeben den Verkaufspreis.",
+    "answer" : "Gewinn",
+    "payload" : {
+      "text" : "Selbstkosten plus ___ ergeben den Verkaufspreis.",
+      "bank" : [ "Skonto", "Rabatt", "Gewinn" ],
+      "answer" : "Gewinn"
+    },
+    "difficulty" : 3,
+    "estSeconds" : 13,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Selbstkosten plus Lücke ergeben den Verkaufspreis. Wortbank: Skonto, Rabatt, Gewinn."
+  }, {
+    "id" : "i-ai",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "card",
+    "question" : "Was ist ein Verbrauchsgüterkauf?",
+    "answer" : "Kauf einer beweglichen Sache durch einen Verbraucher von einem Unternehmer",
+    "difficulty" : 3,
+    "estSeconds" : 12,
+    "sourceType" : "ai_knowledge",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Was ist ein Verbrauchsgüterkauf?"
+  }, {
+    "id" : "i-aisol",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag?",
+    "answer" : "1.081,60 €",
+    "payload" : {
+      "options" : [ "1.081,60 €", "1.080 €", "1.040 €", "1.160 €" ],
+      "correctIndex" : 0
+    },
+    "solutionSteps" : [ "1000 × 1,04", "noch einmal × 1,04", "= 1081,60" ],
+    "trick" : "Faktor zweimal anwenden",
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam",
+      "page" : 1
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : true,
+    "patternId" : "p-1",
+    "lesson" : false,
+    "ttsText" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag? Zahlen zur Auswahl: 1.081,60 €, 1.080 €, 1.040 €, 1.160 €."
+  }, {
+    "id" : "i-match",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "type" : "match",
+    "question" : "Ordne den Begriff zu",
+    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – Preis vor Rabatt; Zielpreis – Preis vor Skonto",
+    "payload" : {
+      "pairs" : [ {
+        "left" : "Selbstkosten",
+        "right" : "Herstellkosten + Verwaltung"
+      }, {
+        "left" : "Listenpreis",
+        "right" : "Preis vor Rabatt"
+      }, {
+        "left" : "Zielpreis",
+        "right" : "Preis vor Skonto"
+      } ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 21,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Ordne den Begriff zu Begriffe: Selbstkosten, Listenpreis, Zielpreis. Zur Auswahl: Preis vor Skonto, Herstellkosten + Verwaltung, Preis vor Rabatt."
+  }, {
+    "id" : "i-choice2",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "choice2",
+    "question" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung?",
+    "answer" : "Der Käufer",
+    "payload" : {
+      "options" : [ "Der Verkäufer", "Der Käufer" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung? A: Der Verkäufer. B: Der Käufer."
+  }, {
+    "id" : "i-mc",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "mc",
+    "question" : "Welche Formel berechnet Jahreszinsen?",
+    "answer" : "K × p / 100",
+    "options" : [ "K × p / 100", "K + p", "K / p", "p × 100" ],
+    "correctIndex" : 0,
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Welche Formel berechnet Jahreszinsen? A: K × p / 100. B: K + p. C: K / p. D: p × 100."
+  }, {
+    "id" : "i-order",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "type" : "order",
+    "question" : "Bringe das Kalkulationsschema in Reihenfolge",
+    "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpreis",
+    "payload" : {
+      "steps" : [ "Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis" ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 19,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Bringe das Kalkulationsschema in Reihenfolge Schritte durcheinander: Listenpreis; Selbstkosten; Gewinnzuschlag; Barverkaufspreis."
+  }, {
+    "id" : "i-tf",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "truefalse",
+    "question" : "Ein mündlicher Vertrag ist grundsätzlich gültig.",
+    "answer" : "wahr",
+    "difficulty" : 3,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Ein mündlicher Vertrag ist grundsätzlich gültig. Wahr oder falsch?"
+  }, {
+    "id" : "i-number",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "type" : "number",
+    "question" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr?",
+    "answer" : "30 €",
+    "payload" : {
+      "options" : [ "0,3 €", "30 €", "300 €", "3 €" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr? Zahlen zur Auswahl: 0,3 €, 30 €, 300 €, 3 €."
+  }, {
+    "id" : "i-spot",
+    "examId" : "e-ready",
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "type" : "spot",
+    "question" : "Welche Aussage ist falsch?",
+    "answer" : "Verträge brauchen immer die Schriftform.",
+    "payload" : {
+      "statements" : [ "Angebote sind verbindlich.", "Schweigen gilt meist nicht als Zustimmung.", "Verträge brauchen immer die Schriftform." ],
+      "falseIndex" : 2
+    },
+    "difficulty" : 3,
+    "estSeconds" : 17,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Welche Aussage ist falsch? A: Angebote sind verbindlich.. B: Schweigen gilt meist nicht als Zustimmung.. C: Verträge brauchen immer die Schriftform.."
+  } ],
+  "plannedSeconds" : 140,
+  "kind" : "diagnostic",
+  "reason" : "Einstufung: 11 Fragen quer durch 3 Themen, damit deine Prognose startet.",
+  "forecast" : {
+    "scoreNowPercent" : 31,
+    "scoreAtExamPercent" : 96,
+    "targetPercent" : 85,
+    "onTrack" : true,
+    "daysLeft" : 21,
+    "hoursLeft" : 494,
+    "doneSecondsToday" : 0,
+    "weakTopics" : [ {
+      "topicId" : "6af1ef2e73fabf93422cc840",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af1ef2e73fabf93422cc843",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af1ef2e73fabf93422cc842",
+      "title" : "Kalkulation",
+      "mastery" : 0.1
+    } ],
+    "confidence" : "low",
+    "mode" : "marathon",
+    "coveragePercent" : 0,
+    "milestones" : [ {
+      "date" : "2026-11-16",
+      "coveragePercent" : 44,
+      "scorePercent" : 49
+    }, {
+      "date" : "2026-11-23",
+      "coveragePercent" : 89,
+      "scorePercent" : 67
+    } ],
+    "showCheatsheetSuggestion" : false,
+    "note" : "Schätzung, keine Garantie"
+  },
+  "showCheatsheetSuggestion" : false,
+  "finalRoundStart" : null
+}

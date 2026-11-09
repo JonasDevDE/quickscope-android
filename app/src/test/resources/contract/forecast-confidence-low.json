@@ -1,0 +1,32 @@
+{
+  "scoreNowPercent" : 59,
+  "scoreAtExamPercent" : 97,
+  "targetPercent" : 85,
+  "onTrack" : true,
+  "daysLeft" : 10,
+  "hoursLeft" : 230,
+  "doneSecondsToday" : 0,
+  "weakTopics" : [ {
+    "topicId" : "6af1ef2e73fabf93422cc840",
+    "title" : "Zinsrechnung",
+    "mastery" : 0.58
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc843",
+    "title" : "Vertragsrecht",
+    "mastery" : 0.54
+  }, {
+    "topicId" : "6af1ef2e73fabf93422cc842",
+    "title" : "Kalkulation",
+    "mastery" : 0.39
+  } ],
+  "confidence" : "low",
+  "mode" : "marathon",
+  "coveragePercent" : 50,
+  "milestones" : [ {
+    "date" : "2026-11-16",
+    "coveragePercent" : 97,
+    "scorePercent" : 77
+  } ],
+  "showCheatsheetSuggestion" : false,
+  "note" : "Schätzung, keine Garantie"
+}

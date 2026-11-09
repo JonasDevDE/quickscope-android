@@ -1,0 +1,50 @@
+[ {
+  "id" : "m-pdf",
+  "examId" : "e-ready",
+  "kind" : "pdf",
+  "role" : "script",
+  "name" : "Skript Wirtschaft.pdf",
+  "sizeBytes" : 2400000,
+  "status" : "done",
+  "createdAt" : "2026-11-09T16:05:02.167897900Z"
+}, {
+  "id" : "m-scan",
+  "examId" : "e-ready",
+  "kind" : "scan",
+  "role" : "exam",
+  "name" : "Scan 2026-11-09",
+  "sizeBytes" : 5100000,
+  "status" : "done",
+  "warning" : "Seite 3 schwer lesbar",
+  "pages" : 3,
+  "createdAt" : "2026-11-09T16:05:02.167897900Z"
+}, {
+  "id" : "m-text",
+  "examId" : "e-ready",
+  "kind" : "text",
+  "role" : "script",
+  "name" : "Notizen",
+  "sizeBytes" : 1800,
+  "status" : "done",
+  "createdAt" : "2026-11-09T16:05:02.167897900Z"
+}, {
+  "id" : "m-image",
+  "examId" : "e-ready",
+  "kind" : "image",
+  "role" : "script",
+  "name" : "Tafelbild.jpg",
+  "sizeBytes" : 900000,
+  "status" : "failed",
+  "error" : "KI nicht eingerichtet",
+  "pages" : 1,
+  "createdAt" : "2026-11-09T16:05:02.167897900Z"
+}, {
+  "id" : "m-audio",
+  "examId" : "e-ready",
+  "kind" : "audio",
+  "role" : "script",
+  "name" : "Vorlesung 3.mp3",
+  "sizeBytes" : 18000000,
+  "status" : "processing",
+  "createdAt" : "2026-11-09T16:05:02.167897900Z"
+} ]
