@@ -1,15 +1,15 @@
 package com.jonasschnell.quickscope
 
-import com.jonasschnell.quickscope.logic.CLOUD_WAIT_MS
 import com.jonasschnell.quickscope.logic.CardFlow
 import com.jonasschnell.quickscope.logic.shouldSpeakQuestion
 import com.jonasschnell.quickscope.logic.SPEECH_SPEED
-import com.jonasschnell.quickscope.logic.PrefetchPlanner
-import com.jonasschnell.quickscope.logic.VoicePart
-import com.jonasschnell.quickscope.logic.audioFileName
-import com.jonasschnell.quickscope.logic.filesToPrune
 import com.jonasschnell.quickscope.logic.FailureAction as F
-import com.jonasschnell.quickscope.logic.GateResult as G
+import com.jonasschnell.quickscope.logic.AudioMode
+import com.jonasschnell.quickscope.logic.AUDIO_RECHECK_MS
+import com.jonasschnell.quickscope.logic.STREAM_START_TIMEOUT_MS
+import com.jonasschnell.quickscope.logic.audioModeFor
+import com.jonasschnell.quickscope.logic.mayRequestAudio
+import com.jonasschnell.quickscope.logic.shouldRecheckAudio
 import com.jonasschnell.quickscope.logic.PlayButtonKind as K
 import com.jonasschnell.quickscope.logic.PlayState as P
 import com.jonasschnell.quickscope.logic.PlayTap as T
@@ -20,31 +20,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AudioTest {
-    @Test fun prefetchPlansNextThreeOnce() {
-        val ids = listOf("a", "b", "c", "d", "e")
-        val p = PrefetchPlanner(3)
-        assertEquals(listOf("a", "b", "c"), p.next(ids, 0))
-        assertEquals(listOf("d"), p.next(ids, 1))
-        assertEquals(listOf("e"), p.next(ids, 2))
-        assertTrue(p.next(ids, 3).isEmpty())
-        p.forget("d")
-        assertEquals(listOf("d"), p.next(ids, 3))
-        p.reset()
-        assertEquals(listOf("c", "d", "e"), p.next(ids, 2))
-        assertTrue(p.next(ids, 99).isEmpty())
-    }
-
     @Test fun speechSpeedIsFixed() {
         assertEquals(1.15f, SPEECH_SPEED, 0.0001f)
-    }
-
-    @Test fun cacheKeepsNewestWithinLimit() {
-        val files = listOf("old" to (400L to 1L), "mid" to (400L to 2L), "new" to (400L to 3L))
-        assertEquals(listOf("old"), filesToPrune(files, 1000))
-        assertEquals(listOf("old", "mid"), filesToPrune(files, 500))
-        assertTrue(filesToPrune(files, 5000).isEmpty())
-        assertEquals("e1_i-1_question.wav", audioFileName("e1", "i-1", VoicePart.Question))
-        assertEquals("e1_i_1_question.wav", audioFileName("e1", "i/1", VoicePart.Question))
     }
 
     @Test fun cardFlowNeedsRevealBeforeAnswer() {
@@ -61,37 +38,6 @@ class AudioTest {
         assertFalse(shouldSpeakQuestion(audioOn = false, feedback = null, isTeach = false))
         assertFalse(shouldSpeakQuestion(audioOn = true, feedback = true, isTeach = false))   // schon beantwortet
         assertFalse(shouldSpeakQuestion(audioOn = true, feedback = null, isTeach = true))    // Lektion spielt sich selbst
-    }
-
-    private fun card(id: String) = com.jonasschnell.quickscope.logic.parseTask(com.jonasschnell.quickscope.data.Item(id = id, type = "card"))
-
-    private fun teach(id: String): com.jonasschnell.quickscope.logic.Task {
-        val l = com.jonasschnell.quickscope.data.SessionLesson(id, "T", listOf("a"), "text", null, 40)
-        return com.jonasschnell.quickscope.logic.Task.Teach(com.jonasschnell.quickscope.logic.teachItem(l), l)
-    }
-
-    @Test fun roundStartWarmsTheFirstFourWithTheFirstFirst() {
-        val tasks = listOf(teach("L1"), card("q1"), card("q2"), card("q3"), card("q4"), card("q5"))
-        val plan = com.jonasschnell.quickscope.logic.warmPlan(tasks)
-        assertEquals(4, plan.size)
-        assertEquals(com.jonasschnell.quickscope.logic.WarmTarget("L1", true), plan[0])   // erste Karte zuerst
-        assertEquals(listOf("q1", "q2", "q3"), plan.drop(1).map { it.id })
-        assertTrue(plan.drop(1).none { it.lesson })
-        assertTrue(com.jonasschnell.quickscope.logic.warmPlan(emptyList()).isEmpty())
-        assertEquals(2, com.jonasschnell.quickscope.logic.warmPlan(listOf(card("a"), card("b"))).size) // weniger Karten als 4
-    }
-
-    @Test fun startupWaitsOnlyWhenSpeechIsExpected() {
-        val tasks = listOf(card("q1"))
-        assertTrue(com.jonasschnell.quickscope.logic.audioNeededAtStart(true, tasks))
-        assertFalse(com.jonasschnell.quickscope.logic.audioNeededAtStart(false, tasks))
-        assertTrue(com.jonasschnell.quickscope.logic.audioNeededAtStart(false, listOf(teach("L1"), card("q1")))) // Lektion spielt sich selbst ab
-        assertFalse(com.jonasschnell.quickscope.logic.audioNeededAtStart(true, emptyList()))
-    }
-
-    @Test fun firstCardSpeaksWithoutAnyInteraction() {
-        assertTrue(com.jonasschnell.quickscope.logic.FIRST_AUDIO_WAIT_MS < CLOUD_WAIT_MS)
-        assertTrue(shouldSpeakQuestion(true, null, false))
     }
 
     @Test fun neverTwoPlaybacksAtOnceAndOldCallbacksAreDropped() {
@@ -200,27 +146,26 @@ class AudioTest {
         m.stop()                                   // App im Hintergrund
         assertFalse(m.isCurrent(next))
         assertTrue(com.jonasschnell.quickscope.logic.shouldStopForLifecycle(false, P.Loading))
-        assertEquals(2, com.jonasschnell.quickscope.logic.PREFETCH_PARALLEL)
     }
 
-    @Test fun cardAppearsOnlyWithAudioInCacheElseWaitsThenTimesOut() {
-        val gate = { required: Boolean, cached: Boolean, waited: Long -> com.jonasschnell.quickscope.logic.gateDecision(required, cached, waited) }
-        assertEquals(G.Ready, gate(true, true, 0))                       // Cache-Treffer: Karte erscheint sofort
-        assertEquals(G.Wait, gate(true, false, 0))                       // noch nicht da: warten (Shimmer)
-        assertEquals(G.Wait, gate(true, false, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS - 1))
-        assertEquals(G.Timeout, gate(true, false, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS)) // ruhiger Fehlerbildschirm
-        assertEquals(G.Ready, gate(true, true, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS + 1_000)) // kam doch noch
-        // Ohne-Ton-Pfad: keine Audio-Pflicht, nie warten, nie Fehlerbildschirm
-        assertEquals(G.Ready, gate(false, false, 0))
-        assertEquals(G.Ready, gate(false, false, 999_999))
-        assertEquals(45_000L, com.jonasschnell.quickscope.logic.GATE_TIMEOUT_MS)
+    @Test fun preflightDecidesBetweenSoundAndSilent() {
+        assertEquals(AudioMode.On, audioModeFor(enabled = true, online = true, available = true))
+        assertEquals(AudioMode.Silent, audioModeFor(true, true, false))
+        assertEquals(AudioMode.Silent, audioModeFor(true, true, null))     // Status unbekannt/Fehler
+        assertEquals(AudioMode.Silent, audioModeFor(true, false, true))    // offline
+        assertEquals(AudioMode.Silent, audioModeFor(false, true, true))    // Vorlesen aus
     }
 
-    @Test fun gateTargetIsTheLessonForTeachCardsAndTheQuestionOtherwise() {
-        val lesson = com.jonasschnell.quickscope.data.SessionLesson("L1", "T", listOf("a"), "x", null, 40)
-        val teach = com.jonasschnell.quickscope.logic.Task.Teach(com.jonasschnell.quickscope.logic.teachItem(lesson), lesson)
-        assertEquals(com.jonasschnell.quickscope.logic.WarmTarget("L1", true), com.jonasschnell.quickscope.logic.gateTarget(teach))
-        val q = com.jonasschnell.quickscope.logic.parseTask(com.jonasschnell.quickscope.data.Item(id = "q1", type = "card"))
-        assertEquals(com.jonasschnell.quickscope.logic.WarmTarget("q1", false), com.jonasschnell.quickscope.logic.gateTarget(q))
+    @Test fun noAudioRequestWhenReadAloudIsOff() {
+        assertFalse(mayRequestAudio(false))
+        assertTrue(mayRequestAudio(true))
+        assertFalse(shouldRecheckAudio(AudioMode.Silent, false, 0, 10 * AUDIO_RECHECK_MS))
+    }
+
+    @Test fun silentRoundRetriesOnNextItemAfterInterval() {
+        assertFalse(shouldRecheckAudio(AudioMode.Silent, true, 1_000, 1_000 + AUDIO_RECHECK_MS - 1))
+        assertTrue(shouldRecheckAudio(AudioMode.Silent, true, 1_000, 1_000 + AUDIO_RECHECK_MS))
+        assertFalse(shouldRecheckAudio(AudioMode.On, true, 0, 10 * AUDIO_RECHECK_MS))
+        assertTrue(STREAM_START_TIMEOUT_MS in 1_000L..15_000L)
     }
 }

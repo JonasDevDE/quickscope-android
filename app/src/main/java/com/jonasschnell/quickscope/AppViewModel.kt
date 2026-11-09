@@ -243,7 +243,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             loadJob?.cancel()
             runCatching { kotlinx.coroutines.withTimeoutOrNull(4_000) { api.logout() } }
             auth.signOut()
-            app.audioCache.clear()
             app.wipeLocalData()
             _state.value = UiState(phase = Phase.NeedsLogin)
         }
@@ -272,7 +271,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             api.deleteMe()
             loadJob?.cancel()
             auth.signOut()
-            app.audioCache.clear()
             app.wipeLocalData()
             _state.value = UiState(phase = Phase.NeedsLogin)
         }

@@ -56,6 +56,9 @@ interface QuickscopeApi {
     @GET("api/exams/{id}/audiobook") suspend fun audiobook(@Path("id") id: String, @Query("minutes") minutes: Int? = null, @Query("repeat") repeat: Boolean? = null): Audiobook
     @POST("api/exams/{id}/lessons/{lessonId}/heard") suspend fun heard(@Path("id") id: String, @Path("lessonId") lessonId: String, @Body body: HeardRequest)
 
+    @GET("api/audio/status") suspend fun audioStatus(): AudioStatus
+    @GET("api/exams/{id}/items/{itemId}/audio/timings") suspend fun itemTimings(@Path("id") id: String, @Path("itemId") itemId: String, @Query("part") part: String = "question"): AudioTimings
+
     @GET("api/exams/{id}/topics") suspend fun topics(@Path("id") id: String): List<Topic>
     @GET("api/exams/{id}/session") suspend fun session(@Path("id") id: String, @Query("minutes") minutes: Int? = null, @Query("lessons") lessons: Boolean? = null): LearnSession
     @POST("api/exams/{id}/attempts") suspend fun attempts(@Path("id") id: String, @Body body: List<AttemptRequest>): AttemptsResponse
@@ -63,5 +66,4 @@ interface QuickscopeApi {
     @GET("api/exams/{id}/cheatsheet") suspend fun cheatsheet(@Path("id") id: String, @Query("minutes") minutes: Int = 5): CheatSheet
     /** Aufgaben neu erzeugen (202); der Lernstand wird zurueckgesetzt, die Pruefung ist danach wieder "processing". */
     @POST("api/exams/{id}/regenerate") suspend fun regenerate(@Path("id") id: String, @Query("resetProgress") resetProgress: Boolean? = null)
-    @POST("api/exams/{id}/audio/prefetch") suspend fun audioPrefetch(@Path("id") id: String, @Body body: AudioPrefetch): PrefetchResponse
 }

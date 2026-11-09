@@ -525,7 +525,7 @@ class ContractTest {
         assertEquals("audio/aac", com.jonasschnell.quickscope.logic.VOICE_MIME)
     }
 
-    @Test fun questionsOnlySessionBudgetPlanAndPrefetch() {
+    @Test fun questionsOnlySessionBudgetPlanAndAudioStatus() {
         val s = parse("session-questions-only.json", LearnSession.serializer())
         assertEquals(12, s.items.size)
         assertEquals(12, s.quiz.size)
@@ -547,17 +547,9 @@ class ContractTest {
         assertEquals(2, book.items.size)
         assertEquals(83, book.totalSeconds)
         assertNotNull(book.budget)
-        val pre = parse("audio-prefetch.json", com.jonasschnell.quickscope.data.PrefetchResponse.serializer())
-        assertEquals(2, pre.queued)
-        assertEquals(2, pre.ready)
-        assertEquals(0, pre.pending)
-        assertEquals(0, pre.failed)
-        assertEquals(listOf("i-number:question", "i-number:answer"), pre.items.map { it.id })
-        assertTrue(pre.items.all { it.status == "ready" })
-        // pending ist kein Fehler
-        val p = AppJson.decodeFromString(com.jonasschnell.quickscope.data.PrefetchResponse.serializer(), """{"queued":2,"ready":1,"pending":1,"failed":0,"items":[{"id":"a","status":"ready"},{"id":"b","status":"pending"}]}""")
-        assertEquals(1, p.pending)
-        assertEquals(0, p.failed)
+        val st = AppJson.decodeFromString(com.jonasschnell.quickscope.data.AudioStatus.serializer(), """{"available":true,"latencyMs":420,"extra":1}""")
+        assertTrue(st.available)
+        assertEquals(420, st.latencyMs)
     }
 
     @Test fun dayGoalAndBudgetLine() {

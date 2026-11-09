@@ -298,6 +298,8 @@ data class Profile(
     /** hauptschule, realschule, abitur, ausbildung, studium, other */
     val educationLevel: String? = null,
     val onboardingDone: Boolean = false,
+    /** Vorlesen an/aus (Standard an); bei aus gibt es keinerlei Audio-Aufrufe. */
+    val audioEnabled: Boolean? = null,
 )
 
 /** Teil-Aenderung des Profils: nur gesetzte Felder werden gesendet. onboardingDone nur false -> true. */
@@ -307,6 +309,7 @@ data class ProfileUpdate(
     val age: Int? = null,
     val educationLevel: String? = null,
     val onboardingDone: Boolean? = null,
+    val audioEnabled: Boolean? = null,
 )
 
 /** Antwort der Sprachnachricht: Zusammenfassung zum Pruefen (wird nicht gespeichert). */
@@ -317,15 +320,6 @@ data class VoiceSummary(val about: String = "")
 @Serializable
 data class Budget(val dailyMinutes: Int = 0, val usedMinutesToday: Int = 0, val remainingMinutes: Int = 0)
 
-/** Antwort von POST audio/prefetch: pending wird im Hintergrund fertig und ist kein Fehler. */
+/** Antwort von GET audio/status: gibt es gerade eine Stimme (billig, serverseitig gecacht)? */
 @Serializable
-data class PrefetchItem(val id: String = "", val status: String = "pending")
-
-@Serializable
-data class PrefetchResponse(
-    val queued: Int = 0,
-    val ready: Int = 0,
-    val pending: Int = 0,
-    val failed: Int = 0,
-    val items: List<PrefetchItem> = emptyList(),
-)
+data class AudioStatus(val available: Boolean = false, val latencyMs: Int? = null)

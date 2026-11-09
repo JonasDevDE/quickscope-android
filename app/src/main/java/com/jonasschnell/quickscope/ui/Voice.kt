@@ -22,8 +22,8 @@ import com.jonasschnell.quickscope.QuickscopeApp
 import com.jonasschnell.quickscope.data.AudioTimings
 import com.jonasschnell.quickscope.data.WordTiming
 import com.jonasschnell.quickscope.logic.PlayState
+import com.jonasschnell.quickscope.logic.STREAM_START_TIMEOUT_MS
 import com.jonasschnell.quickscope.logic.PlaybackMachine
-import com.jonasschnell.quickscope.logic.PrefetchPlanner
 import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.VoicePart
 import com.jonasschnell.quickscope.logic.shouldStopForLifecycle
@@ -34,10 +34,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -49,8 +49,7 @@ import kotlin.coroutines.resumeWithException
  */
 class Voice(private val context: Context, private val scope: CoroutineScope) {
     private val app = context.applicationContext as QuickscopeApp
-    private val cache = app.audioCache
-    private val planner = PrefetchPlanner(3)
+    private val client = app.audio
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     /** Zustand der Wiedergabe (nie mehr als eine Wiedergabe gleichzeitig). */
@@ -81,131 +80,84 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
 
     private var player: MediaPlayer? = null
 
-    /** Weckt wartende Wiederholungen sofort (Tipp auf den Knopf) oder beendet sie (Stopp). */
-    private val kick = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
-
-    /** Tipp waehrend des Ladens: sofort neu versuchen. */
-    fun retryNow() {
-        kick.trySend(Unit)
-    }
 
     /** Beendet die laufende Wiedergabe sofort (gibt Player, Audiofokus und Empfaenger frei). */
     private var cancelHook: (() -> Unit)? = null
 
-    /** Naechste Aufgaben (aktuelle + 2) vorab anfordern und laden. */
-    fun prefetch(examId: String, ids: List<String>, index: Int) {
-        val fresh = planner.next(ids, index)
-        if (fresh.isEmpty()) return
-        scope.launch {
-            cache.requestPrefetch(examId, fresh)
-            for (id in fresh) launch { cache.timings(examId, id, VoicePart.Question) }
-            for (id in fresh) launch {
-                try {
-                    cache.fetchThrottled(examId, id, VoicePart.Question)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    planner.forget(id) // spaeter erneut versuchen
-                }
-            }
-        }
-    }
-
-    /** Liest die Frage vor. [displayText] ist der angezeigte Fragetext: nur wenn er exakt zu den Wortzeiten passt, wird hervorgehoben. */
+    /** Liest die Frage per Live-Streaming vor. [displayText]: nur wenn er exakt zu den Wortzeiten passt, wird hervorgehoben. */
     suspend fun speak(examId: String, itemId: String, displayText: String?): Boolean =
-        play(
-            label = "Frage $itemId",
-            fetch = { cache.fetch(examId, itemId, VoicePart.Question) },
-            timings = if (displayText != null) ({ cache.timings(examId, itemId, VoicePart.Question) }) else null,
-            displayText = displayText,
-        )
+        play("Frage $itemId", client.itemUri(examId, itemId), if (displayText != null) ({ client.timings(examId, itemId) }) else null, displayText)
 
-    /** Spielt eine Lektion (Session-Lektionskarte) ab. */
+    /** Streamt eine Lektion (Session-Lektionskarte). */
     suspend fun speakLesson(examId: String, lessonId: String): Boolean =
-        play(label = "Lektion $lessonId", fetch = { cache.fetchLesson(examId, lessonId) }, timings = null, displayText = null)
+        play("Lektion $lessonId", client.lessonUri(examId, lessonId), null, null)
 
     /**
-     * Laedt und spielt. Fehler (503, 429, Timeout, Netz) werden unsichtbar mit Backoff wiederholt (1, 2, 4, 8 ... 60 s, Retry-After
-     * wird beachtet), waehrend der Knopf den Spinner zeigt; ein Tipp versucht sofort neu. Endet erst, wenn gespielt wurde oder die
-     * Wiedergabe ersetzt/gestoppt ist (Itemwechsel, Hintergrund). Liefert true, wenn bis zum Ende gespielt wurde.
+     * Streamt und spielt. Startet der Stream nicht innerhalb von [STREAM_START_TIMEOUT_MS] oder faellt er aus, bleibt diese Karte still
+     * (kein Fehler, kein Text); die naechste Karte versucht es neu. Liefert true, wenn bis zum Ende gespielt wurde.
      */
-    private suspend fun play(label: String, fetch: suspend () -> File, timings: (suspend () -> AudioTimings?)?, displayText: String?): Boolean {
+    private suspend fun play(label: String, uri: android.net.Uri, timings: (suspend () -> AudioTimings?)?, displayText: String?): Boolean {
         val gen = machine.begin() // alles Vorherige ist damit ungueltig
         sync()
         releasePlayer()
         highlight = Highlight()
         val t0 = SystemClock.elapsedRealtime()
-        var attempt = 0
         try {
-            while (true) {
-                if (!machine.isCurrent(gen)) { return false } // ersetzt oder gestoppt
-                var file: File? = null
-                var retryAfter: Long? = null
-                try {
-                    file = fetch()
+            val result = coroutineScope {
+                val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+                val playJob = async { playStream(gen, uri, started) }
+                val ok = try {
+                    withTimeoutOrNull(STREAM_START_TIMEOUT_MS) { started.await(); true } ?: false
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    retryAfter = (e as? com.jonasschnell.quickscope.data.AudioUnavailable)?.retryAfterMs
-                    com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Versuch ${attempt + 1} fehlgeschlagen", e)
+                    false
                 }
-                if (file != null) {
-                    if (!machine.isCurrent(gen)) return false
-                    com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Audio bereit nach ${SystemClock.elapsedRealtime() - t0} ms")
-                    val usable = timings?.let { t -> runCatching { t() }.getOrNull()?.takeIf { displayText != null && timingsMatch(displayText, it) } }
-                    if (!machine.isCurrent(gen)) return false
-                    var played = true
-                    try {
-                        coroutineScope {
-                            val ticker = usable?.let { t ->
-                                highlight = Highlight(t.text, t.words, 0, -1)
-                                launch {
-                                    while (isActive) {
-                                        val p = player
-                                        val pos = if (p != null && machine.isCurrent(gen) && runCatching { p.isPlaying }.getOrDefault(false)) wordPosAt(t.words, runCatching { p.currentPosition.toLong() }.getOrDefault(0L)) else null
-                                        if (pos != null && (pos.spoken != highlight.spoken || pos.active != highlight.active)) highlight = highlight.copy(spoken = pos.spoken, active = pos.active)
-                                        delay(40)
-                                    }
-                                }
-                            }
-                            try {
-                                playFile(gen, file)
-                            } finally {
-                                ticker?.cancel()
-                            }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        // Datei evtl. defekt: verwerfen und erneut laden
-                        com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Wiedergabe fehlgeschlagen", e)
-                        runCatching { file.delete() }
-                        played = false
-                    }
-                    if (played) {
-                        val stillCurrent = machine.isCurrent(gen)
-                        val ended = machine.finish(gen)
-                        sync()
-                        if (ended && usable != null) highlight = highlight.copy(spoken = usable.words.size, active = -1)
-                        return stillCurrent && ended
-                    }
+                if (!ok) {
+                    com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream nicht gestartet, Karte bleibt still")
+                    playJob.cancel()
+                    return@coroutineScope false
                 }
-                // unsichtbar erneut versuchen: Backoff oder Weckruf (Tipp, Stopp)
-                val wait = com.jonasschnell.quickscope.logic.retryDelayMs(attempt++, retryAfter)
-                kotlinx.coroutines.withTimeoutOrNull(wait) { kick.receive() }
+                com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream laeuft nach ${SystemClock.elapsedRealtime() - t0} ms")
+                // Wortzeiten live parallel holen; passen sie nicht exakt zum angezeigten Text, wird nicht hervorgehoben
+                val ticker = if (timings != null && displayText != null) launch {
+                    val t = runCatching { timings() }.getOrNull()?.takeIf { timingsMatch(displayText, it) } ?: return@launch
+                    highlight = Highlight(t.text, t.words, 0, -1)
+                    while (isActive) {
+                        val p = player
+                        val pos = if (p != null && machine.isCurrent(gen) && runCatching { p.isPlaying }.getOrDefault(false)) wordPosAt(t.words, runCatching { p.currentPosition.toLong() }.getOrDefault(0L)) else null
+                        if (pos != null && (pos.spoken != highlight.spoken || pos.active != highlight.active)) highlight = highlight.copy(spoken = pos.spoken, active = pos.active)
+                        delay(40)
+                    }
+                } else null
+                try {
+                    playJob.await()
+                    true
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    com.jonasschnell.quickscope.data.AppLog.w("Voice", "$label: Stream abgebrochen", e)
+                    false
+                } finally {
+                    ticker?.cancel()
+                }
             }
+            val stillCurrent = machine.isCurrent(gen)
+            releasePlayer()
+            val ended = machine.finish(gen)
+            sync()
+            if (result && ended && highlight.words.isNotEmpty()) highlight = highlight.copy(spoken = highlight.words.size, active = -1)
+            return result && stillCurrent && ended
         } catch (e: CancellationException) {
             if (machine.isCurrent(gen)) { machine.stop(); releasePlayer() }
             sync()
             throw e
-        } finally {
         }
     }
 
     /** Stoppt alles sofort (neue Karte, Stumm, Verlassen). */
     fun stop() {
         machine.stop()
-        kick.trySend(Unit) // wartende Wiederholungen beenden
         cancelHook?.invoke()
         cancelHook = null
         sync()
@@ -218,7 +170,8 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
         player = null
     }
 
-    private suspend fun playFile(gen: Long, file: File) = suspendCancellableCoroutine<Unit> { cont ->
+    /** Spielt den Stream (MediaPlayer ohne MediaSession); meldet [started], sobald er wirklich laeuft. */
+    private suspend fun playStream(gen: Long, uri: android.net.Uri, started: kotlinx.coroutines.CompletableDeferred<Unit>) = suspendCancellableCoroutine<Unit> { cont ->
         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build() // keine MediaSession, keine Systemkarte
         var mp: MediaPlayer? = null
         var paused = false
@@ -255,19 +208,27 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
             mp = p
             player = p
             p.setAudioAttributes(attrs)
-            p.setDataSource(file.absolutePath)
+            p.setDataSource(context, uri, client.headers(uri))
             p.setOnPreparedListener {
                 // verspaetetes "prepared" eines alten Elements verwerfen
-                if (!machine.playing(gen)) { cleanup(); if (cont.isActive) cont.resume(Unit); return@setOnPreparedListener }
+                if (!machine.playing(gen)) { cleanup(); started.complete(Unit); if (cont.isActive) cont.resume(Unit); return@setOnPreparedListener }
                 sync()
                 runCatching { it.playbackParams = PlaybackParams().setSpeed(SPEECH_SPEED).setPitch(1f) }
                 it.start()
+                started.complete(Unit)
             }
             p.setOnCompletionListener { cleanup(); if (cont.isActive) cont.resume(Unit) }
-            p.setOnErrorListener { _, what, _ -> cleanup(); if (cont.isActive) cont.resumeWithException(java.io.IOException("Wiedergabefehler $what")); true }
+            p.setOnErrorListener { _, what, _ ->
+                val e = java.io.IOException("Stream-Fehler $what")
+                cleanup()
+                started.completeExceptionally(e)
+                if (cont.isActive) cont.resumeWithException(e)
+                true
+            }
             p.prepareAsync()
         } catch (e: Exception) {
             cleanup()
+            started.completeExceptionally(e)
             if (cont.isActive) cont.resumeWithException(e)
         }
     }

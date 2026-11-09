@@ -14,7 +14,6 @@ import okio.Path.Companion.toOkioPath
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.jonasschnell.quickscope.data.AttemptSync
-import com.jonasschnell.quickscope.data.AudioCache
 import com.jonasschnell.quickscope.data.AuthManager
 import com.jonasschnell.quickscope.data.MaterialPreview
 import com.jonasschnell.quickscope.logic.AttemptQueue
@@ -28,7 +27,8 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     val network by lazy { Network(auth, store) }
 
     val attemptSync by lazy { AttemptSync(network.api, AttemptQueue(store)) }
-    val audioCache by lazy { AudioCache(this, network.client, network.api) }
+    val connectivity by lazy { com.jonasschnell.quickscope.data.Connectivity(this) }
+    val audio by lazy { com.jonasschnell.quickscope.data.AudioClient(network.api, auth, store, connectivity) }
     val preview by lazy { MaterialPreview(this, network.client) }
 
     /** Toene fuer Rueckmeldungen; wird beim Start vorgeladen. */
@@ -42,7 +42,7 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     /** Beim Abmelden und Konto loeschen: alles lokal entfernen (Einstellungen, Warteschlange, Audio, Vorschauen, Bild-Cache, Exporte). */
     fun wipeLocalData() {
         store.clearAll()
-        listOf("audio", "previews", "camera", "exports", "image_cache").forEach { File(cacheDir, it).deleteRecursively() }
+        listOf("previews", "camera", "exports", "image_cache").forEach { File(cacheDir, it).deleteRecursively() }
         cacheDir.listFiles { f -> f.name.startsWith("voice_") }?.forEach { it.delete() }
         runCatching {
             SingletonImageLoader.get(this).let { it.memoryCache?.clear(); it.diskCache?.clear() }

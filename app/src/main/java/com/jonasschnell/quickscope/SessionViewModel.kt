@@ -10,10 +10,9 @@ import com.jonasschnell.quickscope.data.backendMessage
 import com.jonasschnell.quickscope.data.HeardRequest
 import com.jonasschnell.quickscope.data.SessionLesson
 import com.jonasschnell.quickscope.logic.FeedbackTracker
-import com.jonasschnell.quickscope.logic.WarmTarget
+import com.jonasschnell.quickscope.logic.AudioMode
+import com.jonasschnell.quickscope.logic.shouldRecheckAudio
 import com.jonasschnell.quickscope.logic.canStartSession
-import com.jonasschnell.quickscope.logic.gateTarget
-import com.jonasschnell.quickscope.logic.warmPlan
 import com.jonasschnell.quickscope.logic.StartMode
 import com.jonasschnell.quickscope.logic.filterForMode
 import com.jonasschnell.quickscope.logic.dontKnowOutcome
@@ -35,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import java.io.IOException
 import java.time.Instant
@@ -75,12 +75,8 @@ data class SessionUi(
     val neutral: Boolean = false,
     /** Index, bei dem das Auto-Play nach einem Stopp im Hintergrund ruht (bis zum naechsten Item oder bis Play gedrueckt wird). */
     val autoplaySuppressedAt: Int? = null,
-    /** "Ohne Ton lernen" fuer diese Runde: keine Audio-Pflicht, kein Vorlesen. */
-    val silent: Boolean = false,
-    /** Die naechste Karte wartet auf ihr Audio (neutraler Shimmer statt der Karte). */
-    val waiting: Boolean = false,
-    /** Audio kam nach dem Gate-Timeout nicht: ruhiger Bildschirm "Gerade nicht moeglich" mit Nochmal und Ohne Ton lernen. */
-    val blocked: Boolean = false,
+    /** Audiomodus der Runde (Vorlesen an UND Stimme verfuegbar UND online); sonst laeuft die Runde still, ohne Hinweis. */
+    val audio: Boolean = false,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -111,24 +107,19 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private var topicTitles: Map<String, String> = emptyMap()
     private var lastSitsCheck = 0L
 
-    /** Rundenstart, der noch auf das Audio der ersten Karte wartet (oder blockiert ist). */
-    private var pendingEnter: (() -> Unit)? = null
-    private var pendingTarget: WarmTarget? = null
-    private var gateJob: Job? = null
     private var startJob: Job? = null
+    private var recheckJob: Job? = null
+    private var lastAudioCheck = 0L
 
     /** [minutes] null = Rest des Tagesbudgets (leer, wenn das Tagesziel geschafft ist); sonst der ausdrueckliche Wunsch. */
     fun start(examId: String, minutes: Int?, scoreBefore: Int?, questionsOnly: Boolean = false) {
         // genau eine aktive Runde: Doppeltipp, doppelte Aufrufe oder ein Start waehrend einer laufenden Runde werden verworfen
         if (!canStartSession(_state.value.phase)) return
         startJob?.cancel()
-        gateJob?.cancel()
-        pendingEnter = null
-        pendingTarget = null
+        recheckJob?.cancel()
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore) }
         startJob = viewModelScope.launch {
             try {
-                app.audioCache.clearing?.join() // Aufraeumen der letzten Runde abwarten
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
                 val s = api.session(examId, minutes, if (questionsOnly) false else null)
                 val topicList = runCatching { api.topics(examId) }.getOrDefault(emptyList())
@@ -144,27 +135,17 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
-                    val enter = {
-                        shownAt = SystemClock.elapsedRealtime()
-                        startedAt = shownAt
-                        _state.update {
-                            it.copy(
-                                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, blocked = false,
-                                finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
-                                topics = labels,
-                            )
-                        }
-                    }
-                    // Audio-Gate: die erste Karte erscheint erst, wenn ihr Audio im Cache liegt; die naechsten laden gedrosselt im Hintergrund
-                    val plan = warmPlan(tasks)
-                    app.audioCache.warm(examId, plan.drop(0))
-                    val first = plan.first()
-                    if (app.audioCache.ensureReady(examId, first)) {
-                        enter()
-                    } else {
-                        pendingEnter = enter
-                        pendingTarget = first
-                        _state.update { it.copy(blocked = true) }
+                    // Preflight: Ton nur, wenn gewuenscht, online und die Stimme verfuegbar ist; sonst still, ohne Hinweis
+                    val audioOn = withTimeoutOrNull(4_000) { app.audio.available(force = true) } ?: false
+                    lastAudioCheck = SystemClock.elapsedRealtime()
+                    shownAt = SystemClock.elapsedRealtime()
+                    startedAt = shownAt
+                    _state.update {
+                        it.copy(
+                            phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, audio = audioOn,
+                            finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
+                            topics = labels,
+                        )
                     }
                 }
             } catch (e: CancellationException) {
@@ -293,45 +274,22 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             }
         } else {
             shownAt = SystemClock.elapsedRealtime()
-            val nextTask = s.tasks[nextIndex]
-            val needsGate = !s.silent && !app.audioCache.isCached(s.examId, gateTarget(nextTask))
-            _state.update { it.copy(index = nextIndex, feedback = null, neutral = false, autoplaySuppressedAt = null, waiting = needsGate, blocked = false) }
-            if (needsGate) {
-                // naechste Karte erst zeigen, wenn ihr Audio da ist (Shimmer, unsichtbare Wiederholungen); die Runde bleibt erhalten
-                gateJob?.cancel()
-                gateJob = viewModelScope.launch {
-                    if (app.audioCache.ensureReady(s.examId, gateTarget(nextTask))) {
-                        shownAt = SystemClock.elapsedRealtime()
-                        _state.update { it.copy(waiting = false) }
-                    } else {
-                        _state.update { it.copy(blocked = true) }
-                    }
-                }
-            }
+            _state.update { it.copy(index = nextIndex, feedback = null, neutral = false, autoplaySuppressedAt = null) }
+            maybeRecheckAudio()
         }
     }
 
-    /** "Nochmal" auf dem Fehlerbildschirm: das Laden des Audios neu starten (Start oder naechste Karte). */
-    fun retryGate() {
-        val s = _state.value
-        gateJob?.cancel()
-        gateJob = viewModelScope.launch {
-            _state.update { it.copy(blocked = false) }
-            val target = pendingTarget ?: s.current?.let { gateTarget(it) } ?: return@launch
-            if (app.audioCache.ensureReady(s.examId, target)) {
-                pendingEnter?.let { it(); pendingEnter = null; pendingTarget = null }
-                _state.update { it.copy(waiting = false, blocked = false) }
-            } else {
-                _state.update { it.copy(blocked = true) }
-            }
+    /** War der Modus still, wird beim naechsten Item hoechstens alle 60 s still erneut geprueft (kein Fehler, keine Anzeige). */
+    private fun maybeRecheckAudio() {
+        val now = SystemClock.elapsedRealtime()
+        val mode = if (_state.value.audio) AudioMode.On else AudioMode.Silent
+        if (!shouldRecheckAudio(mode, store.audioEnabled, lastAudioCheck, now)) return
+        lastAudioCheck = now
+        recheckJob?.cancel()
+        recheckJob = viewModelScope.launch {
+            val ok = app.audio.available(force = true)
+            _state.update { it.copy(audio = ok) }
         }
-    }
-
-    /** "Ohne Ton lernen": fuer diese Runde kein Vorlesen und keine Audio-Pflicht; die Runde geht weiter. */
-    fun continueSilent() {
-        gateJob?.cancel()
-        _state.update { it.copy(silent = true, waiting = false, blocked = false) }
-        pendingEnter?.let { it(); pendingEnter = null; pendingTarget = null }
     }
 
     /** App im Hintergrund: Auto-Play ruht fuer die aktuelle Karte. */
@@ -349,11 +307,8 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val id = _state.value.examId
         // laufendes Laden und Gate beenden, damit eine geschlossene Runde nicht von selbst wieder auftaucht
         startJob?.cancel()
-        gateJob?.cancel()
-        pendingEnter = null
-        pendingTarget = null
+        recheckJob?.cancel()
         _state.value = SessionUi()
-        app.audioCache.clearing = viewModelScope.launch { app.audioCache.clear() }
         if (id.isNotEmpty()) viewModelScope.launch { sync.flush(id) }
     }
 

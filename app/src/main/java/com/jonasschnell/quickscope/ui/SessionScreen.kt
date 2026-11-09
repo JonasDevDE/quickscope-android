@@ -75,9 +75,9 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onMore: () -> Unit,
     Box(Modifier.fillMaxSize().background(Black).blockTouches()) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
         when (s.phase) {
-            SessionPhase.Running -> if (s.blocked) BlockedView(onRetry = vm::retryGate, onSilent = vm::continueSilent, onClose = onClose) else RunningView(s, vm, onClose)
+            SessionPhase.Running -> RunningView(s, vm, onClose)
             SessionPhase.Done -> DoneView(s, onClose)
-            SessionPhase.Loading, SessionPhase.Closed -> if (s.blocked) BlockedView(onRetry = vm::retryGate, onSilent = vm::continueSilent, onClose = onClose) else {
+            SessionPhase.Loading, SessionPhase.Closed -> {
                 TopRow(0f, 0, null, onClose)
                 Text("Gleich geht's los", color = Muted, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
                 Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -108,13 +108,6 @@ private fun TopRow(progress: Float, streak: Int, play: (@Composable () -> Unit)?
     }
 }
 
-/** Ruhiger Zwischenbildschirm, wenn das Audio nicht kommt: keine halbe Uebung, die Runde bleibt erhalten. */
-@Composable
-private fun BlockedView(onRetry: () -> Unit, onSilent: () -> Unit, onClose: () -> Unit) {
-    TopRow(0f, 0, null, onClose)
-    MessageView("Gerade nicht möglich", "Bitte gleich nochmal.", "Nochmal", onRetry, "Ohne Ton lernen", onSilent)
-}
-
 @Composable
 private fun MessageView(title: String, text: String, primary: String, onPrimary: () -> Unit, secondary: String?, onSecondary: (() -> Unit)?) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -139,17 +132,12 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
     val haptics = LocalHaptics.current
     val sfx = rememberSfx()
     val shake = remember { Animatable(0f) }
-    val ids = remember(s.tasks) { s.tasks.map { it.item.id } }
 
-    // Audio-Modus: naechste Aufgaben vorab laden
-    LaunchedEffect(s.index) {
-        voice.prefetch(s.examId, ids, s.index)
-    }
     // Audio-Modus: nur die Frage vorlesen (nie Antwort oder Rueckmeldung)
     var retry by remember { mutableIntStateOf(0) }
     LaunchedEffect(s.index, s.feedback != null, voice, retry) {
         if (task is Task.Teach) return@LaunchedEffect // Lektionskarte spielt sich selbst ab
-        if (shouldSpeakQuestion(!s.silent && !s.waiting, s.feedback, task is Task.Teach) && mayAutoplay(s.autoplaySuppressedAt, s.index)) voice.speak(s.examId, task.item.id, task.item.question)
+        if (shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach) && mayAutoplay(s.autoplaySuppressedAt, s.index)) voice.speak(s.examId, task.item.id, task.item.question)
         else voice.stop()
     }
     // Rueckmeldung: Ton und Haptik; richtig deutlich groesser als falsch
@@ -191,7 +179,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
     val shownItems = s.tasks.filterIndexed { i, _ -> !s.isRetry.getOrElse(i) { false } }.map { it.item }
     val done = (0 until s.index).count { !s.isRetry.getOrElse(it) { false } }
-    TopRow(sessionProgress(shownItems, done), s.streak, if (s.silent) null else ({
+    TopRow(sessionProgress(shownItems, done), s.streak, if (!s.audio) null else ({
         PlayPauseButton(voice.playState, {
             // Pause gilt nur fuer die aktuelle Karte; die naechste Karte startet von selbst
             when (playTap(voice.playState)) {
@@ -201,10 +189,6 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
             }
         })
     }), onClose)
-    run {
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        }
-    }
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
     Box(Modifier.weight(1f).fillMaxWidth()) {
         Column(
@@ -216,7 +200,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), s.silent, vm)
+                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm)
                 }
             }
         }

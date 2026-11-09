@@ -17,6 +17,11 @@ class Store(context: Context) : QueueStorage {
         get() = prefs.getString("chosenExam", null)
         set(value) = prefs.edit().putString("chosenExam", value).apply()
 
+    /** Vorlesen an/aus (Standard an). Bei aus gibt es keinerlei Audio-Aufrufe. */
+    var audioEnabled: Boolean
+        get() = prefs.getBoolean("audioEnabled", true)
+        set(value) = prefs.edit().putBoolean("audioEnabled", value).apply()
+
     /** Tagesserie (lokal abgeleitet): letzter Tag mit abgeschlossener Runde (ISO) und Tage in Folge. */
     var lastSessionDay: String?
         get() = prefs.getString("lastSessionDay", null)

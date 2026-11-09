@@ -32,8 +32,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Zum Veroeffentlichen eines Updates: versionCode um 1 erhoehen (und versionName anpassen), dann scripts/publish.sh.
-        versionCode = 14
-        versionName = "0.4.4"
+        versionCode = 15
+        versionName = "0.4.5"
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${config("GOOGLE_WEB_CLIENT_ID")}\"")
         // Adresse des Backends (mit abschliessendem Schraegstrich). Platzhalter, bis die echte Adresse in local.properties
@@ -60,8 +60,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }

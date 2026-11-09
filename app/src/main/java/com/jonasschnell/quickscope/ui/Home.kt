@@ -183,7 +183,6 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
         Text("So warst du zuletzt vorbereitet (Schätzung)", color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
     Text("Prüfung vorbei", style = MaterialTheme.typography.titleMedium)
-    Text("Dein Fortschritt bleibt hier lesbar.", color = Muted, style = MaterialTheme.typography.bodyMedium)
 }
 
 /**

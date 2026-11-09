@@ -75,10 +75,9 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
                 val lessons = runCatching { api.lessons(examId) }.getOrDefault(emptyList()).associateBy { it.id }
                 val order = chapters.associate { it.chapterId to it.order }
                 queue = AudiobookQueue(book.items)
-                app.audioCache.requestLessonPrefetch(examId, queue.ahead())
-// Gate: nicht mit der Lektion beginnen, bevor ihr Audio bereit ist (neutraler Ladezustand, bei Dauerfehler ruhige Meldung)
-                if (!app.audioCache.ensureReady(examId, com.jonasschnell.quickscope.logic.WarmTarget(book.items.first().lessonId, true))) {
-                    _state.update { it.copy(phase = BookPhase.Error, message = "Gerade nicht möglich. Bitte gleich nochmal.") }
+// Preflight: ohne Stimme (offline, nicht verfuegbar) gibt es kein Hoerbuch; ruhige Meldung statt Fehlerbild
+                if (!app.audio.available(force = true)) {
+                    _state.update { it.copy(phase = BookPhase.Error, message = "Gerade nicht möglich.") }
                     return@launch
                 }
                 val mediaItems = book.items.map { mediaItem(it, lessons[it.lessonId], order[it.chapterId] ?: 0, chapters.size) }
@@ -109,18 +108,12 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
         }
         return MediaItem.Builder()
             .setMediaId(item.lessonId)
-            // schon geladene Lektionen kommen aus dem Cache, die uebrigen per Streaming
-            .setUri(cachedUri(item.lessonId) ?: android.net.Uri.parse("${BuildConfig.BASE_URL}api/exams/$examId/lessons/${item.lessonId}/audio"))
+            .setUri(app.audio.lessonUri(examId, item.lessonId))
             // generischer Titel: keine Titel oder Kapitel nach aussen (Sperrbildschirm)
             .setMediaMetadata(MediaMetadata.Builder().setTitle("Quickscope").setExtras(extras).build())
             .build()
     }
 
-    private fun cachedUri(lessonId: String): android.net.Uri? {
-        val t = com.jonasschnell.quickscope.logic.WarmTarget(lessonId, true)
-        if (!app.audioCache.isCached(examId, t)) return null
-        return android.net.Uri.fromFile(java.io.File(app.cacheDir, "audio/" + com.jonasschnell.quickscope.logic.audioFileName(examId, "lesson_$lessonId", com.jonasschnell.quickscope.logic.VoicePart.Question)))
-    }
 
     private fun connect(onReady: (MediaController) -> Unit) {
         controller?.let { onReady(it); return }
@@ -152,8 +145,6 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
         val idx = p.currentMediaItemIndex
         if (idx != queue.index) {
             queue.jumpTo(idx)
-            val ahead = queue.ahead()
-            viewModelScope.launch { app.audioCache.requestLessonPrefetch(examId, ahead) }
         }
         _state.update {
             if (it.phase != BookPhase.Playing && it.phase != BookPhase.Loading) it
