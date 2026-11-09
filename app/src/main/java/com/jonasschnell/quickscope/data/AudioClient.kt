@@ -45,19 +45,6 @@ class AudioClient(
         return lastResult
     }
 
-    /** Strenger Status fuer "Verstehen": nur eine echte Antwort available=true zaehlt (Fehler/404 = nicht bestaetigt). */
-    suspend fun confirmed(): Boolean {
-        if (!store.audioEnabled || !connectivity.isOnline()) return false
-        val status = try {
-            kotlinx.coroutines.withTimeoutOrNull(STATUS_TIMEOUT_MS) { api.audioStatus() }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-        return com.jonasschnell.quickscope.logic.listenStatusConfirmed(status)
-    }
-
     fun itemUri(examId: String, itemId: String): Uri = Uri.parse("${BuildConfig.BASE_URL}api/exams/$examId/items/$itemId/audio?part=question")
 
     fun lessonUri(examId: String, lessonId: String): Uri = Uri.parse("${BuildConfig.BASE_URL}api/exams/$examId/lessons/$lessonId/audio")

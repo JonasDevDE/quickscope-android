@@ -94,7 +94,7 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
                 _state.update { it.copy(phase = BookPhase.Playing, count = book.items.size) }
                 // Kein "Ton laedt" ueber laengere Zeit: laeuft der Stream nicht binnen ~8 s, sauber beenden (Dienst und Benachrichtigung weg)
                 watchdog = launch {
-                    delay(com.jonasschnell.quickscope.logic.LISTEN_PROBE_TIMEOUT_MS)
+                    delay(8_000L)
                     if (controller?.isPlaying != true && _state.value.phase == BookPhase.Playing && !everPlayed) failQuietly()
                 }
             } catch (e: CancellationException) {

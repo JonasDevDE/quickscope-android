@@ -172,38 +172,41 @@ class AudioTest {
         assertTrue(STREAM_START_TIMEOUT_MS in 1_000L..15_000L)
     }
 
-    @Test fun understandEntryNeedsEveryCondition() {
-        val ok = com.jonasschnell.quickscope.data.AudioStatus(available = true)
-        val confirmed = com.jonasschnell.quickscope.logic.listenStatusConfirmed(ok)
-        val vis = { online: Boolean, on: Boolean, lessons: Boolean, conf: Boolean, blocked: Long, now: Long ->
-            com.jonasschnell.quickscope.logic.listenVisible(online, on, lessons, conf, blocked, now)
-        }
-        assertTrue(vis(true, true, true, confirmed, 0, 1_000))
-        assertFalse(vis(false, true, true, confirmed, 0, 1_000))       // offline
-        assertFalse(vis(true, false, true, confirmed, 0, 1_000))       // Vorlesen aus
-        assertFalse(vis(true, true, false, confirmed, 0, 1_000))       // keine Lektionen
-        assertFalse(vis(true, true, true, false, 0, 1_000))            // Status nicht bestaetigt
-        assertFalse(com.jonasschnell.quickscope.logic.listenStatusConfirmed(null))                                                    // Fehler/404
-        assertFalse(com.jonasschnell.quickscope.logic.listenStatusConfirmed(com.jonasschnell.quickscope.data.AudioStatus(available = false, reason = "x")))
+    @Test fun understandIsVisibleAsSoonAsLessonsExist() {
+        assertTrue(com.jonasschnell.quickscope.logic.understandVisible(true))
+        assertFalse(com.jonasschnell.quickscope.logic.understandVisible(false))
+        // Audio-Zustand spielt fuer die Sichtbarkeit keine Rolle: die Funktion kennt ihn gar nicht
     }
 
-    @Test fun failedProbeHidesUnderstandForTwoMinutesThenReChecks() {
-        val now = 50_000L
-        val until = com.jonasschnell.quickscope.logic.listenBlockedUntil(now)
-        assertEquals(now + 120_000L, until)
-        val vis = { t: Long -> com.jonasschnell.quickscope.logic.listenVisible(true, true, true, true, until, t) }
-        assertFalse(vis(now + 1))
-        assertFalse(vis(until - 1))
-        assertTrue(vis(until))            // danach wird wieder angeboten (und neu geprueft)
+    @Test fun audioStartsLateOnlyWhenEnabledOnlineAndAvailable() {
+        val f = { a: Boolean, b: Boolean, c: Boolean -> com.jonasschnell.quickscope.logic.audioAfterCheck(a, b, c) }
+        assertTrue(f(true, true, true))
+        assertFalse(f(true, true, false))
+        assertFalse(f(false, true, true))   // Vorlesen aus
+        assertFalse(f(true, false, true))   // offline: Lesemodus
     }
 
-    @Test fun probeNeedsBytesWithinEightSeconds() {
-        val p = { a: Boolean, b: Boolean, c: Long -> com.jonasschnell.quickscope.logic.probePassed(a, b, c) }
-        assertTrue(p(true, true, 3_000))
-        assertTrue(p(true, true, 8_000))
-        assertFalse(p(true, true, 8_001))   // zu langsam
-        assertFalse(p(false, true, 100))    // 429/503/404
-        assertFalse(p(true, false, 100))    // leer
-        assertEquals(8_000L, com.jonasschnell.quickscope.logic.LISTEN_PROBE_TIMEOUT_MS)
+    @Test fun readingModeNeverAutoAdvancesWithoutFinishedAudio() {
+        val adv = { a: Boolean, b: Boolean -> com.jonasschnell.quickscope.logic.autoAdvance(a, b) }
+        assertTrue(adv(true, true))      // Stream zu Ende: naechste Lektion
+        assertFalse(adv(true, false))    // ohne Ton: nur der Weiter-Knopf
+        assertFalse(adv(false, true))    // normale Runde blaettert nie von selbst
+    }
+
+    @Test fun understandEntriesAndFallbackAndOfflineRound() {
+        val l1 = com.jonasschnell.quickscope.data.SessionLesson("L1", "A", listOf("x"), "t", null, 30)
+        val l2 = com.jonasschnell.quickscope.data.SessionLesson("L2", "B", listOf("y"), "t", null, 30)
+        val card = com.jonasschnell.quickscope.data.SessionEntry(item = com.jonasschnell.quickscope.data.Item(id = "q1", type = "card"))
+        val items = listOf(card, com.jonasschnell.quickscope.data.SessionEntry(lesson = l1), card, com.jonasschnell.quickscope.data.SessionEntry(lesson = l2))
+        assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.understandEntries(items).map { it.lesson!!.id })
+        val all = listOf(
+            com.jonasschnell.quickscope.data.Lesson(id = "H", title = "gehoert", heard = true),
+            com.jonasschnell.quickscope.data.Lesson(id = "N", title = "neu", heard = false),
+        )
+        assertEquals(listOf("N", "H"), com.jonasschnell.quickscope.logic.lessonEntriesFrom(all).map { it.lesson!!.id })
+        val pack = com.jonasschnell.quickscope.logic.OfflinePack(items, emptyList())
+        assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, emptySet()).map { it.lesson!!.id })
+        assertEquals(listOf("L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, setOf("l:L1")).map { it.lesson!!.id })
+        assertEquals(listOf("L1", "L2"), com.jonasschnell.quickscope.logic.offlineLessonRound(pack, setOf("l:L1", "l:L2")).map { it.lesson!!.id })   // alles gelesen: nochmal
     }
 }

@@ -40,17 +40,18 @@ import kotlinx.coroutines.isActive
  * springt direkt zu den Fragen. Gemeldet wird, wie viel gehoert wurde.
  */
 @Composable
-fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit) {
+fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit, lessonsOnly: Boolean = false) {
     val lesson = task.lesson
     val durationMs = lesson.estSeconds * 1000L
     var replay by remember { mutableIntStateOf(0) }
     var elapsed by remember { mutableLongStateOf(0L) }
     var finished by remember { mutableStateOf(false) }
 
-    LaunchedEffect(lesson.id, replay, replayKey) {
+    LaunchedEffect(lesson.id, replay, replayKey, silent) {
         if (silent) return@LaunchedEffect // ohne Ton: nur lesen
         if (!autoplay && replayKey == 0 && replay == 0) return@LaunchedEffect // im Hintergrund gestoppt: erst Play startet wieder
         finished = false
+        var played = false
         val t0 = SystemClock.elapsedRealtime()
         elapsed = 0
         coroutineScope {
@@ -62,9 +63,15 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
             }
             try {
                 finished = voice.speakLesson(examId, lesson.id) // nur wenn wirklich bis zum Ende gespielt wurde
+                played = finished
             } finally {
                 job.cancel()
             }
+        }
+        // "Verstehen": nach dem Ende des Streams von selbst zur naechsten Lektion
+        if (com.jonasschnell.quickscope.logic.autoAdvance(lessonsOnly, played)) {
+            onHeard(lesson.id, 1.0)
+            onNext()
         }
     }
 
@@ -87,7 +94,7 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
             maxLines = 1,
         )
         Spacer(Modifier.height(4.dp))
-        PrimaryButton("Weiter zum Test", {
+        PrimaryButton(if (lessonsOnly) "Weiter" else "Weiter zum Test", {
             voice.stop()
             // Ueberspringen zaehlt nicht als gehoert: nur melden, wenn wirklich etwas gehoert wurde
             val fraction = heardFraction(elapsed, durationMs, finished)

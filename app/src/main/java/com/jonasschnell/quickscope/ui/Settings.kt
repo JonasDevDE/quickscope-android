@@ -117,13 +117,7 @@ private fun AccountPage(state: UiState, vm: AppViewModel, onLegal: (com.jonassch
         }
         SettingsRow("Meine Daten exportieren", null, { if (online) exportLauncher.launch("quickscope-export.json") else vm.needInternet() }) {}
         UpdateRow(state, vm)
-        Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            com.jonasschnell.quickscope.logic.LegalPage.entries.forEach { lp ->
-                HapticTextButton(onClick = { onLegal(lp) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                    Text(lp.title, color = Muted, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
+        com.jonasschnell.quickscope.logic.LegalPage.entries.forEach { lp -> SettingsRow(lp.title, null, { onLegal(lp) }) {} }
         DangerZone {
             DangerRow("Konto löschen") { if (online) accountStep = 1 else vm.needInternet() }
         }

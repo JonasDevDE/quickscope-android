@@ -3,7 +3,7 @@ package com.jonasschnell.quickscope.logic
 /** Die rechtlichen Seiten, als Texte in den App-Assets (assets/legal/<datei>.md). */
 enum class LegalPage(val file: String, val title: String) {
     Privacy("datenschutz", "Datenschutzerklärung"),
-    Terms("agb", "AGB"),
+    Terms("agb", "Allgemeine Geschäftsbedingungen"),
     Imprint("impressum", "Impressum"),
 }
 

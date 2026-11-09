@@ -93,55 +93,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Gibt es wirklich Internet? (Connectivity, validiertes Netz) */
     val online get() = app.connectivity.online
 
-    private var listenBlockedUntil = 0L
-
-    /** Soll "Verstehen" gezeigt werden? Prueft Sperre und den bestaetigten Audio-Status (online, Vorlesen an, Lektionen kommen vom Aufrufer). */
-    suspend fun listenReady(hasLessons: Boolean): Boolean {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (!com.jonasschnell.quickscope.logic.listenVisible(app.connectivity.isOnline(), store.audioEnabled, hasLessons, true, listenBlockedUntil, now)) return false
-        return app.audio.confirmed()
-    }
-
-    /**
-     * Vorab-Test: das Audio der ersten Lektion wird wirklich angefordert (Stream-Start, hoechstens ~8 s). Erst wenn es laeuft,
-     * wird [onReady] gerufen (Hoerseite oeffnet); sonst keine Seite, kein Dialog: [onFail] und "Verstehen" ist 2 Minuten verborgen.
-     */
-    fun startUnderstand(examId: String, onReady: () -> Unit, onFail: () -> Unit) {
-        viewModelScope.launch {
-            val ok = try {
-                probeListen(examId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                false
-            }
-            if (ok) {
-                onReady()
-            } else {
-                listenBlockedUntil = com.jonasschnell.quickscope.logic.listenBlockedUntil(android.os.SystemClock.elapsedRealtime())
-                onFail()
-            }
-        }
-    }
-
-    private suspend fun probeListen(examId: String): Boolean {
-        val t0 = android.os.SystemClock.elapsedRealtime()
-        val first = kotlinx.coroutines.withTimeoutOrNull(com.jonasschnell.quickscope.logic.LISTEN_PROBE_TIMEOUT_MS) { api.audiobook(examId).items.firstOrNull() } ?: return false
-        val left = com.jonasschnell.quickscope.logic.LISTEN_PROBE_TIMEOUT_MS - (android.os.SystemClock.elapsedRealtime() - t0)
-        if (left <= 500) return false
-        val request = okhttp3.Request.Builder().url(app.audio.lessonUri(examId, first.lessonId).toString()).header("Range", "bytes=0-4095").build()
-        val client = app.network.streamClient.newBuilder().callTimeout(left, java.util.concurrent.TimeUnit.MILLISECONDS).build()
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                client.newCall(request).execute().use { r ->
-                    val bytes = r.isSuccessful && r.body?.source()?.request(1) == true
-                    com.jonasschnell.quickscope.logic.probePassed(r.isSuccessful, bytes, android.os.SystemClock.elapsedRealtime() - t0)
-                }
-            } catch (e: IOException) {
-                false
-            }
-        }
-    }
+    /** Hat das Offline-Paket Lektionen? ("Verstehen" funktioniert offline als Lesemodus.) */
+    fun offlineHasLessons(examId: String): Boolean = app.local.pack(examId)?.entries?.any { it.lesson != null } == true
 
     /** Ruhiger Hinweis fuer Aktionen, die Internet brauchen. */
     fun needInternet() {

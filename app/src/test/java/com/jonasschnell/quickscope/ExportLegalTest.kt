@@ -13,6 +13,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -53,9 +54,29 @@ class ExportLegalTest {
             val blocks = parseMarkdown(f.readText(Charsets.UTF_8))
             assertTrue(blocks.first() is MdBlock.H1)
             assertTrue(blocks.size > 5)
-            assertTrue(f.readText(Charsets.UTF_8).contains("["))   // Platzhalter bleiben sichtbar
+            val text = f.readText(Charsets.UTF_8)
+            assertTrue(text.contains("[") || f.name == "impressum.md")   // restliche Platzhalter bleiben sichtbar (Datenschutz, AGB)
+            assertFalse(text.contains("[Vor- und Nachname"))   // Verantwortlicher ist eingesetzt
+            assertFalse(text.contains("[Anschrift]") || text.contains("[PLZ Ort]"))
             assertTrue(blocks.any { it is MdBlock.Note && it.text.startsWith("Entwurf") })
         }
         assertEquals(3, LegalPage.entries.size)
+    }
+
+    @Test fun legalTextsNameTheProviderAndKeepOpenPlaceholders() {
+        val all = LegalPage.entries.associateWith { java.io.File("src/main/assets/legal/${it.file}.md").readText(Charsets.UTF_8) }
+        for ((_, t) in all) {
+            assertTrue(t.contains("Jonas Schnell"))
+            assertTrue(t.contains("Wuhlestraße 7a"))
+            assertTrue(t.contains("12683 Berlin"))
+            assertTrue(t.contains("jonas.schnell@darkstone.de"))
+            assertFalse(t.contains("[E-Mail-Adresse]"))
+        }
+        assertTrue(all.getValue(LegalPage.Privacy).contains("[___ Tage"))       // Speicherdauer der Protokolle
+        assertTrue(all.getValue(LegalPage.Privacy).contains("[Mindestalter"))   // Kinder und Jugendliche
+        assertTrue(all.getValue(LegalPage.Privacy).contains("Auftragsverarbeitungsvertrag"))   // Google-Tarif/AVV
+        assertTrue(all.getValue(LegalPage.Terms).contains("[Haftungsregelung"))
+        assertFalse(all.getValue(LegalPage.Imprint).contains("Telefon"))
+        assertEquals("Allgemeine Geschäftsbedingungen", LegalPage.Terms.title)
     }
 }

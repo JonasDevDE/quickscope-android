@@ -78,7 +78,6 @@ private sealed interface Overlay {
     data object NewExam : Overlay
     data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
     data class Cheat(val examId: String) : Overlay
-    data class Audiobook(val examId: String) : Overlay
     data class More(val examId: String) : Overlay
 }
 
@@ -197,7 +196,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
         when (val o = overlay) {
             null -> Unit
             Overlay.Me -> MeSheet(state, vm, onAbout = { if (online) overlay = Overlay.About else vm.needInternet() }, onSettings = { overlay = Overlay.SettingsMain }, onDismiss = dismiss)
-            Overlay.SettingsMain -> SettingsMain(state, vm, onLegal = { legal = it }, onDismiss = dismiss)
+            Overlay.SettingsMain -> SettingsMain(state, vm, onLegal = { overlay = null; legal = it }, onDismiss = dismiss)
             Overlay.About -> AboutScreen(state, vm, onClose = dismiss)
             Overlay.Exams -> ExamsSheet(state, vm, onNew = { if (online) overlay = Overlay.NewExam else vm.needInternet() }, onEdit = { overlay = Overlay.Settings(it) },
                 onMaterial = { if (online) overlay = Overlay.Settings(it, ExamSetting.Material) else vm.needInternet() },
@@ -207,29 +206,14 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
             is Overlay.More -> {
                 val exam = state.exams.firstOrNull { it.id == o.examId }
-                val hasLessons = (state.activeForecast?.plan?.chaptersTotal ?: 0) > 0
-                var canUnderstand by remember { mutableStateOf(false) }
-                var probing by remember { mutableStateOf(false) }
-                LaunchedEffect(o.examId, online) { canUnderstand = online && hasLessons && vm.listenReady(hasLessons) }
+                val hasLessons = remember(o.examId, online, state.forecast) {
+                    if (online) (state.activeForecast?.plan?.chaptersTotal ?: 0) > 0 else vm.offlineHasLessons(o.examId)
+                }
                 if (exam != null) MoreSheet(
-                    canUnderstand = canUnderstand, probing = probing,
+                    canUnderstand = com.jonasschnell.quickscope.logic.understandVisible(hasLessons),
                     onTest = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), questionsOnly = true) },
-                    onUnderstand = {
-                        probing = true
-                        vm.startUnderstand(exam.id, onReady = { probing = false; overlay = Overlay.Audiobook(exam.id) }, onFail = { probing = false; canUnderstand = false })
-                    },
+                    onUnderstand = { sessionVm.start(exam.id, null, state.activeForecast?.scoreOrNull(), lessonsOnly = true) },
                     onDismiss = dismiss,
-                )
-            }
-            is Overlay.Audiobook -> {
-                val exam = state.exams.firstOrNull { it.id == o.examId }
-                AudiobookScreen(
-                    o.examId,
-                    onQuestions = {
-                        overlay = null
-                        exam?.let { e -> sessionVm.start(e.id, null, state.activeForecast?.scoreOrNull()) }
-                    },
-                    onClose = dismiss,
                 )
             }
         }
@@ -263,9 +247,10 @@ private fun LoginSheet(state: UiState, vm: AppViewModel, online: Boolean, onLega
             { if (online) activity?.let(vm::signIn) else vm.needInternet() },
             enabled = !state.loginBusy && activity != null,
         )
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.Center) {
-            HapticTextButton(onClick = { onLegal(com.jonasschnell.quickscope.logic.LegalPage.Privacy) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("Datenschutz", color = Muted, style = MaterialTheme.typography.labelMedium) }
-            HapticTextButton(onClick = { onLegal(com.jonasschnell.quickscope.logic.LegalPage.Terms) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) { Text("AGB", color = Muted, style = MaterialTheme.typography.labelMedium) }
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.jonasschnell.quickscope.logic.LegalPage.entries.forEach { lp ->
+                RowCard({ onLegal(lp) }, minHeight = 48.dp) { Text(lp.title, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge) }
+            }
         }
     }
 }

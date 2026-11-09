@@ -6,7 +6,7 @@
 
 ## 1. Anbieter und Geltungsbereich
 
-Anbieter von Quickscope ist [Vor- und Nachname / Firma, Anschrift, E-Mail]. Diese Bedingungen gelten für die Nutzung der App „Quickscope“ und des zugehörigen Dienstes.
+Anbieter von Quickscope ist Jonas Schnell, Darkstone Cloud, A-CS/EP1, Wuhlestraße 7a, 12683 Berlin, E-Mail: jonas.schnell@darkstone.de. Diese Bedingungen gelten für die Nutzung der App „Quickscope“ und des zugehörigen Dienstes.
 
 ## 2. Leistung
 

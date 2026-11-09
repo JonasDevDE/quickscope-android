@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -72,7 +73,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
     // Die Seite bleibt immer sichtbar; Unterthemen kommen als kleine Sheets darueber.
     PageScaffold("Thema", onDismiss) {
         QuickscopeField(name, { name = it.take(80) }, "Name")
-        SettingsRow("Icon", null, { sub = ExamSetting.Icon }) { TopicIcon(exam.icon, 36.dp) }
+        SettingsRow("Icon", null, { sub = ExamSetting.Icon }) { TopicIcon(exam.icon, 28.dp) }
         SettingsRow("Termin", null, { sub = ExamSetting.Kind }) { Value(if (isOpen(exam)) "Ohne Termin" else formatExamWhen(exam.date, exam.time)) }
         SettingsRow("Material", null, { sub = ExamSetting.Material }) { Value(if (exam.materialCount == 1L) "1 Datei" else "${exam.materialCount} Dateien") }
         SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(exam.description?.takeIf { it.isNotBlank() } ?: "–") }
@@ -147,8 +148,14 @@ private fun IconSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     QuickscopeSheet(onDismiss, "Icon") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 5) {
             com.jonasschnell.quickscope.logic.TOPIC_ICON_KEYS.forEach { key ->
-                Box(Modifier.hapticClickable { vm.updateExam(exam.id, ExamUpdate(icon = key)); onDismiss() }.padding(2.dp)) {
-                    TopicIcon(key, 56.dp, active = key == current)
+                val selected = key == current
+                Box(
+                    Modifier.size(56.dp).clip(RoundedCornerShape(16.dp))
+                        .then(if (selected) Modifier.background(CardHigh).border(1.dp, com.jonasschnell.quickscope.ui.theme.Outline, RoundedCornerShape(16.dp)) else Modifier)
+                        .hapticClickable { vm.updateExam(exam.id, ExamUpdate(icon = key)); onDismiss() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    TopicIcon(key, 28.dp, tint = if (selected) Color.White else Muted)
                 }
             }
         }

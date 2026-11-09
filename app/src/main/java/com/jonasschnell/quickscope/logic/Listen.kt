@@ -1,25 +1,28 @@
 package com.jonasschnell.quickscope.logic
 
-import com.jonasschnell.quickscope.data.AudioStatus
+import com.jonasschnell.quickscope.data.Lesson
+import com.jonasschnell.quickscope.data.SessionEntry
+import com.jonasschnell.quickscope.data.SessionLesson
 
-/** Hoechstens so lange wartet der Vorab-Test auf den Stream der ersten Lektion. */
-const val LISTEN_PROBE_TIMEOUT_MS = 8_000L
+/** "Verstehen" ist sichtbar, sobald es Lektionen gibt (online aus der Planung, offline aus dem Offline-Paket); Audio spielt dabei keine Rolle. */
+fun understandVisible(hasLessons: Boolean): Boolean = hasLessons
 
-/** Nach einem gescheiterten Vorab-Test verschwindet "Verstehen" fuer diese Zeit, danach wird neu geprueft. */
-const val LISTEN_BLOCK_MS = 120_000L
+/** Lektionen der Session-Antwort in ihrer Reihenfolge. */
+fun understandEntries(sessionItems: List<SessionEntry>): List<SessionEntry> = sessionItems.filter { it.lesson != null }
 
-/** Bestaetigt nur eine echte Antwort mit available=true; Fehler, 404 oder fehlende Antwort heissen "nicht bestaetigt". */
-fun listenStatusConfirmed(status: AudioStatus?): Boolean = status != null && status.available
+/** Rueckfall, wenn die Session keine neue Lektion liefert: noch Ungehoerte zuerst, hoechstens [limit]. */
+fun lessonEntriesFrom(all: List<Lesson>, limit: Int = 8): List<SessionEntry> =
+    all.sortedBy { it.heard }.take(limit).map { SessionEntry(lesson = SessionLesson(it.id, it.title, it.keyPoints, it.ttsText, it.mnemonic, it.estSeconds)) }
 
-/**
- * "Verstehen" ist nur sichtbar, wenn ALLES gilt: online, Vorlesen an, Lektionen vorhanden, Status bestaetigt available=true
- * und keine Sperre nach einem gescheiterten Vorab-Test.
- */
-fun listenVisible(online: Boolean, audioEnabled: Boolean, hasLessons: Boolean, statusConfirmed: Boolean, blockedUntilMs: Long, nowMs: Long): Boolean =
-    online && audioEnabled && hasLessons && statusConfirmed && nowMs >= blockedUntilMs
+/** Ton nachtraeglich: laeuft im Hintergrund der Preflight, wird der Audiomodus erst danach (und nur bei An, online, verfuegbar) eingeschaltet. */
+fun audioAfterCheck(enabled: Boolean, online: Boolean, available: Boolean): Boolean = enabled && online && available
 
-/** Zeitpunkt, bis zu dem "Verstehen" nach einem Fehlschlag verborgen bleibt. */
-fun listenBlockedUntil(nowMs: Long): Long = nowMs + LISTEN_BLOCK_MS
+/** In "Verstehen" blaettert die Seite nach dem Ende des Streams von selbst weiter; ohne Ton bleibt sie lesbar mit "Weiter". */
+fun autoAdvance(lessonsOnly: Boolean, finishedPlaying: Boolean): Boolean = lessonsOnly && finishedPlaying
 
-/** Vorab-Test bestanden: erfolgreiche Antwort mit mindestens einem Byte Audio innerhalb der Zeit. */
-fun probePassed(httpOk: Boolean, gotBytes: Boolean, elapsedMs: Long): Boolean = httpOk && gotBytes && elapsedMs <= LISTEN_PROBE_TIMEOUT_MS
+/** Offline-Lesemodus: Lektionen des Pakets, noch nicht gelesene zuerst; sind alle gelesen, die ersten [limit] noch einmal. */
+fun offlineLessonRound(pack: OfflinePack, done: Set<String>, limit: Int = 8): List<SessionEntry> {
+    val lessons = (pack.entries + pack.reserve).filter { it.lesson != null }.distinctBy { it.lesson!!.id }
+    val fresh = lessons.filter { "l:${it.lesson!!.id}" !in done }
+    return (fresh.ifEmpty { lessons }).take(limit)
+}

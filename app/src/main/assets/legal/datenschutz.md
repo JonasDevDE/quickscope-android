@@ -6,10 +6,12 @@
 
 ## 1. Verantwortlicher
 
-[Vor- und Nachname / Firma]
-[Straße und Hausnummer]
-[PLZ Ort]
-E-Mail: [E-Mail-Adresse]
+Jonas Schnell
+Darkstone Cloud
+A-CS/EP1
+Wuhlestraße 7a
+12683 Berlin
+E-Mail: jonas.schnell@darkstone.de
 
 ## 2. Worum es geht
 

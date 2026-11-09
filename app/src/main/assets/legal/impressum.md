@@ -6,14 +6,16 @@
 
 ## Angaben gemäß § 5 DDG
 
-[Vor- und Nachname / Firma]
-[Anschrift]
+Jonas Schnell
+Darkstone Cloud
+A-CS/EP1
+Wuhlestraße 7a
+12683 Berlin
 
 ## Kontakt
 
-E-Mail: [E-Mail-Adresse]
-Telefon: [ggf. Telefon]
+E-Mail: jonas.schnell@darkstone.de
 
 ## Verantwortlich für Inhalte
 
-[Name]
+Jonas Schnell

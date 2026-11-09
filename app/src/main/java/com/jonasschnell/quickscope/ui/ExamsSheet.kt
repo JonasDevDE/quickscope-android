@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import com.jonasschnell.quickscope.ui.theme.Outline
 import com.jonasschnell.quickscope.ui.theme.Danger
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +49,7 @@ fun ExamPill(name: String, loading: Boolean, onClick: () -> Unit, icon: String? 
         Modifier.clip(RoundedCornerShape(50)).background(CardHigh).hapticClickable(enabled = !loading, onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (!loading) TopicIcon(icon, 24.dp)
+        if (!loading) TopicIcon(icon, 20.dp)
         Text(name, Modifier.widthIn(max = 220.dp).padding(start = if (loading) 0.dp else 8.dp), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -65,9 +66,9 @@ fun ExamsSheet(
             androidx.compose.runtime.key(e.id) {
                 var menu by remember { mutableStateOf(false) }
                 RowCard({ vm.selectExam(e.id); onDismiss() }) {
-                    TopicIcon(e.icon, 40.dp, active = e.id == active)
+                    TopicIcon(e.icon, 24.dp)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(e.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(e.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = if (e.id == active) FontWeight.Bold else FontWeight.Normal), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(examSubtitle(e, now), color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
                     Box {

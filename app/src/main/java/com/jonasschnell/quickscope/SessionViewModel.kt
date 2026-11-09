@@ -80,6 +80,8 @@ data class SessionUi(
     val audio: Boolean = false,
     /** Runde aus dem lokalen Offline-Paket (ohne Ton, Antworten werden spaeter gesendet). */
     val offline: Boolean = false,
+    /** "Verstehen": nur Lektionskarten, sofort lesbar; Ton kommt nur dazu, wenn er verfuegbar ist. */
+    val lessonsOnly: Boolean = false,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -115,7 +117,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private var lastAudioCheck = 0L
 
     /** [minutes] null = Rest des Tagesbudgets (leer, wenn das Tagesziel geschafft ist); sonst der ausdrueckliche Wunsch. */
-    fun start(examId: String, minutes: Int?, scoreBefore: Int?, questionsOnly: Boolean = false) {
+    fun start(examId: String, minutes: Int?, scoreBefore: Int?, questionsOnly: Boolean = false, lessonsOnly: Boolean = false) {
         // genau eine aktive Runde: Doppeltipp, doppelte Aufrufe oder ein Start waehrend einer laufenden Runde werden verworfen
         if (!canStartSession(_state.value.phase)) return
         startJob?.cancel()
@@ -124,7 +126,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startJob = viewModelScope.launch {
             try {
                 if (!app.connectivity.isOnline()) {
-                    startOffline(examId, minutes, questionsOnly)
+                    startOffline(examId, minutes, questionsOnly, lessonsOnly)
                     return@launch
                 }
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
@@ -134,7 +136,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     // Netz weg, obwohl es online schien: mit dem Offline-Paket weitermachen, wenn eines da ist
                     if (app.local.pack(examId) == null) throw e
                     app.connectivity.markOffline()
-                    startOffline(examId, minutes, questionsOnly)
+                    startOffline(examId, minutes, questionsOnly, lessonsOnly)
                     return@launch
                 }
                 val topicList = runCatching { api.topics(examId) }.getOrDefault(emptyList())
@@ -146,22 +148,28 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 tracker = FeedbackTracker()
                 // "Nur Fragen": Lektionen clientseitig weglassen (das Backend hat dafuer noch keinen Parameter)
                 val mode = if (questionsOnly) StartMode.QuestionsOnly else StartMode.All
-                val tasks = filterForMode(s.items, { it.lesson != null }, mode).mapNotNull(::taskOf)
+                var lessonEntries: List<com.jonasschnell.quickscope.data.SessionEntry>? = null
+                if (lessonsOnly) {
+                    var e = com.jonasschnell.quickscope.logic.understandEntries(s.items)
+                    if (e.isEmpty()) e = com.jonasschnell.quickscope.logic.lessonEntriesFrom(runCatching { api.lessons(examId) }.getOrDefault(emptyList()))
+                    lessonEntries = e
+                }
+                val tasks = (lessonEntries ?: filterForMode(s.items, { it.lesson != null }, mode)).mapNotNull(::taskOf)
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
                     // Preflight: Ton nur, wenn gewuenscht, online und die Stimme verfuegbar ist; sonst still, ohne Hinweis
-                    val audioOn = withTimeoutOrNull(4_000) { app.audio.available(force = true) } ?: true
                     lastAudioCheck = SystemClock.elapsedRealtime()
                     shownAt = SystemClock.elapsedRealtime()
                     startedAt = shownAt
                     _state.update {
                         it.copy(
-                            phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, audio = audioOn,
-                            finalRoundStart = s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
+                            phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, audio = false, lessonsOnly = lessonsOnly,
+                            finalRoundStart = if (lessonEntries != null) null else s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
                             topics = labels,
                         )
                     }
+                    checkAudioLater()
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -172,7 +180,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** Runde aus dem Offline-Paket: Reihenfolge des Pakets, ohne schon Erledigtes, still (kein Ton), Antworten bleiben in der Warteschlange. */
-    private fun startOffline(examId: String, minutes: Int?, questionsOnly: Boolean) {
+    private fun startOffline(examId: String, minutes: Int?, questionsOnly: Boolean, lessonsOnly: Boolean) {
         val pack = app.local.pack(examId)
         if (pack == null) {
             _state.update { it.copy(phase = SessionPhase.Error, message = com.jonasschnell.quickscope.logic.NEEDS_INTERNET) }
@@ -181,7 +189,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val exam = app.local.exams()?.firstOrNull { it.id == examId }
         val doneSeconds = app.local.forecast(examId)?.doneSecondsToday ?: 0
         val m = minutes ?: com.jonasschnell.quickscope.logic.remainingMinutes(exam?.dailyMinutes ?: 20, doneSeconds)
-        val entries = com.jonasschnell.quickscope.logic.offlineRound(pack, app.local.doneKeys(examId), m * 60, questionsOnly)
+        val entries = if (lessonsOnly) com.jonasschnell.quickscope.logic.offlineLessonRound(pack, app.local.doneKeys(examId)) else com.jonasschnell.quickscope.logic.offlineRound(pack, app.local.doneKeys(examId), m * 60, questionsOnly)
         val tasks = entries.mapNotNull(::taskOf)
         if (tasks.isEmpty()) {
             _state.update { it.copy(phase = SessionPhase.Empty, offline = true) }
@@ -197,7 +205,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startedAt = shownAt
         _state.update {
             it.copy(
-                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, audio = false, offline = true,
+                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, audio = false, offline = true, lessonsOnly = lessonsOnly,
                 topics = topicLabels(topicList),
             )
         }
@@ -338,6 +346,19 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             shownAt = SystemClock.elapsedRealtime()
             _state.update { it.copy(index = nextIndex, feedback = null, neutral = false, autoplaySuppressedAt = null) }
             maybeRecheckAudio()
+        }
+    }
+
+    /** Ton nachtraeglich: Die Runde ist schon offen (lesbar/spielbar); der Preflight laeuft im Hintergrund und schaltet den Ton erst danach zu. */
+    private fun checkAudioLater() {
+        recheckJob?.cancel()
+        recheckJob = viewModelScope.launch {
+            val ok = withTimeoutOrNull(4_000) { app.audio.available(force = true) } ?: true
+            lastAudioCheck = SystemClock.elapsedRealtime()
+            _state.update { st ->
+                if (st.phase != SessionPhase.Running) st
+                else st.copy(audio = com.jonasschnell.quickscope.logic.audioAfterCheck(store.audioEnabled, app.connectivity.isOnline(), ok))
+            }
         }
     }
 
