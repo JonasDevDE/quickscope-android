@@ -16,7 +16,6 @@ import com.jonasschnell.quickscope.logic.Task
 import com.jonasschnell.quickscope.logic.beforeAfterLine
 import com.jonasschnell.quickscope.logic.formatExamWhen
 import com.jonasschnell.quickscope.logic.floor5
-import com.jonasschnell.quickscope.logic.formatRemaining
 import com.jonasschnell.quickscope.logic.masteryPercent
 import com.jonasschnell.quickscope.logic.minutesChoiceLabel
 import com.jonasschnell.quickscope.logic.percentText
@@ -68,15 +67,6 @@ class LogicTest {
     }
 
     // --- Zeiten ---
-
-    @Test fun remainingTextFollowsTime() {
-        assertEquals("noch 12 Tage 4 Std", formatRemaining(Instant.parse("2026-11-21T16:00:00Z"), now))
-        assertEquals("noch 1 Tag", formatRemaining(Instant.parse("2026-11-10T12:00:00Z"), now))
-        assertEquals("noch 5 Std 20 Min", formatRemaining(Instant.parse("2026-11-09T17:20:00Z"), now))
-        assertEquals("noch 20 Min", formatRemaining(Instant.parse("2026-11-09T12:20:00Z"), now))
-        assertEquals("Prüfung vorbei", formatRemaining(Instant.parse("2026-11-09T11:00:00Z"), now))
-        assertEquals("Prüfung vorbei", formatRemaining(null, now))
-    }
 
     @Test fun whenTextAndPastCheck() {
         assertEquals("Fr., 13. Nov., 09:00", formatExamWhen("2026-11-13", "09:00"))
@@ -314,12 +304,6 @@ class LogicTest {
 
     @Test fun todayShowsOnlyCountdownRingAndStartWithTheRestBehindMore() {
         val now = Instant.parse("2026-11-09T12:00:00Z")
-        assertEquals("in 12 Tagen", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-21T16:00:00Z"), now))
-        assertEquals("morgen", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-10T13:00:00Z"), now))
-        assertEquals("in 5 Std", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-09T17:20:00Z"), now))
-        assertEquals("in 20 Min", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-09T12:20:00Z"), now))
-        assertEquals("vorbei", com.jonasschnell.quickscope.logic.daysUntilLabel(Instant.parse("2026-11-09T11:00:00Z"), now))
-        assertEquals("vorbei", com.jonasschnell.quickscope.logic.daysUntilLabel(null, now))
         // mit Lektionen und Plan: alles hinter "Mehr", in Gruppen (Ueben, Heute, Pruefung)
         assertEquals(
             listOf(M.QuestionsOnly, M.ListenOnly, M.Plan, M.Used, M.Streak, M.Material, M.Settings),
@@ -346,5 +330,44 @@ class LogicTest {
         assertTrue(com.jonasschnell.quickscope.logic.acceptClick(0, 100))
         assertFalse(com.jonasschnell.quickscope.logic.acceptClick(1_000, 1_300))
         assertTrue(com.jonasschnell.quickscope.logic.acceptClick(1_000, 1_500))
+    }
+
+    // --- Relative Tagesangabe aus Kalendertagen ---
+
+    private val berlin = java.time.ZoneId.of("Europe/Berlin")
+    private fun day(start: String, now: String, startOfSentence: Boolean = false, zone: java.time.ZoneId = berlin) =
+        com.jonasschnell.quickscope.logic.relativeDayLabel(Instant.parse(start), Instant.parse(now), zone, startOfSentence)
+
+    @Test fun relativeDayUsesCalendarDaysNotHours() {
+        // jetzt Mo 21:00 Berlin (20:00Z); Pruefung Mi 08:00 Berlin (07:00Z) = nur 35 Stunden, aber uebermorgen
+        assertEquals("übermorgen", day("2026-11-11T07:00:00Z", "2026-11-09T20:00:00Z"))
+        assertEquals("morgen", day("2026-11-10T07:00:00Z", "2026-11-09T20:00:00Z"))
+        assertEquals("heute, in 5 Std", day("2026-11-09T20:00:00Z", "2026-11-09T15:00:00Z"))
+        assertEquals("in 20 Min", day("2026-11-09T12:20:00Z", "2026-11-09T12:00:00Z"))
+        assertEquals("in 5 Tagen", day("2026-11-14T08:00:00Z", "2026-11-09T12:00:00Z"))
+        assertEquals("vorbei", day("2026-11-08T08:00:00Z", "2026-11-09T12:00:00Z"))   // gestern
+        assertEquals("vorbei", com.jonasschnell.quickscope.logic.relativeDayLabel(null, Instant.parse("2026-11-09T12:00:00Z"), berlin))
+    }
+
+    @Test fun relativeDayAroundMidnight() {
+        // 23:59 Berlin, Pruefung 00:30 Berlin am Folgetag: nur 31 Minuten, aber "morgen" im Kalender
+        assertEquals("morgen", day("2026-11-09T23:30:00Z", "2026-11-09T22:59:00Z"))
+        // 00:01 Berlin am Pruefungstag, Pruefung 08:00 Berlin: heute
+        assertEquals("heute, in 7 Std", day("2026-11-10T07:00:00Z", "2026-11-09T23:59:00Z"))
+    }
+
+    @Test fun relativeDayDependsOnTimeZone() {
+        // gleicher Zeitpunkt: in Berlin schon der naechste Tag, in New York noch derselbe
+        val start = "2026-11-10T04:00:00Z"; val now = "2026-11-09T14:00:00Z"
+        assertEquals("morgen", day(start, now, zone = berlin))
+        assertEquals("heute, in 14 Std", day(start, now, zone = java.time.ZoneId.of("America/New_York")))
+    }
+
+    @Test fun relativeDayCapitalisation() {
+        assertEquals("Morgen", day("2026-11-10T07:00:00Z", "2026-11-09T20:00:00Z", startOfSentence = true))
+        assertEquals("Übermorgen", day("2026-11-11T07:00:00Z", "2026-11-09T20:00:00Z", startOfSentence = true))
+        assertEquals("In 5 Tagen", day("2026-11-14T08:00:00Z", "2026-11-09T12:00:00Z", startOfSentence = true))
+        assertEquals("Vorbei", day("2026-11-08T08:00:00Z", "2026-11-09T12:00:00Z", startOfSentence = true))
+        assertEquals("Prüfung morgen", "Prüfung " + day("2026-11-10T07:00:00Z", "2026-11-09T20:00:00Z"))   // mitten im Satz klein
     }
 }

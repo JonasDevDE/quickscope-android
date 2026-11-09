@@ -51,7 +51,7 @@ import com.jonasschnell.quickscope.data.neutralMessage
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.logic.examStart
 import com.jonasschnell.quickscope.logic.dayGoalReached
-import com.jonasschnell.quickscope.logic.daysUntilLabel
+import com.jonasschnell.quickscope.logic.relativeDayLabel
 import com.jonasschnell.quickscope.logic.forecastReliable
 import com.jonasschnell.quickscope.logic.isOpen
 import com.jonasschnell.quickscope.logic.isOver
@@ -202,7 +202,7 @@ private fun ReadyView(
     val open = isOpen(exam)
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
     if (!open) {
-        Text(daysUntilLabel(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+        Text(relativeDayLabel(examStart(exam), Instant.now(), startOfSentence = true), color = Muted, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
     }
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)

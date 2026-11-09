@@ -37,21 +37,6 @@ fun sortExams(exams: List<Exam>, now: Instant): List<Exam> {
     return upcoming.sortedBy { examStart(it) ?: Instant.MAX } + past.sortedByDescending { examStart(it) ?: Instant.MIN }
 }
 
-/** "noch 12 Tage 4 Std", "noch 5 Std 20 Min", "noch 20 Min", sonst "Prüfung vorbei". */
-fun formatRemaining(startsAt: Instant?, now: Instant): String {
-    if (startsAt == null || !startsAt.isAfter(now)) return "Prüfung vorbei"
-    val total = Duration.between(now, startsAt)
-    val days = total.toDays()
-    val hours = total.toHours() % 24
-    val minutes = total.toMinutes() % 60
-    val text = when {
-        days >= 1 -> "$days ${if (days == 1L) "Tag" else "Tage"}" + if (hours > 0) " $hours Std" else ""
-        total.toHours() >= 1 -> "${total.toHours()} Std" + if (minutes > 0) " $minutes Min" else ""
-        else -> "${maxOf(1, minutes)} Min"
-    }
-    return "noch $text"
-}
-
 private val whenFmt = DateTimeFormatter.ofPattern("EEE, d. MMM, HH:mm", DE)
 
 /** "Fr., 13. Nov., 09:00" aus Datum und Uhrzeit; bei unlesbaren Werten die Rohwerte. */
@@ -125,17 +110,32 @@ enum class NewExamPage { Kind, Name, When, Material, Description, Prior, Daily }
 fun newExamPages(open: Boolean): List<NewExamPage> =
     NewExamPage.entries.filter { open.not() || it != NewExamPage.When }
 
-/** Kurzzeile unter dem Pruefungsnamen: "in 12 Tagen", "morgen", "heute", "in 5 Std", "in 20 Min"; "vorbei" nach dem Termin. */
-fun daysUntilLabel(startsAt: Instant?, now: Instant): String {
-    if (startsAt == null || !startsAt.isAfter(now)) return "vorbei"
-    val total = Duration.between(now, startsAt)
-    val days = total.toDays()
-    return when {
-        days >= 2 -> "in $days Tagen"
-        days == 1L -> "morgen"
-        total.toHours() >= 1 -> "in ${total.toHours()} Std"
-        else -> "in ${maxOf(1, total.toMinutes())} Min"
+/** Erster Buchstabe gross (Satz- oder Zeilenanfang), sonst unveraendert. */
+fun capFirst(text: String): String = text.replaceFirstChar { it.uppercase() }
+
+/**
+ * Relative Angabe bis zum Prüfungstermin, aus KALENDERTAGEN in [zone] (nicht aus Stunden/24): heute, morgen, übermorgen, "in N Tagen";
+ * am Termintag zusätzlich "in N Std" bzw. "in N Min". Nach dem Termin "vorbei". Am Satz- oder Zeilenanfang ([startOfSentence]) gross
+ * ("Morgen"), mitten im Satz klein ("Prüfung morgen").
+ */
+fun relativeDayLabel(startsAt: Instant?, now: Instant, zone: java.time.ZoneId = java.time.ZoneId.systemDefault(), startOfSentence: Boolean = false): String {
+    val text = when {
+        startsAt == null || !startsAt.isAfter(now) -> "vorbei"
+        else -> {
+            val days = java.time.temporal.ChronoUnit.DAYS.between(now.atZone(zone).toLocalDate(), startsAt.atZone(zone).toLocalDate())
+            val total = Duration.between(now, startsAt)
+            when {
+                days <= 0L -> when {
+                    total.toHours() >= 1 -> "heute, in ${total.toHours()} Std"
+                    else -> "in ${maxOf(1, total.toMinutes())} Min"
+                }
+                days == 1L -> "morgen"
+                days == 2L -> "übermorgen"
+                else -> "in $days Tagen"
+            }
+        }
     }
+    return if (startOfSentence) capFirst(text) else text
 }
 
 /** Eintraege hinter "Mehr" auf Heute, in der Reihenfolge ihrer Gruppen (Ueben, Heute, Pruefung). */
