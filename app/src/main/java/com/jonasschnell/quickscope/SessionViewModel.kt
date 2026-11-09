@@ -18,6 +18,7 @@ import com.jonasschnell.quickscope.logic.Outcome
 import com.jonasschnell.quickscope.logic.Task
 import com.jonasschnell.quickscope.logic.newlySitting
 import com.jonasschnell.quickscope.logic.nextDayStreak
+import com.jonasschnell.quickscope.logic.scoreOrNull
 import com.jonasschnell.quickscope.logic.retryInsertIndex
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.topicLabels
@@ -242,7 +243,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             }
             viewModelScope.launch {
                 val f = sync.flush(s.examId)
-                if (f != null) _state.update { it.copy(forecastAfter = f.forecast, scoreAfter = f.forecast.scoreNowPercent) }
+                if (f != null) _state.update { it.copy(forecastAfter = f.forecast, scoreAfter = f.forecast.scoreOrNull()) }
             }
         } else {
             shownAt = SystemClock.elapsedRealtime()

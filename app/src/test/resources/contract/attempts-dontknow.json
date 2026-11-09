@@ -19,20 +19,20 @@
       "scoreAtExamPercent" : 95
     } ],
     "daysLeft" : 10,
-    "hoursLeft" : 230,
+    "hoursLeft" : 229,
     "doneSecondsToday" : 0,
     "streakDays" : 2,
     "bestStreakDays" : 3,
     "weakTopics" : [ {
-      "topicId" : "6af1fab18c04f9867dc6960d",
+      "topicId" : "6af1feed0a3988896a5fce71",
       "title" : "Zinsrechnung",
       "mastery" : 0.58
     }, {
-      "topicId" : "6af1fab18c04f9867dc69610",
+      "topicId" : "6af1feed0a3988896a5fce74",
       "title" : "Vertragsrecht",
       "mastery" : 0.54
     }, {
-      "topicId" : "6af1fab18c04f9867dc6960f",
+      "topicId" : "6af1feed0a3988896a5fce73",
       "title" : "Kalkulation",
       "mastery" : 0.39
     } ],
@@ -53,5 +53,5 @@
     "note" : "Schätzung, keine Garantie"
   },
   "doneSecondsToday" : 0,
-  "nextLessonId" : "6af1fab18c04f9867dc69612"
+  "nextLessonId" : "6af1feee0a3988896a5fce76"
 }

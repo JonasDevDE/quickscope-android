@@ -1,5 +1,5 @@
 {
-  "scoreNowPercent" : 35,
+  "scoreNowPercent" : 70,
   "scoreAtExamPercent" : 95,
   "projections" : [ {
     "minutes" : 10,
@@ -18,34 +18,34 @@
     "scoreAtExamPercent" : 95
   } ],
   "daysLeft" : 21,
-  "hoursLeft" : 494,
+  "hoursLeft" : 493,
   "doneSecondsToday" : 0,
-  "streakDays" : 3,
-  "bestStreakDays" : 3,
+  "streakDays" : 0,
+  "bestStreakDays" : 0,
   "weakTopics" : [ {
-    "topicId" : "6af1fab18c04f9867dc69610",
-    "title" : "Vertragsrecht",
-    "mastery" : 0.1
-  }, {
-    "topicId" : "6af1fab18c04f9867dc6960d",
+    "topicId" : "6af1feed0a3988896a5fce71",
     "title" : "Zinsrechnung",
-    "mastery" : 0.3
+    "mastery" : 0.45
   }, {
-    "topicId" : "6af1fab18c04f9867dc6960f",
+    "topicId" : "6af1feed0a3988896a5fce74",
+    "title" : "Vertragsrecht",
+    "mastery" : 0.75
+  }, {
+    "topicId" : "6af1feed0a3988896a5fce73",
     "title" : "Kalkulation",
-    "mastery" : 0.1
+    "mastery" : 0.97
   } ],
-  "confidence" : "low",
+  "confidence" : "medium",
   "mode" : "marathon",
-  "coveragePercent" : 0,
+  "coveragePercent" : 65,
   "milestones" : [ {
     "date" : "2026-11-16",
-    "coveragePercent" : 40,
-    "scorePercent" : 55
+    "coveragePercent" : 80,
+    "scorePercent" : 80
   }, {
     "date" : "2026-11-23",
-    "coveragePercent" : 85,
-    "scorePercent" : 75
+    "coveragePercent" : 95,
+    "scorePercent" : 85
   } ],
   "plan" : {
     "todayChapters" : [ "Rechnen", "Vertragsrecht" ],

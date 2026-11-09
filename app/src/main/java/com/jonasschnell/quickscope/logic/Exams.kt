@@ -1,6 +1,7 @@
 package com.jonasschnell.quickscope.logic
 
 import com.jonasschnell.quickscope.data.Exam
+import com.jonasschnell.quickscope.data.Forecast
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -101,4 +102,7 @@ fun planLine(plan: com.jonasschnell.quickscope.data.Plan?): String? {
  * Aufgaben oder Lektionen aendern; dann lieber ein ruhiger Platzhalter statt einer Zahl.
  */
 fun forecastReliable(exam: com.jonasschnell.quickscope.data.Exam?, f: com.jonasschnell.quickscope.data.Forecast?): Boolean =
-    exam != null && f != null && exam.status == "ready" && f.coveragePercent > 0
+    exam != null && f != null && exam.status == "ready" && f.coveragePercent > 0 && f.confidence != "none"
+
+/** Stand jetzt, oder null ohne belastbare Prognose (confidence "none": die Zahlen fehlen im JSON). */
+fun Forecast.scoreOrNull(): Int? = if (confidence == "none") null else scoreNowPercent

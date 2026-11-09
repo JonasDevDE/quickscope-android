@@ -2,7 +2,7 @@
   "items" : [ {
     "id" : "i-card",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc6960d",
+    "topicId" : "6af1feed0a3988896a5fce71",
     "type" : "card",
     "question" : "Zinsen?",
     "answer" : "Preis für Kapital",
@@ -22,7 +22,7 @@
   }, {
     "id" : "i-cloze",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc6960f",
+    "topicId" : "6af1feed0a3988896a5fce73",
     "type" : "cloze",
     "question" : "Selbstkosten + ___ = Verkaufspreis.",
     "answer" : "Gewinn",
@@ -40,11 +40,11 @@
     "fromExam" : false,
     "aiSolution" : false,
     "lesson" : false,
-    "ttsText" : "Selbstkosten + Lücke = Verkaufspreis."
+    "ttsText" : "Selbstkosten + – = Verkaufspreis."
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc69610",
+    "topicId" : "6af1feed0a3988896a5fce74",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -58,7 +58,7 @@
   }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc6960d",
+    "topicId" : "6af1feed0a3988896a5fce71",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -83,20 +83,20 @@
   }, {
     "id" : "i-match",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc6960f",
+    "topicId" : "6af1feed0a3988896a5fce73",
     "type" : "match",
     "question" : "Zuordnen:",
     "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
     "payload" : {
       "pairs" : [ {
-        "right" : "Herstellkosten + Verwaltung",
-        "left" : "Selbstkosten"
+        "left" : "Selbstkosten",
+        "right" : "Herstellkosten + Verwaltung"
       }, {
-        "right" : "Preis vor Rabatt",
-        "left" : "Listenpreis"
+        "left" : "Listenpreis",
+        "right" : "Preis vor Rabatt"
       }, {
-        "right" : "Preis vor Skonto",
-        "left" : "Zielpreis"
+        "left" : "Zielpreis",
+        "right" : "Preis vor Skonto"
       } ]
     },
     "difficulty" : 3,
@@ -112,7 +112,7 @@
   }, {
     "id" : "i-choice2",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc69610",
+    "topicId" : "6af1feed0a3988896a5fce74",
     "type" : "choice2",
     "question" : "Transportrisiko: Käufer oder Verkäufer?",
     "answer" : "Käufer",
@@ -133,7 +133,7 @@
   }, {
     "id" : "i-mc",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc6960d",
+    "topicId" : "6af1feed0a3988896a5fce71",
     "type" : "mc",
     "question" : "Jahreszins-Formel?",
     "answer" : "K × p / 100",
@@ -152,7 +152,7 @@
   }, {
     "id" : "i-tf",
     "examId" : "e-ready",
-    "topicId" : "6af1fab18c04f9867dc69610",
+    "topicId" : "6af1feed0a3988896a5fce74",
     "type" : "truefalse",
     "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
     "answer" : "wahr",
@@ -171,54 +171,27 @@
   "kind" : "diagnostic",
   "reason" : "Einstufung: 8 Fragen, 3 Themen.",
   "forecast" : {
-    "scoreNowPercent" : 35,
-    "scoreAtExamPercent" : 95,
-    "projections" : [ {
-      "minutes" : 10,
-      "scoreAtExamPercent" : 95
-    }, {
-      "minutes" : 20,
-      "scoreAtExamPercent" : 95
-    }, {
-      "minutes" : 30,
-      "scoreAtExamPercent" : 95
-    }, {
-      "minutes" : 45,
-      "scoreAtExamPercent" : 95
-    }, {
-      "minutes" : 60,
-      "scoreAtExamPercent" : 95
-    } ],
     "daysLeft" : 21,
-    "hoursLeft" : 494,
+    "hoursLeft" : 493,
     "doneSecondsToday" : 0,
     "streakDays" : 3,
     "bestStreakDays" : 3,
     "weakTopics" : [ {
-      "topicId" : "6af1fab18c04f9867dc69610",
+      "topicId" : "6af1feed0a3988896a5fce74",
       "title" : "Vertragsrecht",
       "mastery" : 0.1
     }, {
-      "topicId" : "6af1fab18c04f9867dc6960d",
+      "topicId" : "6af1feed0a3988896a5fce71",
       "title" : "Zinsrechnung",
       "mastery" : 0.3
     }, {
-      "topicId" : "6af1fab18c04f9867dc6960f",
+      "topicId" : "6af1feed0a3988896a5fce73",
       "title" : "Kalkulation",
       "mastery" : 0.1
     } ],
-    "confidence" : "low",
+    "confidence" : "none",
     "mode" : "marathon",
     "coveragePercent" : 0,
-    "milestones" : [ {
-      "date" : "2026-11-16",
-      "coveragePercent" : 40,
-      "scorePercent" : 55
-    }, {
-      "date" : "2026-11-23",
-      "coveragePercent" : 85,
-      "scorePercent" : 75
-    } ],
     "plan" : {
       "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
       "chaptersTotal" : 2,

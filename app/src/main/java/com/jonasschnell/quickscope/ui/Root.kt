@@ -49,6 +49,7 @@ import com.jonasschnell.quickscope.Phase
 import com.jonasschnell.quickscope.SessionPhase
 import com.jonasschnell.quickscope.SessionViewModel
 import com.jonasschnell.quickscope.UiState
+import com.jonasschnell.quickscope.logic.scoreOrNull
 import com.jonasschnell.quickscope.ui.theme.Accent
 import com.jonasschnell.quickscope.ui.theme.Black
 import com.jonasschnell.quickscope.ui.theme.CardHigh
@@ -150,7 +151,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                 } else {
                     HomePage(
                         state, loading = !ready || !state.examsLoaded,
-                        onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreNowPercent) },
+                        onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreOrNull()) },
                         onListen = { overlay = Overlay.Audiobook(it.id) },
                         onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
@@ -183,7 +184,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                     o.examId, exam?.dailyMinutes ?: 20,
                     onQuestions = {
                         overlay = null
-                        exam?.let { e -> sessionVm.start(e.id, com.jonasschnell.quickscope.logic.remainingMinutes(e.dailyMinutes, state.activeForecast?.doneSecondsToday ?: 0), state.activeForecast?.scoreNowPercent) }
+                        exam?.let { e -> sessionVm.start(e.id, com.jonasschnell.quickscope.logic.remainingMinutes(e.dailyMinutes, state.activeForecast?.doneSecondsToday ?: 0), state.activeForecast?.scoreOrNull()) }
                     },
                     onClose = dismiss,
                 )

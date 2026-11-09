@@ -281,9 +281,9 @@ private fun DoneView(s: SessionUi, onClose: () -> Unit) {
             }
             val before = s.scoreBefore
             val after = s.scoreAfter
-            if (before != null && after != null && floor5(before) != floor5(after)) {
+            if (after != null && (before == null || floor5(before) != floor5(after))) {
                 Spacer(Modifier.height(16.dp))
-                Text(beforeAfterLine(before, after), style = MaterialTheme.typography.titleMedium, color = Accent)
+                Text(beforeAfterLine(before ?: after, after), style = MaterialTheme.typography.titleMedium, color = Accent)
             }
             if (s.dayStreak >= 2) {
                 Spacer(Modifier.height(8.dp))

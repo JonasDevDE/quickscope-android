@@ -7,15 +7,15 @@
   "streakDays" : 0,
   "bestStreakDays" : 0,
   "weakTopics" : [ {
-    "topicId" : "6af1fab18c04f9867dc6960d",
+    "topicId" : "6af1feed0a3988896a5fce71",
     "title" : "Zinsrechnung",
     "mastery" : 0.59
   }, {
-    "topicId" : "6af1fab18c04f9867dc69610",
+    "topicId" : "6af1feed0a3988896a5fce74",
     "title" : "Vertragsrecht",
     "mastery" : 0.71
   }, {
-    "topicId" : "6af1fab18c04f9867dc6960f",
+    "topicId" : "6af1feed0a3988896a5fce73",
     "title" : "Kalkulation",
     "mastery" : 0.92
   } ],

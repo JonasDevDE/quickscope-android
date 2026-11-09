@@ -6,7 +6,7 @@
   "name" : "Skript Wirtschaft.pdf",
   "sizeBytes" : 2400000,
   "status" : "done",
-  "createdAt" : "2026-11-09T16:54:09.801544200Z"
+  "createdAt" : "2026-11-09T17:12:14.005412300Z"
 }, {
   "id" : "m-scan",
   "examId" : "e-ready",
@@ -17,7 +17,7 @@
   "status" : "done",
   "warning" : "Seite 3 schwer lesbar",
   "pages" : 3,
-  "createdAt" : "2026-11-09T16:54:09.802560200Z"
+  "createdAt" : "2026-11-09T17:12:14.005412300Z"
 }, {
   "id" : "m-text",
   "examId" : "e-ready",
@@ -26,7 +26,7 @@
   "name" : "Notizen",
   "sizeBytes" : 1800,
   "status" : "done",
-  "createdAt" : "2026-11-09T16:54:09.802560200Z"
+  "createdAt" : "2026-11-09T17:12:14.005412300Z"
 }, {
   "id" : "m-image",
   "examId" : "e-ready",
@@ -37,7 +37,7 @@
   "status" : "failed",
   "error" : "KI nicht eingerichtet",
   "pages" : 1,
-  "createdAt" : "2026-11-09T16:54:09.802560200Z"
+  "createdAt" : "2026-11-09T17:12:14.005412300Z"
 }, {
   "id" : "m-audio",
   "examId" : "e-ready",
@@ -46,5 +46,5 @@
   "name" : "Vorlesung 3.mp3",
   "sizeBytes" : 18000000,
   "status" : "processing",
-  "createdAt" : "2026-11-09T16:54:09.802560200Z"
+  "createdAt" : "2026-11-09T17:12:14.005412300Z"
 } ]

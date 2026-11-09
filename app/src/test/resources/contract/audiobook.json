@@ -1,13 +1,13 @@
 {
   "items" : [ {
-    "lessonId" : "6af1fab18c04f9867dc69613",
-    "chapterId" : "6af1fab18c04f9867dc6960e",
+    "lessonId" : "6af1feee0a3988896a5fce77",
+    "chapterId" : "6af1feed0a3988896a5fce72",
     "chapterTitle" : "Rechnen",
     "title" : "Preis kalkulieren",
     "estSeconds" : 42
   }, {
-    "lessonId" : "6af1fab18c04f9867dc69614",
-    "chapterId" : "6af1fab18c04f9867dc69610",
+    "lessonId" : "6af1feee0a3988896a5fce78",
+    "chapterId" : "6af1feed0a3988896a5fce74",
     "chapterTitle" : "Vertragsrecht",
     "title" : "Vertrag entsteht",
     "estSeconds" : 41

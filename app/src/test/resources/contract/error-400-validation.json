@@ -1,5 +1,5 @@
 {
-  "timestamp" : "2026-11-09T16:54:11.291367600Z",
+  "timestamp" : "2026-11-09T17:12:16.044628700Z",
   "status" : 400,
   "error" : "Bad Request",
   "message" : "name: darf nicht leer sein",
