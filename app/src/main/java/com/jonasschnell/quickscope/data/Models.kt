@@ -27,7 +27,6 @@ data class Exam(
     val startsAt: String = "",
     val hoursLeft: Long = 0,
     val description: String? = null,
-    val targetPercent: Int = 80,
     val dailyMinutes: Int = 20,
     val status: String = "empty",
     val mode: String? = null,
@@ -90,15 +89,15 @@ data class Item(
 data class WeakTopic(val topicId: String = "", val title: String = "", val mastery: Double = 0.0)
 
 @Serializable
+data class Projection(val minutes: Int = 0, val scoreAtExamPercent: Int = 0)
+
+@Serializable
 data class Milestone(val date: String = "", val coveragePercent: Int = 0, val scorePercent: Int = 0)
 
 @Serializable
 data class Forecast(
     val scoreNowPercent: Int = 0,
     val scoreAtExamPercent: Int = 0,
-    val targetPercent: Int = 80,
-    val onTrack: Boolean = false,
-    val extraMinutesPerDayNeeded: Int? = null,
     val daysLeft: Int = 0,
     val hoursLeft: Long = 0,
     val doneSecondsToday: Int = 0,
@@ -106,6 +105,8 @@ data class Forecast(
     val confidence: String = "low",
     val mode: String? = null,
     val coveragePercent: Int = 0,
+    /** Voraussichtlicher Stand zur Pruefung je Lernzeit pro Tag (10, 20, 30, 45, 60 min). */
+    val projections: List<Projection> = emptyList(),
     val expectedGainPercentThisSession: Double? = null,
     val milestones: List<Milestone> = emptyList(),
     val showCheatsheetSuggestion: Boolean = false,
@@ -157,7 +158,6 @@ data class ExamCreate(
     val time: String,
     val description: String? = null,
     val dailyMinutes: Int? = null,
-    val targetPercent: Int? = null,
 )
 
 /** Teil-Aenderung: nur gesetzte Felder werden gesendet (explicitNulls = false). */
@@ -168,5 +168,11 @@ data class ExamUpdate(
     val time: String? = null,
     val description: String? = null,
     val dailyMinutes: Int? = null,
-    val targetPercent: Int? = null,
 )
+
+/** Ein Wort im Vorlesetext: [start]/[end] sind Zeichenindizes (UTF-16, end exklusiv), Zeiten in Inhaltszeit der Audiodatei. */
+@Serializable
+data class WordTiming(val start: Int = 0, val end: Int = 0, val fromMs: Long = 0, val toMs: Long = 0)
+
+@Serializable
+data class AudioTimings(val text: String = "", val durationMs: Long = 0, val words: List<WordTiming> = emptyList())

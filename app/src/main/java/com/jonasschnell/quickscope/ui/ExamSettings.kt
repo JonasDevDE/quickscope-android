@@ -32,7 +32,7 @@ import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.ExamUpdate
 import com.jonasschnell.quickscope.data.Material
 import com.jonasschnell.quickscope.logic.DAILY_MINUTE_CHOICES
-import com.jonasschnell.quickscope.logic.TARGET_CHOICES
+import com.jonasschnell.quickscope.logic.minutesChoiceLabel
 import com.jonasschnell.quickscope.logic.formatExamWhen
 import com.jonasschnell.quickscope.logic.isInPast
 import com.jonasschnell.quickscope.ui.theme.Accent
@@ -45,7 +45,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Material, Description, Name, When, Target, Daily, Regenerate, Reset, Delete }
+enum class ExamSetting { Material, Description, Name, When, Daily, Regenerate, Reset, Delete }
 
 /** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
 @Composable
@@ -62,7 +62,6 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
             SettingsRow("Beschreibung", null, { sub = ExamSetting.Description }) { Value(if (exam.description.isNullOrBlank()) "–" else "gesetzt") }
             SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
             SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
-            SettingsRow("Ziel", null, { sub = ExamSetting.Target }) { Value("${exam.targetPercent} %") }
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
             SettingsRow("Aufgaben neu erzeugen", null, { sub = ExamSetting.Regenerate }) {}
             SettingsRow("Fortschritt zurücksetzen", null, { sub = ExamSetting.Reset }) {}
@@ -72,8 +71,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         ExamSetting.Description -> DescriptionSheet(vm, exam) { sub = null }
         ExamSetting.Name -> NameSheet(vm, exam) { sub = null }
         ExamSetting.When -> WhenSheet(vm, exam) { sub = null }
-        ExamSetting.Target -> ChoiceSheet("Ziel", exam.targetPercent, TARGET_CHOICES, "%", "Das ist ein Ziel und eine Schätzung, keine Garantie.", { vm.updateExam(exam.id, ExamUpdate(targetPercent = it)) }) { sub = null }
-        ExamSetting.Daily -> ChoiceSheet("Lernzeit pro Tag", exam.dailyMinutes, DAILY_MINUTE_CHOICES, "min", null, { vm.updateExam(exam.id, ExamUpdate(dailyMinutes = it)) }) { sub = null }
+        ExamSetting.Daily -> DailySheet(state, vm, exam) { sub = null }
         ExamSetting.Regenerate -> AlertDialog(
             onDismissRequest = { sub = null },
             containerColor = Card,
@@ -155,16 +153,17 @@ private fun WhenSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     }
 }
 
+/** Lernzeit pro Tag: jede Stufe als Chip mit der Projektion daneben, die gewaehlte hervorgehoben; Autosave. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ChoiceSheet(title: String, current: Int, choices: List<Int>, unit: String, note: String?, onSave: (Int) -> Unit, onDismiss: () -> Unit) {
-    var value by remember { mutableIntStateOf(current) }
-    val saved = AutoSave(value, true, instantKey = value) { v, _ -> onSave(v) }
-    QuickscopeSheet(onDismiss, title, status = if (saved) "Gespeichert" else null) {
+private fun DailySheet(state: UiState, vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
+    var value by remember { mutableIntStateOf(exam.dailyMinutes) }
+    val forecast = state.forecast?.takeIf { state.forecastExamId == exam.id }
+    val saved = AutoSave(value, true, instantKey = value) { v, _ -> vm.updateExam(exam.id, ExamUpdate(dailyMinutes = v)) }
+    QuickscopeSheet(onDismiss, "Lernzeit pro Tag", status = if (saved) "Gespeichert" else null) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            choices.forEach { c -> Pill("$c $unit", value == c, { value = c }) }
+            DAILY_MINUTE_CHOICES.forEach { c -> Pill(minutesChoiceLabel(forecast, c), value == c, { value = c }) }
         }
-        if (note != null) Text(note, color = Muted, style = MaterialTheme.typography.bodySmall)
     }
 }
 

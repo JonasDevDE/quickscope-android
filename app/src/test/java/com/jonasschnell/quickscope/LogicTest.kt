@@ -4,6 +4,7 @@ import com.jonasschnell.quickscope.data.AttemptRequest
 import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.Item
+import com.jonasschnell.quickscope.data.Projection
 import com.jonasschnell.quickscope.logic.AttemptQueue
 import com.jonasschnell.quickscope.logic.MatchState
 import com.jonasschnell.quickscope.logic.OrderState
@@ -11,10 +12,12 @@ import com.jonasschnell.quickscope.logic.QueueStorage
 import com.jonasschnell.quickscope.logic.Task
 import com.jonasschnell.quickscope.logic.audioPrompt
 import com.jonasschnell.quickscope.logic.beforeAfterLine
-import com.jonasschnell.quickscope.logic.confidenceLine
-import com.jonasschnell.quickscope.logic.extraTimeLine
 import com.jonasschnell.quickscope.logic.formatExamWhen
+import com.jonasschnell.quickscope.logic.floor5
 import com.jonasschnell.quickscope.logic.formatRemaining
+import com.jonasschnell.quickscope.logic.masteryPercent
+import com.jonasschnell.quickscope.logic.minutesChoiceLabel
+import com.jonasschnell.quickscope.logic.percentText
 import com.jonasschnell.quickscope.logic.isInPast
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.parseTask
@@ -83,15 +86,32 @@ class LogicTest {
 
     // --- Prognosetexte ---
 
-    @Test fun forecastTextsAreHonest() {
-        assertEquals("Schätzung, noch wenig Daten", confidenceLine("low"))
-        assertEquals("Schätzung, keine Garantie", confidenceLine("high"))
-        val f = Forecast(scoreNowPercent = 40, scoreAtExamPercent = 78, targetPercent = 90, onTrack = false, extraMinutesPerDayNeeded = 12)
-        assertEquals("mit deiner Lernzeit ca. 78 % bis zur Prüfung", projectionLine(f))
-        assertEquals("Für das Ziel: etwa 12 min mehr pro Tag", extraTimeLine(f))
-        assertNull(extraTimeLine(f.copy(onTrack = true)))
-        assertEquals("Prognose 40 % → 52 %", beforeAfterLine(40, 52))
-        assertEquals("Prognose 52 %", beforeAfterLine(52, 52))
+    @Test fun percentsAreAlwaysFlooredToFive() {
+        assertEquals(0, floor5(0))
+        assertEquals(0, floor5(4))
+        assertEquals(5, floor5(5))
+        assertEquals(75, floor5(78))
+        assertEquals(75, floor5(79))
+        assertEquals(80, floor5(80))
+        assertEquals(95, floor5(99))
+        assertEquals(100, floor5(100))
+        assertEquals(100, floor5(140))
+        assertEquals(0, floor5(-3))
+        assertEquals("75 %", percentText(79))
+        assertEquals(35, masteryPercent(0.39))
+    }
+
+    @Test fun forecastTextsAreShortAndHonest() {
+        val f = Forecast(scoreNowPercent = 40, scoreAtExamPercent = 78, confidence = "low",
+            projections = listOf(Projection(10, 62), Projection(20, 74)))
+        assertEquals("Bei 20 min täglich: ca. 75 % in der Prüfung, noch grob", projectionLine(f, 20))
+        assertEquals("Bei 30 min täglich: ca. 75 % in der Prüfung", projectionLine(f.copy(confidence = "medium"), 30))
+        assertEquals("10 min · ca. 60 %", minutesChoiceLabel(f, 10))
+        assertEquals("20 min · ca. 70 %", minutesChoiceLabel(f, 20))
+        assertEquals("45 min", minutesChoiceLabel(f, 45))
+        assertEquals("45 min", minutesChoiceLabel(null, 45))
+        assertEquals("Prognose 40 % → 50 %", beforeAfterLine(42, 52))
+        assertEquals("Prognose 50 %", beforeAfterLine(51, 52))
         assertEquals(20, remainingMinutes(30, 600))
         assertEquals(3, remainingMinutes(10, 3000))
         assertEquals("Los (20 min)", startLabel(20))
@@ -173,9 +193,16 @@ class LogicTest {
         assertNull(shortExplanation(null))
     }
 
-    @Test fun audioPromptListsOptions() {
-        val t = parseTask(Item(id = "x", type = "mc", question = "Q?", answer = "A", options = listOf("A", "B"), correctIndex = 0, ttsText = "Q?"))
-        assertEquals("Q?. Antwort 1: A. Antwort 2: B", audioPrompt(t))
+    @Test fun audioPromptIsOnlyTheQuestion() {
+        val mc = parseTask(Item(id = "x", type = "mc", question = "Q?", answer = "A", options = listOf("A", "B"), correctIndex = 0, ttsText = "Q? A: A. B: B."))
+        assertEquals("Q?", audioPrompt(mc))
+        val cloze = parseTask(Item(id = "c", type = "cloze", question = "Plus ___ ergibt Preis.", answer = "Gewinn",
+            payload = kotlinx.serialization.json.buildJsonObject {
+                put("text", kotlinx.serialization.json.JsonPrimitive("Plus ___ ergibt Preis."))
+                put("bank", kotlinx.serialization.json.JsonArray(listOf("Gewinn", "Skonto").map { kotlinx.serialization.json.JsonPrimitive(it) }))
+                put("answer", kotlinx.serialization.json.JsonPrimitive("Gewinn"))
+            }))
+        assertEquals("Plus Lücke ergibt Preis.", audioPrompt(cloze))
     }
 
     @Test fun progressFollowsEstimatedSeconds() {

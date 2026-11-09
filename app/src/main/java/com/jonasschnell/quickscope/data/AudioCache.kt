@@ -72,6 +72,25 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
             ?.let { it as? kotlinx.serialization.json.JsonPrimitive }?.content?.takeIf { it.isNotBlank() }
     }.getOrNull()
 
+    private val timingsCache = mutableMapOf<String, AudioTimings?>()
+
+    /** Wortzeiten zu einem Teil; null bei 404/503/Netzfehler (dann ohne Hervorhebung). Ergebnisse werden pro Runde gemerkt. */
+    suspend fun timings(examId: String, itemId: String, part: VoicePart): AudioTimings? {
+        val key = audioFileName(examId, itemId, part)
+        synchronized(timingsCache) { if (timingsCache.containsKey(key)) return timingsCache[key] }
+        val result = withContext(Dispatchers.IO) {
+            runCatching {
+                val url = "${BuildConfig.BASE_URL}api/exams/$examId/items/$itemId/audio/timings?part=${part.query}"
+                client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                    if (!resp.isSuccessful) null else AppJson.decodeFromString(AudioTimings.serializer(), resp.body.string())
+                }
+            }.getOrNull()
+        }
+        // Fehlschlaege nicht merken, damit ein spaeterer Versuch (Prefetch fertig) klappen kann
+        if (result != null) synchronized(timingsCache) { timingsCache[key] = result }
+        return result
+    }
+
     /** Kleine Meldung an das Backend, damit es die Teile schon erzeugt; Fehler sind unkritisch. */
     suspend fun requestPrefetch(examId: String, itemIds: List<String>) {
         if (itemIds.isEmpty()) return
@@ -84,7 +103,10 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
     }
 
     /** Alles loeschen (Ende der Runde). */
-    suspend fun clear() = withContext(Dispatchers.IO) { dir.deleteRecursively(); Unit }
+    suspend fun clear() {
+        synchronized(timingsCache) { timingsCache.clear() }
+        withContext(Dispatchers.IO) { dir.deleteRecursively() }
+    }
 
     private companion object {
         const val MAX_BYTES = 40L * 1024 * 1024

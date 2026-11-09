@@ -3,7 +3,7 @@ package com.jonasschnell.quickscope
 import com.jonasschnell.quickscope.data.Item
 import com.jonasschnell.quickscope.logic.CardFlow
 import com.jonasschnell.quickscope.logic.CloudHealth
-import com.jonasschnell.quickscope.logic.DEFAULT_SPEED
+import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.PrefetchPlanner
 import com.jonasschnell.quickscope.logic.VoiceKind
 import com.jonasschnell.quickscope.logic.VoicePart
@@ -11,9 +11,7 @@ import com.jonasschnell.quickscope.logic.audioFeedback
 import com.jonasschnell.quickscope.logic.audioFileName
 import com.jonasschnell.quickscope.logic.chooseVoice
 import com.jonasschnell.quickscope.logic.filesToPrune
-import com.jonasschnell.quickscope.logic.normalizeSpeed
 import com.jonasschnell.quickscope.logic.parseTask
-import com.jonasschnell.quickscope.logic.speedLabel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -35,15 +33,8 @@ class AudioTest {
         assertTrue(p.next(ids, 99).isEmpty())
     }
 
-    @Test fun speedChoiceDefaultsAndSnaps() {
-        assertEquals(1.15f, DEFAULT_SPEED, 0.0001f)
-        assertEquals(1.15f, normalizeSpeed(0f), 0.0001f)
-        assertEquals(1.0f, normalizeSpeed(1.02f), 0.0001f)
-        assertEquals(1.3f, normalizeSpeed(1.5f), 0.0001f)
-        assertEquals(1.15f, normalizeSpeed(1.17f), 0.0001f)
-        assertEquals("1x", speedLabel(1.0f))
-        assertEquals("1,15x", speedLabel(1.15f))
-        assertEquals("1,3x", speedLabel(1.3f))
+    @Test fun speechSpeedIsFixed() {
+        assertEquals(1.15f, SPEECH_SPEED, 0.0001f)
     }
 
     @Test fun fallsBackToDeviceVoiceAfterFailureThenRetries() {

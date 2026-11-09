@@ -1,17 +1,10 @@
 package com.jonasschnell.quickscope.logic
 
-import kotlin.math.abs
-
 /** Teile einer Aufgabe, die vorgelesen werden: die Frage und die Antwort (mit Kurzerklaerung). */
 enum class VoicePart(val query: String) { Question("question"), Answer("answer") }
 
-val SPEEDS = listOf(1.0f, 1.15f, 1.3f)
-const val DEFAULT_SPEED = 1.15f
-
-/** Gespeicherte Geschwindigkeit auf eine der drei erlaubten Stufen abbilden (Standard 1.15). */
-fun normalizeSpeed(v: Float): Float = if (v <= 0f) DEFAULT_SPEED else SPEEDS.minByOrNull { abs(it - v) } ?: DEFAULT_SPEED
-
-fun speedLabel(v: Float): String = if (v == 1.0f) "1x" else "${v}x".replace('.', ',')
+/** Feste Wiedergabegeschwindigkeit der Stimme (Cloud-Stimme mit erhaltener Tonhoehe, Geraetestimme als Sprechrate). Nur hier festgelegt. */
+const val SPEECH_SPEED = 1.15f
 
 /**
  * Plant das Vorladen: bei jeder Aufgabe die aktuelle und die naechsten ([window] insgesamt) anfordern,

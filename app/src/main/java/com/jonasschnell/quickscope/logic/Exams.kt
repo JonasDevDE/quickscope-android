@@ -64,4 +64,12 @@ fun todayBerlin(now: Instant): LocalDate = now.atZone(BERLIN).toLocalDate()
 
 val QUICK_TIMES = listOf("08:00", "09:00", "10:00", "13:00")
 val DAILY_MINUTE_CHOICES = listOf(10, 20, 30, 45, 60)
-val TARGET_CHOICES = listOf(70, 80, 90, 100)
+
+/** Thementitel je Themen-Id fuer die Zeile ueber der Frage; bei Untergruppen "Gruppe › Titel". */
+fun topicLabels(topics: List<com.jonasschnell.quickscope.data.Topic>): Map<String, String> {
+    val byId = topics.associateBy { it.id }
+    return topics.associate { t ->
+        val parent = t.parentId?.let { byId[it] }?.title?.takeIf { it.isNotBlank() }
+        t.id to if (parent != null) "$parent › ${t.title}" else t.title
+    }
+}

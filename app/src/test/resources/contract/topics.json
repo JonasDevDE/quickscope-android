@@ -1,15 +1,15 @@
 [ {
-  "id" : "6af1ef2e73fabf93422cc840",
+  "id" : "6af1f56efdd6f59243f51603",
   "examId" : "e",
   "title" : "Zinsrechnung",
   "oneLiner" : "Zinsen und Zinseszins berechnen.",
   "weight" : 0.4,
   "order" : 1,
-  "parentId" : "6af1ef2e73fabf93422cc841",
+  "parentId" : "6af1f56efdd6f59243f51604",
   "level" : 1,
   "mastery" : 0.58
 }, {
-  "id" : "6af1ef2e73fabf93422cc841",
+  "id" : "6af1f56efdd6f59243f51604",
   "examId" : "e",
   "title" : "Rechnen",
   "oneLiner" : "",
@@ -18,17 +18,17 @@
   "level" : 0,
   "mastery" : 0.51
 }, {
-  "id" : "6af1ef2e73fabf93422cc842",
+  "id" : "6af1f56efdd6f59243f51605",
   "examId" : "e",
   "title" : "Kalkulation",
   "oneLiner" : "Preise Schritt für Schritt kalkulieren.",
   "weight" : 0.25,
   "order" : 2,
-  "parentId" : "6af1ef2e73fabf93422cc841",
+  "parentId" : "6af1f56efdd6f59243f51604",
   "level" : 1,
   "mastery" : 0.39
 }, {
-  "id" : "6af1ef2e73fabf93422cc843",
+  "id" : "6af1f56efdd6f59243f51606",
   "examId" : "e",
   "title" : "Vertragsrecht",
   "oneLiner" : "Verträge, Pflichten und Fristen.",

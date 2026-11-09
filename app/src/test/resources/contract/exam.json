@@ -6,13 +6,12 @@
   "startsAt" : "2026-11-30T07:00:00Z",
   "hoursLeft" : 494,
   "description" : "IHK Fachinformatiker AP2, Wirtschaft und Soziales, Schwerpunkt Kalkulation und Vertragsrecht",
-  "targetPercent" : 85,
   "dailyMinutes" : 30,
   "status" : "ready",
   "mode" : "marathon",
   "topicCount" : 3,
   "itemCount" : 13,
   "materialCount" : 5,
-  "createdAt" : "2026-11-09T16:05:02.639962100Z",
+  "createdAt" : "2026-11-09T16:31:43.019454800Z",
   "daysLeft" : 21
 }

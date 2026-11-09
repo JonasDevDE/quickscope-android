@@ -25,6 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import com.jonasschnell.quickscope.logic.CardFlow
 import com.jonasschnell.quickscope.logic.MatchState
 import com.jonasschnell.quickscope.logic.OrderState
@@ -41,7 +44,22 @@ import com.jonasschnell.quickscope.ui.theme.OnAccent
 
 @Composable
 private fun QuestionText(text: String) {
-    Text(text, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+    val hl = LocalHighlight.current
+    // Nur hervorheben, wenn der Text exakt dem gesprochenen Text entspricht; sonst ganz normal anzeigen
+    val shown = if (hl.text == text && hl.words.isNotEmpty()) {
+        buildAnnotatedString {
+            append(text)
+            hl.words.forEachIndexed { i, w ->
+                when {
+                    i == hl.active -> addStyle(SpanStyle(color = Accent, background = Accent.copy(alpha = 0.18f)), w.start, w.end)
+                    i < hl.spoken -> addStyle(SpanStyle(color = Color.White.copy(alpha = 0.55f)), w.start, w.end)
+                }
+            }
+        }
+    } else {
+        AnnotatedString(text)
+    }
+    Text(shown, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
 }
 
 /** Eine grosse Antwortflaeche; nach der Antwort gruen (richtig) bzw. rot (gewaehlt, falsch) eingefaerbt. */

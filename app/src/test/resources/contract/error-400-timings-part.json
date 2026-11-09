@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:31:44.411Z",
+  "status" : 400,
+  "error" : "Bad Request",
+  "message" : "part: question oder answer",
+  "path" : "/api/exams/e-ready/items/i-number/audio/timings"
+}

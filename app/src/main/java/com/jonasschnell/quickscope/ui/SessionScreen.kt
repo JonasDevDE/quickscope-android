@@ -16,9 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import com.jonasschnell.quickscope.logic.SPEEDS
 import com.jonasschnell.quickscope.logic.VoicePart
-import com.jonasschnell.quickscope.logic.speedLabel
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -27,12 +25,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jonasschnell.quickscope.SessionPhase
@@ -105,7 +105,7 @@ private fun MessageView(title: String, text: String, primary: String, onPrimary:
 @Composable
 private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose: () -> Unit) {
     val task = s.current ?: return
-    val voice = if (s.audio) rememberVoice(s.speed) else null
+    val voice = if (s.audio) rememberVoice() else null
     val haptics = LocalHaptics.current
     val ids = remember(s.tasks) { s.tasks.map { it.item.id } }
 
@@ -118,7 +118,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         val fb = s.feedback
         if (voice == null) return@LaunchedEffect
         if (fb == null) {
-            voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task))
+            voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task), displayText = task.item.question)
         } else {
             voice.speak(s.examId, task.item.id, VoicePart.Answer, audioFeedback(task, fb))
             delay(500)
@@ -144,7 +144,6 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
     TopRow(sessionProgress(s.tasks.map { it.item }, s.index), s.audio, vm::setAudio, onClose)
     if (voice != null) {
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SPEEDS.forEach { sp -> Pill(speedLabel(sp), voice.speed == sp, { voice.selectSpeed(sp); vm.setSpeed(sp) }) }
             if (voice.loading) SkeletonBox(Modifier.size(10.dp), CircleShape)
             if (voice.usingDevice) Text("Gerätestimme", color = Muted, style = MaterialTheme.typography.bodySmall)
         }
@@ -152,7 +151,12 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
         key(s.index) {
-            TaskBody(task, s.feedback, voice, s.examId, vm)
+            s.topics[task.item.topicId]?.let {
+                Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
+            CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
+                TaskBody(task, s.feedback, voice, s.examId, vm)
+            }
             s.feedback?.let { Spacer(Modifier.height(16.dp)); FeedbackPanel(task, it, vm::next) }
         }
     }

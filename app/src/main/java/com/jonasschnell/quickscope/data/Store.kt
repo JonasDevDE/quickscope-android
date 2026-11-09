@@ -22,11 +22,6 @@ class Store(context: Context) : QueueStorage {
         get() = prefs.getBoolean("audioMode", false)
         set(value) = prefs.edit().putBoolean("audioMode", value).apply()
 
-    /** Wiedergabegeschwindigkeit der Stimme (1.0 / 1.15 / 1.3). */
-    var audioSpeed: Float
-        get() = prefs.getFloat("audioSpeed", 1.15f)
-        set(value) = prefs.edit().putFloat("audioSpeed", value).apply()
-
     // Warteschlange fuer Antworten (siehe AttemptQueue)
     override fun read(key: String): String? = prefs.getString("q_$key", null)
 

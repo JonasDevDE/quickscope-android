@@ -2,6 +2,11 @@ package com.jonasschnell.quickscope
 
 import com.jonasschnell.quickscope.data.AppJson
 import com.jonasschnell.quickscope.data.AttemptsResponse
+import com.jonasschnell.quickscope.data.AudioTimings
+import com.jonasschnell.quickscope.data.WordTiming
+import com.jonasschnell.quickscope.logic.WordPos
+import com.jonasschnell.quickscope.logic.timingsMatch
+import com.jonasschnell.quickscope.logic.wordPosAt
 import com.jonasschnell.quickscope.data.CheatSheet
 import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.Forecast
@@ -52,7 +57,6 @@ class ContractTest {
         assertEquals("08:00", ready.time)
         assertEquals("2026-11-30T07:00:00Z", ready.startsAt)
         assertEquals(494L, ready.hoursLeft)
-        assertEquals(85, ready.targetPercent)
         assertEquals(30, ready.dailyMinutes)
         assertEquals(13L, ready.itemCount)
         assertEquals(5L, ready.materialCount)
@@ -104,55 +108,90 @@ class ContractTest {
         val group = list.first { it.title == "Rechnen" }
         assertEquals(0, group.level)
         assertNull(group.parentId)
+        val labels = com.jonasschnell.quickscope.logic.topicLabels(list)
+        assertEquals("Rechnen › Zinsrechnung", labels[leaf.id])
+        assertEquals("Rechnen", labels[group.id])
     }
 
     @Test fun forecasts() {
         val far = parse("forecast-far.json", Forecast.serializer())
-        assertEquals(31, far.scoreNowPercent)
-        assertEquals(96, far.scoreAtExamPercent)
-        assertEquals(85, far.targetPercent)
-        assertTrue(far.onTrack)
+        assertEquals(30, far.scoreNowPercent)
+        assertEquals(95, far.scoreAtExamPercent)
         assertEquals(21, far.daysLeft)
         assertEquals(494L, far.hoursLeft)
         assertEquals(3, far.weakTopics.size)
         assertEquals("Zinsrechnung", far.weakTopics[0].title)
         assertEquals(0.1, far.weakTopics[0].mastery, 0.0001)
-        assertEquals(2, far.milestones.size)
-        assertEquals(44, far.milestones[0].coveragePercent)
+        assertEquals(listOf(10, 20, 30, 45, 60), far.projections.map { it.minutes })
+        assertEquals(95, far.projections[1].scoreAtExamPercent)
         assertEquals("low", far.confidence)
         assertEquals("Schätzung, keine Garantie", far.note)
 
-        val tight = parse("forecast-not-on-track.json", Forecast.serializer())
-        assertFalse(tight.onTrack)
-        assertEquals(8, tight.extraMinutesPerDayNeeded)
-        assertEquals(95, tight.targetPercent)
-        assertEquals(66, tight.scoreAtExamPercent)
+        val proj = parse("forecast-projections.json", Forecast.serializer())
+        assertEquals(20, proj.scoreNowPercent)
+        assertEquals(65, proj.scoreAtExamPercent)
+        assertEquals(85, proj.projections.first { it.minutes == 10 }.scoreAtExamPercent)
+        assertEquals(95, proj.projections.first { it.minutes == 20 }.scoreAtExamPercent)
+        assertEquals("Bei 20 min täglich: ca. 65 % in der Prüfung, noch grob", com.jonasschnell.quickscope.logic.projectionLine(proj, 20))
+        assertEquals("10 min · ca. 85 %", com.jonasschnell.quickscope.logic.minutesChoiceLabel(proj, 10))
 
-        assertEquals("low", parse("forecast-confidence-low.json", Forecast.serializer()).confidence)
+        val low = parse("forecast-confidence-low.json", Forecast.serializer())
+        assertEquals("low", low.confidence)
+        assertEquals(55, low.scoreNowPercent)
+        assertEquals(45, low.coveragePercent)
         assertEquals("medium", parse("forecast-confidence-medium.json", Forecast.serializer()).confidence)
         val high = parse("forecast-confidence-high.json", Forecast.serializer())
         assertEquals("high", high.confidence)
-        assertEquals(100, high.scoreNowPercent)
+        assertEquals(95, high.scoreNowPercent)
+        assertEquals(100, high.coveragePercent)
 
         val over = parse("forecast-over.json", Forecast.serializer())
-        assertEquals(77, over.scoreNowPercent)
+        assertEquals(75, over.scoreNowPercent)
         assertEquals(0, over.daysLeft)
-        assertNull(over.extraMinutesPerDayNeeded)
+        assertTrue(over.projections.isEmpty())
     }
 
     @Test fun attemptsResponse() {
         val r = parse("attempts.json", AttemptsResponse.serializer())
-        assertEquals(59, r.forecast.scoreNowPercent)
-        assertEquals(97, r.forecast.scoreAtExamPercent)
+        assertEquals(55, r.forecast.scoreNowPercent)
+        assertEquals(95, r.forecast.scoreAtExamPercent)
         assertEquals(0, r.doneSecondsToday)
-        assertEquals(50, r.forecast.coveragePercent)
-        assertEquals(1, r.forecast.milestones.size)
+        assertEquals(45, r.forecast.coveragePercent)
+        assertEquals(5, r.forecast.projections.size)
+    }
+
+    @Test fun audioTimingsMatchTheQuestionAndDriveTheHighlight() {
+        val q = parse("timings-question.json", AudioTimings.serializer())
+        assertEquals("Zins: 1.000 € bei 3 %, 1 Jahr?", q.text)
+        assertEquals(2200L, q.durationMs)
+        assertEquals(8, q.words.size)
+        assertEquals(WordTiming(0, 5, 200, 438), q.words[0])
+        assertEquals("Zins:", q.text.substring(q.words[0].start, q.words[0].end))
+        assertEquals("Jahr?", q.text.substring(q.words.last().start, q.words.last().end))
+        assertTrue(timingsMatch("Zins: 1.000 € bei 3 %, 1 Jahr?", q))
+        assertFalse(timingsMatch("Zins: 1.000 € bei 3 %, 1 Jahr", q))
+        assertEquals(WordPos(0, -1), wordPosAt(q.words, 100))
+        assertEquals(WordPos(1, 1), wordPosAt(q.words, 500))
+        assertEquals(WordPos(8, -1), wordPosAt(q.words, 2200))
+        val a = parse("timings-answer.json", AudioTimings.serializer())
+        assertEquals("Richtig: 30 €.", a.text)
+        assertEquals(3, a.words.size)
+        assertTrue(timingsMatch(a.text, a))
+    }
+
+    @Test fun regenerateAndPrefetchResponses() {
+        val e = parse("regenerate.json", Exam.serializer())
+        assertEquals("e-ready", e.id)
+        assertEquals("processing", e.status)
+        assertEquals(13L, e.itemCount)
+        val queued = Json.parseToJsonElement(raw("audio-prefetch.json")).jsonObject["queued"]!!.jsonPrimitive.content
+        assertEquals("2", queued)
     }
 
     @Test fun cheatsheet() {
         val c = parse("cheatsheet.json", CheatSheet.serializer())
         assertEquals(5, c.minutes)
-        assertEquals(105, c.words)
+        assertEquals(70, c.words)
         assertEquals(10, c.bullets.size)
         assertEquals("Zinsrechnung", c.bullets[0].topic)
         assertTrue(c.bullets[0].text.startsWith("Zinseszins berechnen"))
@@ -162,7 +201,7 @@ class ContractTest {
     @Test fun diagnosticSessionAllTypes() {
         val s = parse("session-diagnostic.json", LearnSession.serializer())
         assertEquals("diagnostic", s.kind)
-        assertEquals(140, s.plannedSeconds)
+        assertEquals(129, s.plannedSeconds)
         assertEquals(11, s.items.size)
         assertTrue(s.reason.startsWith("Einstufung: 11 Fragen"))
         assertNull(s.finalRoundStart)
@@ -173,15 +212,15 @@ class ContractTest {
         assertTrue(tasks.getValue("i-card") is Task.Card)
         val cloze = tasks.getValue("i-cloze") as Task.Cloze
         assertEquals("Gewinn", cloze.answer)
-        assertEquals(listOf("Skonto", "Rabatt", "Gewinn"), cloze.bank)
+        assertEquals(listOf("Gewinn", "Skonto", "Rabatt"), cloze.bank)
         val num = tasks.getValue("i-aisol") as Task.Choice
         assertEquals(4, num.options.size)
         assertEquals("1.081,60 €", num.options[num.correct])
         assertTrue(num.item.aiSolution)
         assertEquals(3, num.item.solutionSteps!!.size)
-        assertEquals("Faktor zweimal anwenden", num.item.trick)
+        assertEquals("Faktor zweimal", num.item.trick)
         val c2 = tasks.getValue("i-choice2") as Task.Choice
-        assertEquals(listOf("Der Verkäufer", "Der Käufer"), c2.options)
+        assertEquals(listOf("Verkäufer", "Käufer"), c2.options)
         assertEquals(1, c2.correct)
         val mc = tasks.getValue("i-mc") as Task.Choice
         assertEquals(0, mc.correct)
@@ -193,14 +232,14 @@ class ContractTest {
         val order = tasks.getValue("i-order") as Task.Order
         assertEquals(listOf("Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis"), order.steps)
         val spot = tasks.getValue("i-spot") as Task.Spot
-        assertEquals(2, spot.falseIndex)
+        assertEquals(0, spot.falseIndex)
         assertEquals(3, spot.statements.size)
         val card = s.items.first { it.id == "i-card" }
-        assertEquals("Der Preis steigt mit Betrag und Laufzeit.", card.explanation)
+        assertEquals("Steigen mit Betrag, Laufzeit.", card.explanation)
         assertEquals("material", card.sourceType)
         assertEquals("m-pdf", card.source?.materialId)
         assertEquals(2, card.source?.page)
-        assertEquals(9, card.estSeconds)
+        assertEquals(8, card.estSeconds)
         assertTrue(card.ttsText!!.isNotBlank())
     }
 
@@ -209,7 +248,7 @@ class ContractTest {
         assertEquals(19, s.items.size)
         assertEquals(13, s.finalRoundStart)
         assertTrue(s.showCheatsheetSuggestion)
-        assertEquals(68.2, s.forecast!!.expectedGainPercentThisSession!!, 0.0001)
+        assertEquals(65.0, s.forecast!!.expectedGainPercentThisSession!!, 0.0001)
         // Abschlussrunde wie geliefert, ohne Deduplizierung: dieselbe Aufgabe darf zweimal vorkommen
         assertEquals(2, s.items.count { it.id == "i-tf" })
         val lesson = s.items.first { it.lesson }
@@ -233,7 +272,7 @@ class ContractTest {
         assertEquals("over", over.kind)
         assertTrue(over.items.isEmpty())
         assertEquals("Die Prüfung ist vorbei.", over.reason)
-        assertEquals(77, over.forecast!!.scoreNowPercent)
+        assertEquals(75, over.forecast!!.scoreNowPercent)
     }
 
     @Test fun errorMessagesAreReadable() {
@@ -250,6 +289,13 @@ class ContractTest {
         assertNotNull(msg("error-400-time.json", 400))
         assertNotNull(msg("error-400-attempt-outcome.json", 400))
         assertNotNull(msg("error-400-broken-pdf.json", 400))
+        assertEquals("Sprach-Limit erreicht", msg("error-503-audio-limit.json", 503))
+        assertEquals("KI nicht eingerichtet", msg("error-503-audio-not-configured.json", 503))
+        assertEquals("KI nicht eingerichtet", msg("error-503-timings-not-configured.json", 503))
+        assertNotNull(msg("error-503-prefetch-not-configured.json", 503))
+        assertEquals("Noch keine Themen", msg("error-409-regenerate-no-topics.json", 409))
+        assertEquals("part: question oder answer", msg("error-400-audio-part.json", 400))
+        assertEquals("part: question oder answer", msg("error-400-timings-part.json", 400))
         assertNotNull(msg("error-404-exam.json", 404))
         assertNotNull(msg("error-404-material.json", 404))
         assertEquals("Bitte aktualisiere die App.", msg("error-426-upgrade.json", 426))

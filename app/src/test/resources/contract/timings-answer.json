@@ -1,0 +1,20 @@
+{
+  "text" : "Richtig: 30 €.",
+  "durationMs" : 2200,
+  "words" : [ {
+    "start" : 0,
+    "end" : 8,
+    "fromMs" : 200,
+    "toMs" : 1350
+  }, {
+    "start" : 9,
+    "end" : 11,
+    "fromMs" : 1350,
+    "toMs" : 1829
+  }, {
+    "start" : 12,
+    "end" : 14,
+    "fromMs" : 1829,
+    "toMs" : 2050
+  } ]
+}

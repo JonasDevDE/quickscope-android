@@ -1,21 +1,35 @@
 {
-  "scoreNowPercent" : 100,
-  "scoreAtExamPercent" : 97,
-  "targetPercent" : 80,
-  "onTrack" : true,
+  "scoreNowPercent" : 95,
+  "scoreAtExamPercent" : 95,
+  "projections" : [ {
+    "minutes" : 10,
+    "scoreAtExamPercent" : 95
+  }, {
+    "minutes" : 20,
+    "scoreAtExamPercent" : 95
+  }, {
+    "minutes" : 30,
+    "scoreAtExamPercent" : 95
+  }, {
+    "minutes" : 45,
+    "scoreAtExamPercent" : 95
+  }, {
+    "minutes" : 60,
+    "scoreAtExamPercent" : 95
+  } ],
   "daysLeft" : 10,
   "hoursLeft" : 230,
   "doneSecondsToday" : 0,
   "weakTopics" : [ {
-    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topicId" : "6af1f56efdd6f59243f51603",
     "title" : "Zinsrechnung",
     "mastery" : 1.0
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc843",
+    "topicId" : "6af1f56efdd6f59243f51606",
     "title" : "Vertragsrecht",
     "mastery" : 1.0
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topicId" : "6af1f56efdd6f59243f51605",
     "title" : "Kalkulation",
     "mastery" : 1.0
   } ],
@@ -25,7 +39,7 @@
   "milestones" : [ {
     "date" : "2026-11-16",
     "coveragePercent" : 100,
-    "scorePercent" : 80
+    "scorePercent" : 95
   } ],
   "showCheatsheetSuggestion" : false,
   "note" : "Schätzung, keine Garantie"

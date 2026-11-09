@@ -39,13 +39,11 @@ import androidx.compose.ui.unit.sp
 import com.jonasschnell.quickscope.UiState
 import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.Forecast
-import com.jonasschnell.quickscope.logic.confidenceLine
 import com.jonasschnell.quickscope.logic.examStart
-import com.jonasschnell.quickscope.logic.extraTimeLine
 import com.jonasschnell.quickscope.logic.formatRemaining
 import com.jonasschnell.quickscope.logic.isOver
 import com.jonasschnell.quickscope.logic.masteryPercent
-import com.jonasschnell.quickscope.logic.projectionArrow
+import com.jonasschnell.quickscope.logic.percentText
 import com.jonasschnell.quickscope.logic.projectionLine
 import com.jonasschnell.quickscope.logic.remainingMinutes
 import com.jonasschnell.quickscope.logic.startLabel
@@ -158,7 +156,7 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
     } else {
-        ForecastRing(forecast.scoreNowPercent, forecast.targetPercent)
+        ForecastRing(forecast.scoreNowPercent)
         Text("So warst du zuletzt vorbereitet (Schätzung)", color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
     Text("Prüfung vorbei", style = MaterialTheme.typography.titleMedium)
@@ -178,18 +176,10 @@ private fun ReadyView(
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
         SkeletonLine(200.dp)
     } else {
-        ForecastRing(forecast.scoreNowPercent, forecast.targetPercent)
-        Text(
-            "${projectionArrow(forecast)} ${projectionLine(forecast)}",
-            style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
-        )
-        extraTimeLine(forecast)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center) }
+        ForecastRing(forecast.scoreNowPercent)
+        Text(projectionLine(forecast, exam.dailyMinutes), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
     }
-    val sure = forecast?.let { confidenceLine(it.confidence) } ?: "Schätzung, keine Garantie"
-    Text(
-        "$sure · ${formatRemaining(examStart(exam), Instant.now())}",
-        color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
-    )
+    Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
     if (forecast != null && forecast.weakTopics.isNotEmpty()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
@@ -212,9 +202,9 @@ private fun ReadyView(
     }
 }
 
-/** Grosser Prognose-Ring: Fuellung = Stand heute, kleine Marke = Ziel. */
+/** Grosser Prognose-Ring: Fuellung = Stand heute (stufenlos), die Zahl daneben in 5er-Schritten. */
 @Composable
-fun ForecastRing(percent: Int, target: Int) {
+fun ForecastRing(percent: Int) {
     val sweep = remember { Animatable(0f) }
     LaunchedEffect(percent) { sweep.animateTo(percent.coerceIn(0, 100) / 100f, tween(700)) }
     Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
@@ -224,22 +214,7 @@ fun ForecastRing(percent: Int, target: Int) {
             val arcSize = Size(size.width - w, size.height - w)
             drawArc(CardHigh, -90f, 360f, false, Offset(inset, inset), arcSize, style = Stroke(w, cap = StrokeCap.Round))
             if (sweep.value > 0f) drawArc(Accent, -90f, 360f * sweep.value, false, Offset(inset, inset), arcSize, style = Stroke(w, cap = StrokeCap.Round))
-            // Zielmarke
-            val ang = Math.toRadians(-90.0 + 360.0 * target.coerceIn(0, 100) / 100.0)
-            val r = size.width / 2
-            val inner = r - w * 1.4f
-            val outer = r + w * 0.4f
-            val c = Offset(size.width / 2, size.height / 2)
-            drawLine(
-                androidx.compose.ui.graphics.Color.White,
-                Offset(c.x + (inner * Math.cos(ang)).toFloat(), c.y + (inner * Math.sin(ang)).toFloat()),
-                Offset(c.x + (outer * Math.cos(ang)).toFloat(), c.y + (outer * Math.sin(ang)).toFloat()),
-                strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round,
-            )
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("$percent %", style = MaterialTheme.typography.displaySmall.copy(fontSize = 52.sp, lineHeight = 56.sp))
-            Text("Ziel $target %", color = Muted, style = MaterialTheme.typography.labelMedium)
-        }
+        Text(percentText(percent), style = MaterialTheme.typography.displaySmall.copy(fontSize = 52.sp, lineHeight = 56.sp))
     }
 }

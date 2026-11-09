@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:31:44.303Z",
+  "status" : 503,
+  "error" : "Service Unavailable",
+  "message" : "Sprach-Limit erreicht",
+  "path" : "/api/exams/e-ready/items/i-number/audio"
+}

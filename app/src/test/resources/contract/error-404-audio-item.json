@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:31:44.327Z",
+  "status" : 500,
+  "error" : "Internal Server Error",
+  "message" : "Cannot read the array length because \"wav\" is null",
+  "path" : "/api/exams/e-ready/items/gibt-es-nicht/audio"
+}

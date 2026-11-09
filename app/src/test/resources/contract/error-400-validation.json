@@ -1,5 +1,5 @@
 {
-  "timestamp" : "2026-11-09T16:05:03.331086900Z",
+  "timestamp" : "2026-11-09T16:31:43.647917100Z",
   "status" : 400,
   "error" : "Bad Request",
   "message" : "dailyMinutes: muss größer-gleich 5 sein",

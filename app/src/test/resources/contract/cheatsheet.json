@@ -1,46 +1,46 @@
 {
   "minutes" : 5,
-  "words" : 105,
+  "words" : 70,
   "bullets" : [ {
-    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topicId" : "6af1f56efdd6f59243f51603",
     "topic" : "Zinsrechnung",
-    "text" : "Zinseszins berechnen: Zinsfaktor bilden: 1 + p/100; Faktor mit der Laufzeit potenzieren; Mit dem Kapital multiplizieren"
+    "text" : "Zinseszins berechnen: Faktor: 1 + p/100; Faktor hoch Laufzeit; Mal Kapital"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topicId" : "6af1f56efdd6f59243f51603",
     "topic" : "Zinsrechnung",
-    "text" : "1.000 € zu 4 % für 2 Jahre mit Zinseszins: Endbetrag: 1.081,60 €"
+    "text" : "1.000 € zu 4 %, 2 Jahre Zinseszins: 1.081,60 €"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topicId" : "6af1f56efdd6f59243f51603",
     "topic" : "Zinsrechnung",
-    "text" : "Was sind Zinsen: Preis für geliehenes Geld"
+    "text" : "Zinsen: Preis für Kapital"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topicId" : "6af1f56efdd6f59243f51603",
     "topic" : "Zinsrechnung",
-    "text" : "Welche Formel berechnet Jahreszinsen: K × p / 100"
+    "text" : "Jahreszins-Formel: K × p / 100"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc840",
+    "topicId" : "6af1f56efdd6f59243f51603",
     "topic" : "Zinsrechnung",
-    "text" : "Wie hoch ist der Zins auf 1.000 € bei 3 % nach einem Jahr: 30 €"
+    "text" : "Zins: 1.000 € bei 3 %, 1 Jahr: 30 €"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc843",
+    "topicId" : "6af1f56efdd6f59243f51606",
     "topic" : "Vertragsrecht",
-    "text" : "Wer trägt beim Kauf das Transportrisiko ohne Vereinbarung: Der Käufer"
+    "text" : "Transportrisiko: Käufer oder Verkäufer: Käufer"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc843",
+    "topicId" : "6af1f56efdd6f59243f51606",
     "topic" : "Vertragsrecht",
-    "text" : "Ein mündlicher Vertrag ist grundsätzlich gültig."
+    "text" : "Mündlicher Vertrag: grundsätzlich gültig."
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topicId" : "6af1f56efdd6f59243f51605",
     "topic" : "Kalkulation",
-    "text" : "Selbstkosten plus Gewinn ergeben den Verkaufspreis."
+    "text" : "Selbstkosten + Gewinn = Verkaufspreis."
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topicId" : "6af1f56efdd6f59243f51605",
     "topic" : "Kalkulation",
-    "text" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – Preis vor Rabatt; Zielpreis – Preis vor Skonto"
+    "text" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…"
   }, {
-    "topicId" : "6af1ef2e73fabf93422cc842",
+    "topicId" : "6af1f56efdd6f59243f51605",
     "topic" : "Kalkulation",
-    "text" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpreis"
+    "text" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…"
   } ],
   "note" : "Nur aus deinem Material. Keine Garantie, dass genau das drankommt."
 }

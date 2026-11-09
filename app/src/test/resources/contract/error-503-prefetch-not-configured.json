@@ -1,0 +1,7 @@
+{
+  "timestamp" : "2026-11-09T16:31:44.286Z",
+  "status" : 503,
+  "error" : "Service Unavailable",
+  "message" : "KI nicht eingerichtet",
+  "path" : "/api/exams/e-ready/audio/prefetch"
+}

@@ -178,9 +178,6 @@ fun correctText(task: Task): String = when (task) {
     is Task.Lesson -> ""
 }
 
-/** Text fuer die Sprachausgabe: ttsText des Backends, sonst die Frage. */
-fun speechText(item: Item): String = item.ttsText?.takeIf { it.isNotBlank() } ?: item.question
-
 /** Anteil der Runde, der geschafft ist (nach geschaetzter Zeit); fuer den Zeitbalken oben. */
 fun sessionProgress(items: List<Item>, doneCount: Int): Float {
     val total = items.sumOf { it.estSeconds.coerceAtLeast(1) }
@@ -188,13 +185,9 @@ fun sessionProgress(items: List<Item>, doneCount: Int): Float {
     return items.take(doneCount).sumOf { it.estSeconds.coerceAtLeast(1) }.toFloat() / total
 }
 
-/** Vorlesetext fuer den Audio-Modus: Frage, bei Auswahlaufgaben mit nummerierten Antworten. */
-fun audioPrompt(task: Task): String = when (task) {
-    is Task.Choice -> speechText(task.item) + ". " + task.options.mapIndexed { i, o -> "Antwort ${i + 1}: $o" }.joinToString(". ")
-    is Task.Cloze -> speechText(task.item) + ". Wörter: " + task.bank.joinToString(", ")
-    is Task.Spot -> speechText(task.item) + ". " + task.statements.mapIndexed { i, o -> "Aussage ${i + 1}: $o" }.joinToString(". ")
-    else -> speechText(task.item)
-}
+/** Vorlesetext der Geraetestimme: nur die Frage, nie die Antwortmoeglichkeiten. Luecken werden als "Luecke" gesprochen. */
+fun audioPrompt(task: Task): String =
+    if (task is Task.Cloze) task.item.question.replace(Regex("_{3,}"), "Lücke") else task.item.question
 
 /** Vorlesetext fuer das Feedback (Rueckfall auf die Geraetestimme): richtig/falsch, richtige Antwort, Erklaerung wenn vorhanden. */
 fun audioFeedback(task: Task, correct: Boolean): String =
