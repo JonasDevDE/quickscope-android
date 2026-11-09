@@ -27,28 +27,58 @@ class PrefetchPlanner(private val window: Int = 3) {
     fun reset() = requested.clear()
 }
 
+/** Zustand der einen Wiedergabe der App. */
+enum class PlayState { Idle, Loading, Playing, Paused }
+
 /**
- * Merkt, ob die Cloud-Stimme gerade nutzbar ist: nach einem Fehler (Offline, 503 Limit/nicht eingerichtet)
- * wird [cooldownMs] lang die Geraetestimme genommen, danach wird es wieder versucht.
+ * Zentrale Zustandsmaschine des Vorlesens (idle, loading, playing, paused) mit Generationsnummer: [begin] startet eine neue
+ * Wiedergabe und macht alle frueheren ungueltig, verspaetete Rueckmeldungen (prepared, completed) eines alten Elements
+ * werden mit [isCurrent] verworfen. Es gibt dadurch nie zwei gleichzeitige Wiedergaben.
  */
-class CloudHealth(private val cooldownMs: Long = 120_000L) {
-    private var failedAt: Long? = null
+class PlaybackMachine {
+    var state = PlayState.Idle
+        private set
+    var generation = 0L
+        private set
 
-    fun available(now: Long): Boolean = failedAt?.let { now - it >= cooldownMs } ?: true
-
-    fun failed(now: Long) {
-        failedAt = now
+    /** Neue Wiedergabe: laedt, alles Vorherige ist ungueltig. */
+    fun begin(): Long {
+        generation++
+        state = PlayState.Loading
+        return generation
     }
 
-    fun ok() {
-        failedAt = null
+    /** Gilt die Wiedergabe [gen] noch (nicht ersetzt, nicht gestoppt, nicht beendet)? */
+    fun isCurrent(gen: Long): Boolean = gen == generation && state != PlayState.Idle
+
+    /** Audio ist bereit und startet; false = veraltet, verwerfen. */
+    fun playing(gen: Long): Boolean {
+        if (gen != generation || state != PlayState.Loading) return false
+        state = PlayState.Playing
+        return true
+    }
+
+    fun pause(gen: Long) {
+        if (gen == generation && state == PlayState.Playing) state = PlayState.Paused
+    }
+
+    fun resume(gen: Long) {
+        if (gen == generation && state == PlayState.Paused) state = PlayState.Playing
+    }
+
+    /** Ende der Wiedergabe [gen]; false = veraltet (eine neuere laeuft). */
+    fun finish(gen: Long): Boolean {
+        if (gen != generation) return false
+        state = PlayState.Idle
+        return true
+    }
+
+    /** Alles stoppen (neue Karte, Stumm, Verlassen); spaete Rueckmeldungen werden damit ungueltig. */
+    fun stop() {
+        generation++
+        state = PlayState.Idle
     }
 }
-
-/** Welche Stimme liest vor: bereit/gesund -> Cloud, sonst Geraet. */
-enum class VoiceKind { Cloud, Device }
-
-fun chooseVoice(health: CloudHealth, now: Long): VoiceKind = if (health.available(now)) VoiceKind.Cloud else VoiceKind.Device
 
 /** Dateiname im Audio-Cache. */
 fun audioFileName(examId: String, itemId: String, part: VoicePart) = "${examId}_${itemId}_${part.query}.wav".replace(Regex("[^A-Za-z0-9._-]"), "_")
@@ -74,14 +104,6 @@ const val CLOUD_WAIT_MS = 15_000L
  * Drehen/App-Wechsel), solange noch nicht geantwortet wurde. Lektionskarten spielen sich selbst ab.
  */
 fun shouldSpeakQuestion(audioOn: Boolean, feedback: Boolean?, isTeach: Boolean): Boolean = audioOn && feedback == null && !isTeach
-
-/**
- * Wettlauf "Audio bereit" gegen "Item sichtbar": war das Audio nach [readyAfterMs] fertig (null = noch nicht), wird es
- * abgespielt, sonst nach dem Timeout die Geraetestimme. Nie still verwerfen.
- */
-fun voiceSource(readyAfterMs: Long?, waitMs: Long = CLOUD_WAIT_MS): VoiceKind =
-    if (readyAfterMs != null && readyAfterMs <= waitMs) VoiceKind.Cloud else VoiceKind.Device
-
 /** Wie viele Aufgaben/Lektionen beim Rundenstart sofort vorgeladen werden. */
 const val WARM_COUNT = 4
 

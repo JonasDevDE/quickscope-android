@@ -64,7 +64,7 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, onHeard: (String, 
                 }
             }
             try {
-                voice.speakLesson(examId, lesson.id, lesson.ttsText)
+                voice.speakLesson(examId, lesson.id)
                 finished = true
             } finally {
                 job.cancel()
@@ -90,7 +90,12 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, onHeard: (String, 
             modifier = Modifier.fillMaxWidth().height(24.dp),
             maxLines = 1,
         )
-        if (voice.usingDevice && !muted) Text("Gerätestimme", color = Muted, style = MaterialTheme.typography.bodySmall)
+        if (voice.unavailable && !muted) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Audio gerade nicht verfügbar", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                Pill("Nochmal", false, { replay++ })
+            }
+        }
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (muted || finished) Pill("Anhören", false, { muted = false; replay++ }) else Pill("Stumm", false, { muted = true })

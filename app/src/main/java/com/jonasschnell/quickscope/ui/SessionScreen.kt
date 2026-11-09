@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import com.jonasschnell.quickscope.logic.VoicePart
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,7 +53,6 @@ import com.jonasschnell.quickscope.SessionPhase
 import com.jonasschnell.quickscope.SessionUi
 import com.jonasschnell.quickscope.SessionViewModel
 import com.jonasschnell.quickscope.logic.Task
-import com.jonasschnell.quickscope.logic.audioPrompt
 import com.jonasschnell.quickscope.logic.beforeAfterLine
 import com.jonasschnell.quickscope.logic.lessonSteps
 import com.jonasschnell.quickscope.logic.sessionProgress
@@ -135,9 +134,10 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         if (s.audio) voice?.prefetch(s.examId, ids, s.index)
     }
     // Audio-Modus: nur die Frage vorlesen (nie Antwort oder Rueckmeldung)
-    LaunchedEffect(s.index, s.audio, s.feedback != null, voice) {
+    var retry by remember { mutableIntStateOf(0) }
+    LaunchedEffect(s.index, s.audio, s.feedback != null, voice, retry) {
         if (task is Task.Teach) return@LaunchedEffect // Lektionskarte spielt sich selbst ab
-        if (voice != null && shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach)) voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task), displayText = task.item.question)
+        if (voice != null && shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach)) voice.speak(s.examId, task.item.id, task.item.question)
         else voice?.stop()
     }
     // Rueckmeldung: Ton und Haptik; richtig deutlich groesser als falsch
@@ -183,7 +183,10 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
     if (voice != null) {
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (voice.loading) SkeletonBox(Modifier.size(10.dp), CircleShape)
-            if (voice.usingDevice) Text("Gerätestimme", color = Muted, style = MaterialTheme.typography.bodySmall)
+            if (voice.unavailable && task !is Task.Teach) {
+                Text("Audio gerade nicht verfügbar", color = Muted, style = MaterialTheme.typography.bodySmall)
+                HapticTextButton(onClick = { retry++ }) { Text("Nochmal", color = Accent, style = MaterialTheme.typography.labelLarge) }
+            }
         }
     }
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))

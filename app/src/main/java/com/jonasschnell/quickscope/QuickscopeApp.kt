@@ -33,6 +33,9 @@ class QuickscopeApp : Application(), SingletonImageLoader.Factory {
     /** Toene fuer Rueckmeldungen; wird beim Start vorgeladen. */
     val sfx by lazy { com.jonasschnell.quickscope.ui.Sfx(this) }
 
+    /** Die EINE Vorlese-Instanz der App. */
+    val voice by lazy { com.jonasschnell.quickscope.ui.Voice(this, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)) }
+
     val updater by lazy { Updater(this, network.client, network.api) }
 
     override fun onCreate() {

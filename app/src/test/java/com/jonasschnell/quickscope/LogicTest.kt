@@ -11,7 +11,6 @@ import com.jonasschnell.quickscope.logic.MatchState
 import com.jonasschnell.quickscope.logic.OrderState
 import com.jonasschnell.quickscope.logic.QueueStorage
 import com.jonasschnell.quickscope.logic.Task
-import com.jonasschnell.quickscope.logic.audioPrompt
 import com.jonasschnell.quickscope.logic.beforeAfterLine
 import com.jonasschnell.quickscope.logic.formatExamWhen
 import com.jonasschnell.quickscope.logic.floor5
@@ -231,20 +230,6 @@ class LogicTest {
         assertEquals("Eins. Zwei.", shortExplanation("Eins. Zwei. Drei."))
         assertNull(shortExplanation("  "))
         assertNull(shortExplanation(null))
-    }
-
-    @Test fun audioPromptIsOnlyTheQuestion() {
-        val mc = parseTask(Item(id = "x", type = "mc", question = "Q?", answer = "A", options = listOf("A", "B"), correctIndex = 0, ttsText = "Q? A: A. B: B."))
-        assertEquals("Q?", audioPrompt(mc))
-        val cloze = parseTask(Item(id = "c", type = "cloze", question = "Plus ___ ergibt Preis.", answer = "Gewinn",
-            payload = kotlinx.serialization.json.buildJsonObject {
-                put("text", kotlinx.serialization.json.JsonPrimitive("Plus ___ ergibt Preis."))
-                put("bank", kotlinx.serialization.json.JsonArray(listOf("Gewinn", "Skonto").map { kotlinx.serialization.json.JsonPrimitive(it) }))
-                put("answer", kotlinx.serialization.json.JsonPrimitive("Gewinn"))
-            }))
-        assertEquals("Plus , ergibt Preis.", audioPrompt(cloze))
-        assertFalse(audioPrompt(cloze).contains("Lücke"))
-        assertFalse(audioPrompt(cloze).contains("_"))
     }
 
     @Test fun progressFollowsEstimatedSeconds() {

@@ -1,8 +1,6 @@
 package com.jonasschnell.quickscope.audio
 
 import android.os.Bundle
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -27,30 +25,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 /** Extras je Lektion im MediaItem (Schluessel). */
 object LessonExtras {
     const val EXAM_ID = "examId"
-    const val TTS_TEXT = "ttsText"
     const val KEY_POINTS = "keyPoints"
     const val MNEMONIC = "mnemonic"
     const val CHAPTER_ORDER = "chapterOrder"
     const val CHAPTER_TOTAL = "chapterTotal"
     const val EST_SECONDS = "estSeconds"
-    /** Session-Extras: Geraetestimme springt gerade ein. */
-    const val FALLBACK = "fallback"
+    /** Session-Extras: Audio kam nicht (Fehler, Offline): ruhiger Hinweis mit "Nochmal". */
+    const val UNAVAILABLE = "unavailable"
 }
 
 /**
  * Hoerbuch im Hintergrund: ExoPlayer in einer MediaSession (Foreground-Dienst mediaPlayback, Benachrichtigung mit
  * Play/Pause/Weiter/Zurueck, Audiofokus, Kopfhoerer-/Bluetooth-Tasten, Pause bei Telefonaten). Die Stimme kommt vom Backend
- * (WAV per Streaming mit Anmelde-Header); bei Fehlern oder Offline liest die Geraetestimme den Lektionstext.
+ * (WAV per Streaming mit Anmelde-Header); bei Fehlern bleibt es still ("Audio gerade nicht verfuegbar", "Nochmal").
  * Der gehoerte Anteil jeder Lektion wird ans Backend gemeldet.
  */
 class AudiobookService : MediaSessionService() {
     private var session: MediaSession? = null
-    private var tts: TextToSpeech? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val reported = HashMap<String, Double>()
     private val durations = HashMap<String, Long>()
@@ -83,7 +78,6 @@ class AudiobookService : MediaSessionService() {
         player.currentMediaItem?.let { reportPartial(it) }
         session?.run { player.release(); release() }
         session = null
-        runCatching { tts?.shutdown() }
         scope.cancel()
         super.onDestroy()
     }
@@ -92,7 +86,10 @@ class AudiobookService : MediaSessionService() {
         override fun onPlaybackStateChanged(state: Int) {
             val item = player.currentMediaItem ?: return
             when (state) {
-                Player.STATE_READY -> player.duration.takeIf { it > 0 }?.let { durations[item.mediaId] = it }
+                Player.STATE_READY -> {
+                    player.duration.takeIf { it > 0 }?.let { durations[item.mediaId] = it }
+                    session?.setSessionExtras(Bundle().apply { putBoolean(LessonExtras.UNAVAILABLE, false) })
+                }
                 Player.STATE_ENDED -> report(item, 1.0)
                 Player.STATE_IDLE -> reportPartial(item)
             }
@@ -105,7 +102,8 @@ class AudiobookService : MediaSessionService() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            fallbackSpeak()
+            // keine Geraetestimme: still bleiben und den Hinweis "Nochmal" ermoeglichen
+            session?.setSessionExtras(Bundle().apply { putBoolean(LessonExtras.UNAVAILABLE, true) })
         }
     }
 
@@ -121,51 +119,5 @@ class AudiobookService : MediaSessionService() {
     private fun reportPartial(item: MediaItem) {
         val f = heardFraction(player.currentPosition, durations[item.mediaId] ?: 0L, false)
         if (f > 0.0) report(item, f)
-    }
-
-    // ---- Rueckfall: Geraetestimme liest den Lektionstext (Rate wie die Cloud-Stimme)
-
-    private fun fallbackSpeak() {
-        val item = player.currentMediaItem ?: return
-        val text = item.mediaMetadata.extras?.getString(LessonExtras.TTS_TEXT).orEmpty()
-        val index = player.currentMediaItemIndex
-        session?.setSessionExtras(Bundle().apply { putBoolean(LessonExtras.FALLBACK, true) })
-        withTts { t ->
-            t.setSpeechRate(SPEECH_SPEED)
-            t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) {}
-                override fun onError(utteranceId: String?) { advance(index, item) }
-                override fun onDone(utteranceId: String?) { advance(index, item) }
-            })
-            t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "lesson-$index")
-        }
-    }
-
-    /** Nach der Geraetestimme zur naechsten Lektion: Cloud-Wiedergabe wird dort wieder versucht. */
-    private fun advance(index: Int, item: MediaItem) {
-        scope.launch {
-            report(item, 1.0)
-            if (index + 1 < player.mediaItemCount) {
-                session?.setSessionExtras(Bundle().apply { putBoolean(LessonExtras.FALLBACK, false) })
-                player.seekTo(index + 1, 0)
-                player.prepare()
-                player.play()
-            } else {
-                player.stop()
-            }
-        }
-    }
-
-    private fun withTts(block: (TextToSpeech) -> Unit) {
-        tts?.let { block(it); return }
-        var created: TextToSpeech? = null
-        created = TextToSpeech(applicationContext) { status ->
-            val t = created
-            if (status == TextToSpeech.SUCCESS && t != null) {
-                runCatching { t.setLanguage(Locale.GERMANY) }
-                tts = t
-                block(t)
-            }
-        }
     }
 }

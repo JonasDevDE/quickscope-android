@@ -228,10 +228,6 @@ fun sessionProgress(items: List<Item>, doneCount: Int): Float {
     return items.take(doneCount).sumOf { it.estSeconds.coerceAtLeast(1) }.toFloat() / total
 }
 
-/** Vorlesetext der Geraetestimme: nur die Frage, nie die Antwortmoeglichkeiten. Eine Luecke wird nie als Wort gesprochen, sondern ist eine kurze Pause (Komma). */
-fun audioPrompt(task: Task): String =
-    if (task is Task.Cloze) task.item.question.replace(Regex("_{3,}"), ",") else task.item.question
-
 /** Ablauf einer Karte ohne Wisch: erst aufdecken, dann "gewusst"/"nicht gewusst"; vorher gibt es kein Ergebnis. */
 class CardFlow {
     var revealed = false

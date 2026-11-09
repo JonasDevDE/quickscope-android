@@ -44,8 +44,8 @@ data class BookUi(
     val playing: Boolean = false,
     val positionMs: Long = 0,
     val durationMs: Long = 0,
-    /** Geraetestimme springt gerade ein (kleiner Hinweis). */
-    val deviceVoice: Boolean = false,
+    /** Audio kam nicht: ruhiger Hinweis mit "Nochmal". */
+    val unavailable: Boolean = false,
     val message: String? = null,
 )
 
@@ -95,7 +95,6 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
     private fun mediaItem(item: AudiobookItem, lesson: com.jonasschnell.quickscope.data.Lesson?, chapterOrder: Int, chapterTotal: Int): MediaItem {
         val extras = Bundle().apply {
             putString(LessonExtras.EXAM_ID, examId)
-            putString(LessonExtras.TTS_TEXT, lesson?.ttsText.orEmpty())
             putStringArray(LessonExtras.KEY_POINTS, lesson?.keyPoints?.toTypedArray() ?: emptyArray())
             putString(LessonExtras.MNEMONIC, lesson?.mnemonic)
             putInt(LessonExtras.CHAPTER_ORDER, chapterOrder)
@@ -114,7 +113,7 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
         val token = SessionToken(app, ComponentName(app, AudiobookService::class.java))
         val future = MediaController.Builder(app, token).setListener(object : MediaController.Listener {
             override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
-                _state.update { it.copy(deviceVoice = extras.getBoolean(LessonExtras.FALLBACK, false)) }
+                _state.update { it.copy(unavailable = extras.getBoolean(LessonExtras.UNAVAILABLE, false)) }
             }
         }).buildAsync()
         future.addListener({
@@ -186,6 +185,13 @@ class AudiobookViewModel(application: Application) : AndroidViewModel(applicatio
             c.stop()
             _state.update { it.copy(phase = BookPhase.Finished, playing = false) }
         }
+    }
+
+    /** "Nochmal" nach einem Audiofehler: neu laden und weiterspielen. */
+    fun retryPlayback() {
+        val c = controller ?: return
+        c.prepare()
+        c.play()
     }
 
     fun previous() {
