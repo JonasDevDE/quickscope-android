@@ -2,15 +2,13 @@
 
 ~ Quickscope · Stand: 9. November 2026
 
-~ Entwurf. Dieser Text ist ein erster Entwurf und noch keine rechtlich geprüfte Fassung. Eckige Klammern [ … ] sind Platzhalter, die ausgefüllt bzw. geprüft werden müssen.
-
 ## 1. Anbieter und Geltungsbereich
 
 Anbieter von Quickscope ist Jonas Schnell, Darkstone Cloud, A-CS/EP1, Wuhlestraße 7a, 12683 Berlin, E-Mail: jonas.schnell@darkstone.de. Diese Bedingungen gelten für die Nutzung der App „Quickscope“ und des zugehörigen Dienstes.
 
 ## 2. Leistung
 
-Quickscope unterstützt beim Lernen: Aus deinem Material und deinen Angaben werden Lektionen, Aufgaben und auf Wunsch Sprachausgabe erstellt. Die Nutzung ist derzeit [kostenlos]. Wir können den Funktionsumfang ändern oder erweitern.
+Quickscope unterstützt beim Lernen: Aus deinem Material und deinen Angaben werden Lektionen, Aufgaben und auf Wunsch Sprachausgabe erstellt. Die Nutzung ist derzeit kostenlos. Eine spätere Kostenpflicht für einzelne oder alle Funktionen behalten wir uns vor; wir informieren dich vorher in der App. Wir können den Funktionsumfang ändern oder erweitern.
 
 ## 3. Konto
 
@@ -35,7 +33,7 @@ Wir bemühen uns um einen störungsfreien Betrieb, schulden aber keine ununterbr
 
 ## 7. Haftung
 
-[Haftungsregelung rechtlich prüfen lassen.] Bei Vorsatz und grober Fahrlässigkeit sowie bei Verletzung von Leben, Körper oder Gesundheit haften wir nach den gesetzlichen Vorschriften. Im Übrigen haften wir nur bei Verletzung wesentlicher Vertragspflichten und der Höhe nach begrenzt auf den typischen, vorhersehbaren Schaden. Zwingende gesetzliche Haftung bleibt unberührt.
+Bei Vorsatz und grober Fahrlässigkeit sowie bei Verletzung von Leben, Körper oder Gesundheit haften wir nach den gesetzlichen Vorschriften. Im Übrigen haften wir nur bei Verletzung wesentlicher Vertragspflichten und der Höhe nach begrenzt auf den typischen, vorhersehbaren Schaden. Zwingende gesetzliche Haftung bleibt unberührt.
 
 ## 8. Sperrung und Beendigung
 
@@ -47,4 +45,4 @@ Wir können diese Bedingungen mit Wirkung für die Zukunft ändern, wenn es eine
 
 ## 10. Schlussbestimmungen
 
-Es gilt deutsches Recht unter Ausschluss zwingender Verbraucherschutzvorschriften deines Aufenthaltsstaates. Sollten einzelne Bestimmungen unwirksam sein, bleiben die übrigen wirksam. [Verbraucherschlichtung/Impressumspflichten prüfen]
+Es gilt deutsches Recht unter Ausschluss zwingender Verbraucherschutzvorschriften deines Aufenthaltsstaates. Sollten einzelne Bestimmungen unwirksam sein, bleiben die übrigen wirksam. Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.

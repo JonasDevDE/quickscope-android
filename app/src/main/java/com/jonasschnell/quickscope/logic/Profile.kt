@@ -5,8 +5,8 @@ import com.jonasschnell.quickscope.data.Profile
 /** Hoechstlaenge des Profiltextes "Ueber mich" (wie im Backend). */
 const val ABOUT_MAX = 600
 
-/** Alter: erlaubt 10 bis 99, Standard 18. */
-const val AGE_MIN = 10
+/** Alter: erlaubt 14 bis 99, Standard 18 (Mindestalter 14). */
+const val AGE_MIN = 14
 const val AGE_MAX = 99
 const val AGE_DEFAULT = 18
 
@@ -44,7 +44,8 @@ fun aboutNeedsSave(saved: String, current: String): Boolean = aboutValid(current
 /** Bearbeitungsstand des Profils in den Einstellungen. */
 data class ProfileDraft(val age: Int?, val education: String?, val about: String)
 
-fun draftOf(p: Profile) = ProfileDraft(p.age, p.educationLevel, p.about)
+/** Bestehende Werte unter dem Mindestalter werden auf 14 angehoben. */
+fun draftOf(p: Profile) = ProfileDraft(p.age?.let { clampAge(it) }, p.educationLevel, p.about)
 
 fun draftValid(d: ProfileDraft) = ageValid(d.age) && aboutValid(d.about)
 

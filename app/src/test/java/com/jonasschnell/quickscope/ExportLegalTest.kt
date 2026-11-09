@@ -55,28 +55,27 @@ class ExportLegalTest {
             assertTrue(blocks.first() is MdBlock.H1)
             assertTrue(blocks.size > 5)
             val text = f.readText(Charsets.UTF_8)
-            assertTrue(text.contains("[") || f.name == "impressum.md")   // restliche Platzhalter bleiben sichtbar (Datenschutz, AGB)
             assertFalse(text.contains("[Vor- und Nachname"))   // Verantwortlicher ist eingesetzt
             assertFalse(text.contains("[Anschrift]") || text.contains("[PLZ Ort]"))
-            assertTrue(blocks.any { it is MdBlock.Note && it.text.startsWith("Entwurf") })
         }
         assertEquals(3, LegalPage.entries.size)
     }
 
-    @Test fun legalTextsNameTheProviderAndKeepOpenPlaceholders() {
-        val all = LegalPage.entries.associateWith { java.io.File("src/main/assets/legal/${it.file}.md").readText(Charsets.UTF_8) }
-        for ((_, t) in all) {
+    @Test fun legalTextsAreFinalWithNameAndEmail() {
+        for (page in LegalPage.entries) {
+            val t = java.io.File("src/main/assets/legal/${page.file}.md").readText(Charsets.UTF_8)
+            assertFalse("${page.file}: eckige Klammern", t.contains("[") || t.contains("]"))
+            assertFalse("${page.file}: Entwurf", t.contains("Entwurf"))
             assertTrue(t.contains("Jonas Schnell"))
             assertTrue(t.contains("Wuhlestraße 7a"))
             assertTrue(t.contains("12683 Berlin"))
             assertTrue(t.contains("jonas.schnell@darkstone.de"))
-            assertFalse(t.contains("[E-Mail-Adresse]"))
         }
-        assertTrue(all.getValue(LegalPage.Privacy).contains("[___ Tage"))       // Speicherdauer der Protokolle
-        assertTrue(all.getValue(LegalPage.Privacy).contains("[Mindestalter"))   // Kinder und Jugendliche
-        assertTrue(all.getValue(LegalPage.Privacy).contains("Auftragsverarbeitungsvertrag"))   // Google-Tarif/AVV
-        assertTrue(all.getValue(LegalPage.Terms).contains("[Haftungsregelung"))
-        assertFalse(all.getValue(LegalPage.Imprint).contains("Telefon"))
+        val privacy = java.io.File("src/main/assets/legal/datenschutz.md").readText(Charsets.UTF_8)
+        assertTrue(privacy.contains("höchstens 7 Tage"))
+        assertTrue(privacy.contains("ab 14 Jahren"))
+        assertFalse(privacy.contains("TLS"))
+        assertFalse(java.io.File("src/main/assets/legal/impressum.md").readText(Charsets.UTF_8).contains("Telefon"))
         assertEquals("Allgemeine Geschäftsbedingungen", LegalPage.Terms.title)
     }
 }

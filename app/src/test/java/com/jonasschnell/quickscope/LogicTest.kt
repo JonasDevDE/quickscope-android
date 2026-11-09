@@ -248,11 +248,13 @@ class LogicTest {
         val l = com.jonasschnell.quickscope.logic.AGE_MIN
         assertEquals(18, com.jonasschnell.quickscope.logic.AGE_DEFAULT)
         assertTrue(com.jonasschnell.quickscope.logic.ageValid(null))
-        assertTrue(com.jonasschnell.quickscope.logic.ageValid(10))
+        assertTrue(com.jonasschnell.quickscope.logic.ageValid(14))
         assertTrue(com.jonasschnell.quickscope.logic.ageValid(99))
-        assertFalse(com.jonasschnell.quickscope.logic.ageValid(9))
+        assertFalse(com.jonasschnell.quickscope.logic.ageValid(13))
         assertFalse(com.jonasschnell.quickscope.logic.ageValid(100))
-        assertEquals(10, com.jonasschnell.quickscope.logic.clampAge(l - 5))
+        assertEquals(14, com.jonasschnell.quickscope.logic.clampAge(l - 5))
+        assertEquals(14, l)
+        assertEquals(14, com.jonasschnell.quickscope.logic.draftOf(com.jonasschnell.quickscope.data.Profile(age = 10)).age)   // bestehende Werte unter 14 werden angehoben
         assertEquals(99, com.jonasschnell.quickscope.logic.clampAge(120))
         val saved = com.jonasschnell.quickscope.logic.ProfileDraft(18, "abitur", "x")
         assertFalse(com.jonasschnell.quickscope.logic.draftNeedsSave(saved, saved.copy(about = " x ")))
