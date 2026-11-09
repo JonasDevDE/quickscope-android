@@ -31,6 +31,7 @@ data class OfflinePack(
     val version: String = "",
     val generatedAt: String = "",
     val topics: List<com.jonasschnell.quickscope.data.Topic> = emptyList(),
+    val chapters: List<com.jonasschnell.quickscope.data.Chapter> = emptyList(),
 )
 
 /** Liest das Paket nach dem Vertrag; unbekannte Felder und einzelne kaputte Eintraege werden uebergangen. Ohne `queue`: null. */
@@ -45,11 +46,14 @@ fun parseOfflinePack(text: String): OfflinePack? {
     val topics = (root["topics"] as? JsonArray)?.mapNotNull {
         runCatching { AppJson.decodeFromJsonElement(com.jonasschnell.quickscope.data.Topic.serializer(), it) }.getOrNull()
     }.orEmpty()
+    val chapters = (root["chapters"] as? JsonArray)?.mapNotNull {
+        runCatching { AppJson.decodeFromJsonElement(com.jonasschnell.quickscope.data.Chapter.serializer(), it) }.getOrNull()
+    }.orEmpty()
     return OfflinePack(
         entries = queue, reserve = entries("reserveItems").orEmpty(),
         version = (root["version"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
         generatedAt = (root["generatedAt"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
-        topics = topics,
+        topics = topics, chapters = chapters,
     )
 }
 

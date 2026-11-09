@@ -203,7 +203,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm, s.lessonsOnly)
+                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm, s.lessonsOnly, s.tasks.mapNotNull { (it as? Task.Teach)?.lesson })
                 }
             }
         }
@@ -224,14 +224,15 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
 /** Die Aufgabe je Typ. Lektionskarten und Loesungswege haben ihren eigenen "Weiter"-Knopf. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel, lessonsOnly: Boolean = false) {
+private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel, lessonsOnly: Boolean = false, runLessons: List<com.jonasschnell.quickscope.data.SessionLesson> = emptyList()) {
+    val header = (task as? Task.Teach)?.let { com.jonasschnell.quickscope.logic.lessonHeader(it.lesson, runLessons, lessonsOnly) }
     val answered = feedback != null
     val revealed = neutral
     val onAnswer: (Boolean) -> Unit = { ok -> vm.answer(ok) }
     when (task) {
         is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
-        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next, lessonsOnly = lessonsOnly)
+        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next, lessonsOnly = lessonsOnly, header = header)
         is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
         is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
         is Task.Spot -> SpotTask(task, revealed, onAnswer)

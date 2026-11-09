@@ -82,6 +82,8 @@ data class SessionUi(
     val offline: Boolean = false,
     /** "Verstehen": nur Lektionskarten, sofort lesbar; Ton kommt nur dazu, wenn er verfuegbar ist. */
     val lessonsOnly: Boolean = false,
+    /** Kapitelliste fuer die Kopfzeile der Lektionskarten (kann leer sein). */
+    val chapters: List<com.jonasschnell.quickscope.data.Chapter> = emptyList(),
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -155,7 +157,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     if (e.isEmpty()) e = com.jonasschnell.quickscope.logic.lessonEntriesFrom(runCatching { api.lessons(examId) }.getOrDefault(emptyList()))
                     lessonEntries = e
                 }
-                val tasks = (lessonEntries ?: filterForMode(s.items, { it.lesson != null }, mode)).mapNotNull(::taskOf)
+                val rawTasks = (lessonEntries ?: filterForMode(s.items, { it.lesson != null }, mode)).mapNotNull(::taskOf)
+                // Kapitelangaben fuer die Kopfzeile: fehlen sie in der Session, aus Kapitel- und Lektionsliste ableiten (nur wenn es Lektionen gibt)
+                var chapters = emptyList<com.jonasschnell.quickscope.data.Chapter>()
+                val tasks = if (rawTasks.any { it is Task.Teach }) {
+                    chapters = runCatching { api.chapters(examId) }.getOrDefault(emptyList())
+                    val needsMap = rawTasks.any { it is Task.Teach && it.lesson.chapterId == null }
+                    val byLesson = if (needsMap) runCatching { api.lessons(examId) }.getOrDefault(emptyList()).associate { it.id to it.chapterId } else emptyMap()
+                    withChapters(rawTasks, byLesson, chapters)
+                } else rawTasks
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
@@ -165,7 +175,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     startedAt = shownAt
                     _state.update {
                         it.copy(
-                            phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, audio = false, lessonsOnly = lessonsOnly,
+                            phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, reason = s.reason, audio = false, lessonsOnly = lessonsOnly, chapters = chapters,
                             finalRoundStart = if (lessonEntries != null) null else s.finalRoundStart?.let { f -> f - (s.items.take(f).size - filterForMode(s.items.take(f), { it.lesson != null }, mode).size) },
                             topics = labels,
                         )
@@ -180,6 +190,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Lektionskarten mit Kapitelangaben versehen (vorhandene Angaben bleiben). */
+    private fun withChapters(tasks: List<Task>, byLesson: Map<String, String>, chapters: List<com.jonasschnell.quickscope.data.Chapter>): List<Task> =
+        tasks.map { t ->
+            if (t is Task.Teach) t.copy(lesson = com.jonasschnell.quickscope.logic.enrichLesson(t.lesson, byLesson, chapters)) else t
+        }
+
     /** Runde aus dem Offline-Paket: Reihenfolge des Pakets, ohne schon Erledigtes, still (kein Ton), Antworten bleiben in der Warteschlange. */
     private fun startOffline(examId: String, minutes: Int?, questionsOnly: Boolean, lessonsOnly: Boolean) {
         val pack = app.local.pack(examId)
@@ -191,7 +207,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val doneSeconds = app.local.forecast(examId)?.doneSecondsToday ?: 0
         val m = minutes ?: com.jonasschnell.quickscope.logic.remainingMinutes(exam?.dailyMinutes ?: 20, doneSeconds)
         val entries = if (lessonsOnly) com.jonasschnell.quickscope.logic.offlineLessonRound(pack, app.local.doneKeys(examId)) else com.jonasschnell.quickscope.logic.offlineRound(pack, app.local.doneKeys(examId), m * 60, questionsOnly)
-        val tasks = entries.mapNotNull(::taskOf)
+        val tasks = withChapters(entries.mapNotNull(::taskOf), emptyMap(), pack.chapters)
         if (tasks.isEmpty()) {
             _state.update { it.copy(phase = SessionPhase.Empty, offline = true) }
             return
@@ -206,7 +222,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         startedAt = shownAt
         _state.update {
             it.copy(
-                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, audio = false, offline = true, lessonsOnly = lessonsOnly,
+                phase = SessionPhase.Running, tasks = tasks, isRetry = List(tasks.size) { false }, audio = false, offline = true, lessonsOnly = lessonsOnly, chapters = pack.chapters,
                 topics = topicLabels(topicList),
             )
         }

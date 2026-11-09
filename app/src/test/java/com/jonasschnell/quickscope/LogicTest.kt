@@ -406,4 +406,61 @@ class LogicTest {
     @Test fun startButtonHasNoMinutes() {
         assertTrue(!START_LABEL.contains("min") && !START_LABEL.any { it.isDigit() })
     }
+
+    // --- Kopfzeile der Lektionskarten ---
+
+    private fun les(id: String, chapterId: String? = null, title: String? = null, order: Int? = null, count: Int? = null, idx: Int? = null, n: Int? = null) =
+        com.jonasschnell.quickscope.data.SessionLesson(
+            id, "Lektion $id", listOf("a"), "t", null, 30, chapterId = chapterId, chapterTitle = title, chapterOrder = order, chapterCount = count,
+            lessonIndexInChapter = idx, lessonCountInChapter = n,
+        )
+
+    @Test fun lessonHeaderWithBackendFields() {
+        val a = les("1", "c1", "Rechnen", 2, 6, 3, 5)
+        val h = com.jonasschnell.quickscope.logic.lessonHeader(a, listOf(a), lessonsOnly = true)
+        assertEquals("Kapitel 2 von 6 · Rechnen", h.chapterLine)
+        assertEquals("Lektion 1", h.title)
+        assertEquals(3 to 5, h.progress)
+        assertEquals("Lektion 3 von 5", h.progressText)
+    }
+
+    @Test fun lessonHeaderDetectsChapterChange() {
+        val run = listOf(les("1", "c1", "Rechnen", 1, 2), les("2", "c1", "Rechnen", 1, 2), les("3", "c2", "Recht", 2, 2))
+        assertFalse(com.jonasschnell.quickscope.logic.lessonHeader(run[1], run, true).newChapter)
+        assertTrue(com.jonasschnell.quickscope.logic.lessonHeader(run[2], run, true).newChapter)
+        assertFalse(com.jonasschnell.quickscope.logic.lessonHeader(run[0], run, true).newChapter)   // erste Lektion: kein Wechsel
+        // Fortschritt aus der Runde: Lektion 2 von 2 im Kapitel c1, 1 von 1 in c2
+        assertEquals(2 to 2, com.jonasschnell.quickscope.logic.lessonHeader(run[1], run, true).progress)
+        assertEquals(1 to 1, com.jonasschnell.quickscope.logic.lessonHeader(run[2], run, true).progress)
+    }
+
+    @Test fun lessonHeaderToleratesMissingFields() {
+        val bare = les("1")
+        val h = com.jonasschnell.quickscope.logic.lessonHeader(bare, listOf(bare, les("2")), lessonsOnly = true)
+        assertEquals(null, h.chapterLine)                 // nur der Lektionstitel
+        assertEquals(1 to 2, h.progress)                  // Position in der Verstehen-Runde
+        // normale Runde ohne Angaben: gar kein Fortschritt
+        assertEquals(null, com.jonasschnell.quickscope.logic.lessonHeader(bare, listOf(bare), lessonsOnly = false).progress)
+        // Kapiteltitel ohne Nummer
+        assertEquals("Rechnen", com.jonasschnell.quickscope.logic.lessonHeader(les("1", "c1", "Rechnen"), listOf(), false).chapterLine)
+    }
+
+    @Test fun enrichFillsOnlyMissingChapterFields() {
+        val chapters = listOf(
+            com.jonasschnell.quickscope.data.Chapter(chapterId = "c1", title = "Rechnen", order = 1),
+            com.jonasschnell.quickscope.data.Chapter(chapterId = "c2", title = "Recht", order = 2),
+        )
+        val e = com.jonasschnell.quickscope.logic.enrichLesson(les("7"), mapOf("7" to "c2"), chapters)
+        assertEquals("c2", e.chapterId)
+        assertEquals("Recht", e.chapterTitle)
+        assertEquals(2, e.chapterOrder)
+        assertEquals(2, e.chapterCount)
+        val keep = com.jonasschnell.quickscope.logic.enrichLesson(les("7", "c1", "Eigener Titel", 9, 9), mapOf("7" to "c2"), chapters)
+        assertEquals("Eigener Titel", keep.chapterTitle)
+        assertEquals(9, keep.chapterOrder)
+        // unbekanntes Kapitel: nichts erfinden
+        val none = com.jonasschnell.quickscope.logic.enrichLesson(les("8"), emptyMap(), chapters)
+        assertEquals(null, none.chapterTitle)
+        assertEquals(null, none.chapterCount)
+    }
 }

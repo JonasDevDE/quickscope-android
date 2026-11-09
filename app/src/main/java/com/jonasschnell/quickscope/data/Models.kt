@@ -148,6 +148,13 @@ data class SessionLesson(
     val ttsText: String = "",
     val mnemonic: String? = null,
     val estSeconds: Int = 60,
+    /** Kapitel-Angaben (Backend ergaenzt sie in der Session; fehlen sie, werden sie aus Kapitelliste/Lektionsliste abgeleitet). */
+    val chapterId: String? = null,
+    val chapterTitle: String? = null,
+    val chapterOrder: Int? = null,
+    val chapterCount: Int? = null,
+    val lessonIndexInChapter: Int? = null,
+    val lessonCountInChapter: Int? = null,
 )
 
 /** Ein Element der Session: entweder eine Aufgabe oder eine Lektion (streng ueber `type == "lesson"` unterschieden). */
