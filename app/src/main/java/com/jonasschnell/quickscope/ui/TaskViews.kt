@@ -298,3 +298,119 @@ fun OrderTask(task: Task.Order, revealed: Boolean, onAnswer: (Boolean) -> Unit) 
         }
     }
 }
+
+/**
+ * Einsortieren: das aktuelle Element gross, darunter 2 bis 4 grosse Kategorie-Knoepfe. Tipp auf eine Kategorie wertet sofort aus: richtig
+ * (Pling) bleibt dort stehen und das naechste Element kommt, falsch wackelt ohne Ton; nach zwei Fehlversuchen wird die richtige Kategorie gezeigt.
+ */
+@Composable
+fun BucketTask(task: Task.Bucket, revealed: Boolean, onAnswer: (Boolean, kotlinx.serialization.json.JsonElement?) -> Unit) {
+    val state = remember { com.jonasschnell.quickscope.logic.BucketState.of(task) }
+    var version by remember { mutableIntStateOf(0) }
+    val haptics = LocalHaptics.current
+    val sfx = rememberSfx()
+    val shake = remember { Animatable(0f) }
+    var wrongCategory by remember { mutableStateOf<String?>(null) }
+    var wrongTick by remember { mutableIntStateOf(0) }
+    fun payload() = kotlinx.serialization.json.JsonObject(state.placed.mapValues { kotlinx.serialization.json.JsonPrimitive(it.value) })
+    LaunchedEffect(revealed) { if (revealed) { state.revealAll(); version++ } }
+    LaunchedEffect(wrongTick) {
+        if (wrongTick == 0) return@LaunchedEffect
+        shake.snapTo(0f)
+        shake.animateTo(0f, keyframes { durationMillis = 300; 0f at 0; -10f at 50; 9f at 110; -6f at 170; 3f at 230; 0f at 300 })
+        wrongCategory = null
+    }
+    @Suppress("UNUSED_EXPRESSION") version
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        QuestionText(task.item.question.ifBlank { "Einsortieren" })
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 84.dp).clip(RoundedCornerShape(24.dp)).background(Color.Black)
+                .border(BorderStroke(1.dp, com.jonasschnell.quickscope.ui.theme.Outline), RoundedCornerShape(24.dp)).padding(16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(state.current?.text ?: "Geschafft", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, color = if (state.done) Accent else Color.White)
+        }
+        Text("${minOf(state.index + 1, state.entries.size)} von ${state.entries.size}", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        task.categories.forEach { (id, title) ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MatchCell(title, null, false, wrongCategory == id, shake) {
+                    if (state.done) return@MatchCell
+                    val result = state.tap(id)
+                    if (!state.done) com.jonasschnell.quickscope.logic.soundForBucket(result)?.let(sfx::play)
+                    when (result) {
+                        com.jonasschnell.quickscope.logic.BucketResult.Right -> haptics.confirm()
+                        com.jonasschnell.quickscope.logic.BucketResult.Revealed -> haptics.tick()
+                        com.jonasschnell.quickscope.logic.BucketResult.Wrong -> { haptics.tick(); wrongCategory = id; wrongTick++ }
+                        null -> Unit
+                    }
+                    version++
+                    if (state.done) onAnswer(state.known, payload())
+                }
+                val inside = state.placedIn(id)
+                if (inside.isNotEmpty()) Text(inside.joinToString(" · ") { it.text }, color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 12.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Satz bauen: Antwortzeile oben, gemischte Bausteine unten. Tipp setzt in die Zeile, Tipp in der Zeile nimmt zurueck, "Pruefen" wertet aus:
+ * richtig = gruen und fertig, falsch = kurzes Wackeln; nach zwei Versuchen wird die richtige Reihenfolge gezeigt.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun BuildTask(task: Task.Build, revealed: Boolean, onAnswer: (Boolean, kotlinx.serialization.json.JsonElement?) -> Unit) {
+    val state = remember { com.jonasschnell.quickscope.logic.BuildState.of(task) }
+    var version by remember { mutableIntStateOf(0) }
+    val haptics = LocalHaptics.current
+    val shake = remember { Animatable(0f) }
+    var wrongTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(revealed) { if (revealed) { state.revealAll(); version++ } }
+    LaunchedEffect(wrongTick) {
+        if (wrongTick == 0) return@LaunchedEffect
+        shake.snapTo(0f)
+        shake.animateTo(0f, keyframes { durationMillis = 300; 0f at 0; -10f at 50; 9f at 110; -6f at 170; 3f at 230; 0f at 300 })
+    }
+    @Suppress("UNUSED_EXPRESSION") version
+    val good = state.done && state.known
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        QuestionText(task.item.question.ifBlank { "Baue die Antwort" })
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth().heightIn(min = 72.dp).graphicsLayer { translationX = shake.value }.clip(RoundedCornerShape(24.dp)).background(Color.Black)
+                .border(BorderStroke(if (good) 2.dp else 1.dp, if (good) Accent else com.jonasschnell.quickscope.ui.theme.Outline), RoundedCornerShape(24.dp)).padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            state.row.forEachIndexed { pos, id ->
+                BuildChip(state.textOf(id), if (good) Accent else com.jonasschnell.quickscope.ui.theme.Pressed, if (good) OnAccent else Color.White, !state.done) { state.tapRow(pos); haptics.tick(); version++ }
+            }
+        }
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.shuffled.forEach { (id, text) ->
+                val used = state.inRow(id)
+                BuildChip(text, if (used) Card else CardHigh, if (used) Muted else Color.White, !used && !state.done) { state.tapChip(id); haptics.tick(); version++ }
+            }
+        }
+        PrimaryButton("Prüfen", {
+            val result = state.check() ?: return@PrimaryButton
+            when (result) {
+                com.jonasschnell.quickscope.logic.BuildResult.Right -> haptics.confirm()
+                com.jonasschnell.quickscope.logic.BuildResult.Revealed -> haptics.tick()
+                com.jonasschnell.quickscope.logic.BuildResult.Wrong -> { haptics.tick(); wrongTick++ }
+            }
+            version++
+            if (state.done) onAnswer(state.known, kotlinx.serialization.json.JsonArray(state.answerOrder().map { kotlinx.serialization.json.JsonPrimitive(it) }))
+        }, enabled = state.complete && !state.done)
+    }
+}
+
+@Composable
+private fun BuildChip(text: String, bg: Color, fg: Color, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).background(bg)
+            .border(BorderStroke(1.dp, com.jonasschnell.quickscope.ui.theme.Outline), RoundedCornerShape(24.dp))
+            .hapticClickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.titleSmall, color = fg)
+    }
+}

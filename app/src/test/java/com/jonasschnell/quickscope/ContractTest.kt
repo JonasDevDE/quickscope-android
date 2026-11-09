@@ -270,7 +270,7 @@ class ContractTest {
         val order = crashTasks.getValue("i-order") as Task.Order
         assertEquals(listOf("Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis"), order.steps)
         val spot = crashTasks.getValue("i-spot") as Task.Spot
-        assertEquals(0, spot.falseIndex)
+        assertEquals("Verträge: immer Schriftform.", spot.statements[spot.falseIndex])   // gemischt, falseIndex zeigt weiter auf die falsche Aussage
         assertEquals(3, spot.statements.size)
         val lesson = s.quiz.first { it.lesson }
         val task = parseTask(lesson) as Task.Lesson

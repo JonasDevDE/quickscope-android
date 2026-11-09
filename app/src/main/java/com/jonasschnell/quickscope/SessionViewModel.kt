@@ -274,7 +274,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
      * Antwort zur aktuellen Aufgabe: sofort vormerken und Feedback zeigen; gesendet wird im Hintergrund.
      * Falsche Antworten kommen nach 3 bis 5 Aufgaben als "Gleich nochmal" wieder (nur lokal, ohne erneutes Senden).
      */
-    fun answer(correct: Boolean) {
+    fun answer(correct: Boolean, payload: kotlinx.serialization.json.JsonElement? = null) {
         val s = _state.value
         val task = s.current ?: return
         if (s.feedback != null) return
@@ -294,14 +294,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         var flags = s.isRetry
         var finalStart = s.finalRoundStart
         if (!retry) {
-            sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, correct), ms, Instant.now().toString()))
+            sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, correct), ms, Instant.now().toString(), answer = payload))
             viewModelScope.launch {
                 val f = sync.flush(s.examId)
                 if (f != null) checkSits(s.examId)
             }
             if (s.offline && correct) app.local.markDone(s.examId, "q:${task.item.id}")
             if (!correct) {
-                val at = if (s.offline) com.jonasschnell.quickscope.logic.offlineRetryIndex(s.index, tasks.size, task.item.id) else retryInsertIndex(s.index, tasks.size, task.item.id)
+                val rawAt = if (s.offline) com.jonasschnell.quickscope.logic.offlineRetryIndex(s.index, tasks.size, task.item.id) else retryInsertIndex(s.index, tasks.size, task.item.id)
+                val at = com.jonasschnell.quickscope.logic.afterUpcomingLessons(tasks, s.index, rawAt)
                 tasks = tasks.toMutableList().apply { add(at, task) }
                 flags = flags.toMutableList().apply { add(at, true) }
                 if (finalStart != null && at <= finalStart) finalStart += 1

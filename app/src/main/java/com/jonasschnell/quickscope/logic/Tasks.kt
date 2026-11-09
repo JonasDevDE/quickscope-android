@@ -20,7 +20,12 @@ sealed interface Task {
     data class Choice(override val item: Item, val options: List<String>, val correct: Int) : Task
     data class Cloze(override val item: Item, val text: String, val bank: List<String>, val answer: String) : Task
     data class Spot(override val item: Item, val statements: List<String>, val falseIndex: Int) : Task
-    data class Match(override val item: Item, val pairs: List<Pair<String, String>>) : Task
+    /** [leftOrder]/[rightOrder]: vom Backend gelieferte, schon gemischte Spalten (bevorzugt); sonst mischt der Client. */
+    data class Match(override val item: Item, val pairs: List<Pair<String, String>>, val leftOrder: List<String>? = null, val rightOrder: List<String>? = null) : Task
+    /** Einsortieren: 2 bis 4 Kategorien (id, Titel), 4 bis 6 Elemente, die nacheinander einer Kategorie zugeordnet werden. */
+    data class Bucket(override val item: Item, val categories: List<Pair<String, String>>, val entries: List<BucketEntry>) : Task
+    /** Satz/Formel bauen: Bausteine (id, Text) und die richtige Reihenfolge der ids. */
+    data class Build(override val item: Item, val tokens: List<Pair<String, String>>, val solution: List<String>) : Task
     data class Order(override val item: Item, val steps: List<String>) : Task
     /** Loesungsweg: ein ruhiger Kartenblock mit hoechstens 3 Schritten und optionaler Merkregel. */
     data class Lesson(override val item: Item, val steps: List<String>, val trick: String?) : Task
@@ -34,6 +39,8 @@ private fun JsonObject.strings(key: String): List<String>? =
 private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
 
 private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.intOrNull
+
+data class BucketEntry(val id: String, val text: String, val categoryId: String)
 
 /** Hoechstens 3 Schritte fuer Loesungswege. */
 fun lessonSteps(item: Item): List<String> = (item.solutionSteps ?: emptyList()).filter { it.isNotBlank() }.take(3)
@@ -62,7 +69,11 @@ fun parseTask(item: Item): Task {
         "spot" -> {
             val statements = p?.strings("statements")
             val idx = p?.int("falseIndex")
-            if (statements != null && statements.size >= 2 && idx != null && idx in statements.indices) Task.Spot(item, statements, idx) else fallback
+            if (statements != null && statements.size >= 2 && idx != null && idx in statements.indices) {
+                // die falsche Aussage liegt im Backend oft immer an derselben Stelle: stabil mischen (seed = itemId) und falseIndex mitfuehren
+                val order = shuffledFor(item, statements.indices.toList())
+                Task.Spot(item, order.map { statements[it] }, order.indexOf(idx))
+            } else fallback
         }
         "match" -> {
             val pairs = (p?.get("pairs") as? JsonArray)?.mapNotNull {
@@ -71,14 +82,66 @@ fun parseTask(item: Item): Task {
                 val r = o["right"]?.jsonPrimitive?.contentOrNull
                 if (l != null && r != null) l to r else null
             }
-            if (pairs != null && pairs.size >= 2) Task.Match(item, pairs) else fallback
+            if (pairs != null && pairs.size >= 2) {
+                // neu vom Backend: getrennte, schon gemischte Spalten (lefts/rights); nur uebernehmen, wenn sie genau die Paare enthalten
+                val lefts = (p?.strings("lefts") ?: p?.strings("left"))?.takeIf { it.sorted() == pairs.map { pr -> pr.first }.sorted() }
+                val rights = (p?.strings("rights") ?: p?.strings("right"))?.takeIf { it.sorted() == pairs.map { pr -> pr.second }.sorted() }
+                Task.Match(item, pairs, if (lefts != null && rights != null) lefts else null, if (lefts != null && rights != null) rights else null)
+            } else fallback
         }
+        "bucket" -> parseBucket(item, p) ?: fallback
+        "build" -> parseBuild(item, p) ?: fallback
         "order" -> {
             val steps = p?.strings("steps")
             if (steps != null && steps.size >= 2) Task.Order(item, steps) else fallback
         }
         else -> fallback
     }
+}
+
+private fun JsonObject.objects(key: String): List<JsonObject>? = (this[key] as? JsonArray)?.mapNotNull { runCatching { it.jsonObject }.getOrNull() }
+
+/** bucket: payload.categories [{id,title}] und payload.items [{id,text,categoryId}]; unlesbar = null (Karte). */
+private fun parseBucket(item: Item, p: JsonObject?): Task.Bucket? {
+    p ?: return null
+    val categories = (p.objects("categories") ?: return null).mapNotNull { o ->
+        val id = o.string("id") ?: return@mapNotNull null
+        id to (o.string("title") ?: o.string("name") ?: o.string("label") ?: return@mapNotNull null)
+    }
+    val entries = (p.objects("items") ?: return null).mapNotNull { o ->
+        BucketEntry(o.string("id") ?: return@mapNotNull null, o.string("text") ?: return@mapNotNull null, o.string("categoryId") ?: o.string("category") ?: return@mapNotNull null)
+    }
+    if (categories.size !in 2..4 || entries.size < 2 || entries.any { e -> categories.none { it.first == e.categoryId } }) return null
+    return Task.Bucket(item, categories, entries)
+}
+
+/** build: payload.tokens [{id,text}] (oder Texte) und payload.order bzw. solution [ids] in richtiger Reihenfolge. */
+private fun parseBuild(item: Item, p: JsonObject?): Task.Build? {
+    p ?: return null
+    val raw = p["tokens"] as? JsonArray ?: return null
+    val tokens = raw.mapIndexedNotNull { i, el ->
+        (el as? JsonPrimitive)?.contentOrNull?.let { "$i" to it }
+            ?: runCatching { el.jsonObject }.getOrNull()?.let { o -> (o.string("id") ?: return@let null) to (o.string("text") ?: return@let null) }
+    }
+    val solution = p.strings("order") ?: p.strings("solution") ?: return null
+    if (tokens.size < 2 || solution.size < 2 || solution.any { id -> tokens.none { it.first == id } }) return null
+    return Task.Build(item, tokens, solution)
+}
+
+/**
+ * Mischt [base] so, dass kein Element an seiner Ausgangsstelle bleibt (Derangement), stabil je Aufgabe (seed = itemId). Bei weniger
+ * als 2 Elementen unveraendert; sonst immer eine echte Verschiebung (zur Not zyklisch).
+ */
+fun <T> derangedFor(item: Item, base: List<T>): List<T> {
+    val n = base.size
+    if (n < 2) return base
+    val rnd = Random(item.id.hashCode().toLong() xor 0x5DEECE66DL)
+    val idx = (0 until n).toList()
+    var perm = idx.shuffled(rnd)
+    var tries = 0
+    while (perm.indices.any { perm[it] == it } && tries++ < 50) perm = idx.shuffled(rnd)
+    if (perm.indices.any { perm[it] == it }) perm = idx.map { (it + 1) % n }
+    return perm.map { base[it] }
 }
 
 /** Antwort-Ergebnis fuer das Backend: Karten und Loesungswege known/unknown, alles andere right/wrong. */
@@ -94,6 +157,7 @@ fun <T> shuffledFor(item: Item, list: List<T>): List<T> {
     var out = list.shuffled(rnd)
     var tries = 0
     while (out == list && tries++ < 5) out = list.shuffled(rnd)
+    if (out == list) out = list.drop(1) + list.first()   // nie in Loesungsreihenfolge
     return out
 }
 
@@ -162,11 +226,16 @@ class MatchState(val lefts: List<String>, val rights: List<String>, private val 
     companion object {
         const val MAX_TRIES = 2
 
-        fun of(task: Task.Match) = MatchState(
-            shuffledFor(task.item, task.pairs.map { it.first }),
-            shuffledFor(task.item, task.pairs.map { it.second }),
-            task.pairs.toMap(),
-        )
+        /**
+         * Spalten: vom Backend geliefert (bevorzugt), sonst links gemischt und rechts als Derangement dazu, damit kein rechtes Element
+         * neben seinem linken Partner steht (frueher bekamen beide Spalten dieselbe Mischung und die Loesung lag nebeneinander).
+         */
+        fun of(task: Task.Match): MatchState {
+            val solution = task.pairs.toMap()
+            if (task.leftOrder != null && task.rightOrder != null) return MatchState(task.leftOrder, task.rightOrder, solution)
+            val pairs = shuffledFor(task.item, task.pairs)
+            return MatchState(pairs.map { it.first }, derangedFor(task.item, pairs.map { it.second }), solution)
+        }
     }
 }
 
@@ -202,6 +271,128 @@ class OrderState(val steps: List<String>, val shuffled: List<String>) {
     }
 }
 
+/** Ergebnis eines Tipps auf eine Kategorie beim Einsortieren. */
+enum class BucketResult { Right, Wrong, Revealed }
+
+/**
+ * Einsortieren: die Elemente kommen nacheinander, Tipp auf eine Kategorie wertet sofort aus. Richtig = bleibt in der Kategorie (Pling),
+ * falsch = Wackeln ohne Ton; nach [MAX_TRIES] Fehlversuchen bei einem Element wird die richtige Zuordnung gezeigt.
+ */
+class BucketState(val categories: List<Pair<String, String>>, val entries: List<BucketEntry>) {
+    val placed = LinkedHashMap<String, String>()
+    var index = 0
+        private set
+    var mistakes = 0
+        private set
+    private var tries = 0
+    val current: BucketEntry? get() = entries.getOrNull(index)
+    val done get() = index >= entries.size
+    val known get() = mistakes == 0
+
+    fun tap(categoryId: String): BucketResult? {
+        val e = current ?: return null
+        if (e.categoryId == categoryId) {
+            placed[e.id] = categoryId
+            index++
+            tries = 0
+            return BucketResult.Right
+        }
+        mistakes++
+        tries++
+        if (tries >= MAX_TRIES) {
+            placed[e.id] = e.categoryId
+            index++
+            tries = 0
+            return BucketResult.Revealed
+        }
+        return BucketResult.Wrong
+    }
+
+    /** "Weiss nicht": alles Uebrige richtig zeigen. */
+    fun revealAll() {
+        entries.drop(index).forEach { placed[it.id] = it.categoryId }
+        index = entries.size
+    }
+
+    fun placedIn(categoryId: String): List<BucketEntry> = entries.filter { placed[it.id] == categoryId }
+
+    companion object {
+        const val MAX_TRIES = 2
+        fun of(task: Task.Bucket) = BucketState(task.categories, shuffledFor(task.item, task.entries))
+    }
+}
+
+enum class BuildResult { Right, Wrong, Revealed }
+
+/**
+ * Satz bauen: Bausteine unten, Antwortzeile oben. Tipp setzt einen Baustein in die Zeile, Tipp in der Zeile nimmt ihn zurueck. "Pruefen"
+ * wertet aus: richtig = fertig, falsch = Wackeln; nach [MAX_TRIES] Versuchen wird die richtige Reihenfolge gezeigt.
+ */
+class BuildState(val tokens: List<Pair<String, String>>, val solution: List<String>, val shuffled: List<Pair<String, String>>) {
+    val row = mutableListOf<String>()
+    var mistakes = 0
+        private set
+    var done = false
+        private set
+    var revealed = false
+        private set
+    private var tries = 0
+    private var attempt: List<String> = emptyList()
+
+    val complete get() = row.size == solution.size
+    val known get() = mistakes == 0 && !revealed
+
+    fun textOf(id: String): String = tokens.firstOrNull { it.first == id }?.second.orEmpty()
+    fun inRow(id: String) = id in row
+
+    fun tapChip(id: String) {
+        if (!done && id !in row && row.size < solution.size) row.add(id)
+    }
+
+    fun tapRow(position: Int) {
+        if (!done && position in row.indices) row.removeAt(position)
+    }
+
+    fun check(): BuildResult? {
+        if (!complete || done) return null
+        attempt = row.toList()
+        if (row == solution) {
+            done = true
+            return BuildResult.Right
+        }
+        mistakes++
+        tries++
+        if (tries >= MAX_TRIES) {
+            showSolution()
+            return BuildResult.Revealed
+        }
+        return BuildResult.Wrong
+    }
+
+    /** "Weiss nicht": die richtige Reihenfolge zeigen. */
+    fun revealAll() {
+        if (!done) {
+            attempt = row.toList()
+            showSolution()
+        }
+    }
+
+    private fun showSolution() {
+        row.clear()
+        row.addAll(solution)
+        done = true
+        revealed = true
+    }
+
+    /** Reihenfolge der Baustein-ids, wie der Nutzer sie zuletzt abgegeben hat (fuer das Backend). */
+    fun answerOrder(): List<String> = if (revealed) attempt else row.toList()
+
+    companion object {
+        const val MAX_TRIES = 2
+        fun of(task: Task.Build) = BuildState(task.tokens, task.solution, shuffledFor(task.item, task.tokens))
+    }
+}
+
 /** Hoechstens zwei kurze Saetze der Erklaerung. */
 fun shortExplanation(text: String?): String? {
     val t = text?.trim().orEmpty()
@@ -217,6 +408,8 @@ fun correctText(task: Task): String = when (task) {
     is Task.Cloze -> task.answer
     is Task.Spot -> task.statements[task.falseIndex]
     is Task.Match -> task.pairs.joinToString("; ") { "${it.first} = ${it.second}" }
+    is Task.Bucket -> task.entries.joinToString("; ") { e -> "${e.text} = ${task.categories.first { it.first == e.categoryId }.second}" }
+    is Task.Build -> task.solution.joinToString(" ") { id -> task.tokens.first { it.first == id }.second }
     is Task.Order -> task.steps.joinToString(" → ")
     is Task.Lesson, is Task.Teach -> ""
 }

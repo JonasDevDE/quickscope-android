@@ -48,7 +48,7 @@ import kotlinx.coroutines.isActive
  * springt direkt zu den Fragen. Gemeldet wird, wie viel gehoert wurde.
  */
 @Composable
-fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit, lessonsOnly: Boolean = false, header: LessonHeader? = null, onChapterClick: (() -> Unit)? = null, wasForward: () -> Boolean = { true }) {
+fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, onHeard: (String, Double) -> Unit, onNext: () -> Unit, lessonsOnly: Boolean = false, header: LessonHeader? = null, onChapterClick: (() -> Unit)? = null, wasForward: () -> Boolean = { true }, buttonLabel: String = "Weiter zum Test") {
     val lesson = task.lesson
     val durationMs = lesson.estSeconds * 1000L
     var replay by remember { mutableIntStateOf(0) }
@@ -135,7 +135,7 @@ fun TeachCard(task: Task.Teach, examId: String, voice: Voice, replayKey: Int, au
         )
         Spacer(Modifier.height(4.dp))
         if (!lessonsOnly) {
-        PrimaryButton("Weiter zum Test", {
+        PrimaryButton(buttonLabel, {
             voice.stop()
             // Ueberspringen zaehlt nicht als gehoert: nur melden, wenn wirklich etwas gehoert wurde
             val fraction = heardFraction(elapsed, durationMs, finished)

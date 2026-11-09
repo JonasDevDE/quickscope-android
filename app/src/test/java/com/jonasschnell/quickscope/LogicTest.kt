@@ -524,4 +524,141 @@ class LogicTest {
         assertEquals(null, r(false, 0, 30_000, false, 4_999, true))                      // zu kurz
         assertEquals(null, r(false, 0, 30_000, false, 20_000, false))                    // Zurueck meldet nichts
     }
+
+    // --- Match: Mischung, Derangement, Seed-Stabilitaet ---
+
+    private fun matchTask(id: String, n: Int, lefts: List<String>? = null, rights: List<String>? = null): com.jonasschnell.quickscope.logic.Task.Match {
+        val pairs = (1..n).map { "L$it" to "R$it" }
+        return com.jonasschnell.quickscope.logic.Task.Match(com.jonasschnell.quickscope.data.Item(id = id, type = "match"), pairs, lefts, rights)
+    }
+
+    @Test fun matchNeverShowsPartnersSideBySide() {
+        for (n in 2..6) for (id in listOf("a", "i-match", "xyz", "item-42", "q7", "zz", "0", "long-item-id-1")) {
+            val state = com.jonasschnell.quickscope.logic.MatchState.of(matchTask(id, n))
+            assertEquals(n, state.lefts.size)
+            assertEquals(state.lefts.map { "R" + it.removePrefix("L") }.sorted(), state.rights.sorted())   // gleiche Elemente
+            state.lefts.forEachIndexed { row, left -> assertTrue("$id n=$n row=$row", state.rights[row] != "R" + left.removePrefix("L")) }
+        }
+    }
+
+    @Test fun matchMixIsStablePerItemAndPrefersBackendColumns() {
+        val a = com.jonasschnell.quickscope.logic.MatchState.of(matchTask("stable", 4))
+        val b = com.jonasschnell.quickscope.logic.MatchState.of(matchTask("stable", 4))
+        assertEquals(a.lefts, b.lefts)
+        assertEquals(a.rights, b.rights)
+        val other = com.jonasschnell.quickscope.logic.MatchState.of(matchTask("other-seed", 4))
+        assertTrue(a.rights != other.rights || a.lefts != other.lefts)    // anderer Seed, andere Mischung
+        val given = com.jonasschnell.quickscope.logic.MatchState.of(matchTask("stable", 3, lefts = listOf("L3", "L1", "L2"), rights = listOf("R1", "R2", "R3")))
+        assertEquals(listOf("L3", "L1", "L2"), given.lefts)                   // Backend-Spalten werden uebernommen
+        assertEquals(listOf("R1", "R2", "R3"), given.rights)
+    }
+
+    @Test fun derangementAndStrictShuffle() {
+        val item = com.jonasschnell.quickscope.data.Item(id = "d1", type = "order")
+        for (n in 2..8) {
+            val base = (0 until n).toList()
+            val d = com.jonasschnell.quickscope.logic.derangedFor(item, base)
+            assertEquals(base, d.sorted())
+            assertTrue(base.indices.none { d[it] == base[it] })
+            assertTrue(com.jonasschnell.quickscope.logic.shuffledFor(item, base) != base)   // nie in Loesungsreihenfolge
+        }
+        assertEquals(listOf(1), com.jonasschnell.quickscope.logic.derangedFor(item, listOf(1)))   // < 2: unveraendert
+        // Order: gemischte Anzeige ist nie die Loesung
+        val order = com.jonasschnell.quickscope.logic.Task.Order(item, listOf("a", "b", "c"))
+        assertTrue(com.jonasschnell.quickscope.logic.OrderState.of(order).shuffled != listOf("a", "b", "c"))
+    }
+
+    // --- Bucket und Build ---
+
+    private fun jsonItem(type: String, payload: String) =
+        com.jonasschnell.quickscope.data.AppJson.decodeFromString(com.jonasschnell.quickscope.data.Item.serializer(), """{"id":"x1","type":"$type","question":"q","answer":"a","payload":$payload}""")
+
+    @Test fun bucketParsesAndScoresPerAssignment() {
+        val payload = """{"categories":[{"id":"c1","title":"Aktiv"},{"id":"c2","title":"Passiv"}],"items":[{"id":"i1","text":"Kasse","categoryId":"c1"},{"id":"i2","text":"Kredit","categoryId":"c2"},{"id":"i3","text":"Bank","categoryId":"c1"},{"id":"i4","text":"Eigenkapital","categoryId":"c2"}]}"""
+        val task = com.jonasschnell.quickscope.logic.parseTask(jsonItem("bucket", payload)) as com.jonasschnell.quickscope.logic.Task.Bucket
+        assertEquals(2, task.categories.size)
+        val state = com.jonasschnell.quickscope.logic.BucketState.of(task)
+        // alle richtig
+        while (!state.done) assertEquals(com.jonasschnell.quickscope.logic.BucketResult.Right, state.tap(state.current!!.categoryId))
+        assertTrue(state.known)
+        assertEquals(4, state.placed.size)
+        // ein Fehler, dann richtig: nicht "known"
+        val s2 = com.jonasschnell.quickscope.logic.BucketState.of(task)
+        val wrong = task.categories.first { it.first != s2.current!!.categoryId }.first
+        assertEquals(com.jonasschnell.quickscope.logic.BucketResult.Wrong, s2.tap(wrong))
+        assertEquals(1, s2.mistakes)
+        // zwei Fehlversuche bei demselben Element: richtige Zuordnung wird gezeigt und es geht weiter
+        val first = s2.current!!
+        assertEquals(com.jonasschnell.quickscope.logic.BucketResult.Revealed, s2.tap(wrong))
+        assertEquals(first.categoryId, s2.placed[first.id])
+        assertTrue(s2.current?.id != first.id)
+        assertFalse(s2.known)
+        // "Weiss nicht"
+        s2.revealAll()
+        assertTrue(s2.done)
+        assertEquals(4, s2.placed.size)
+        // kaputte Payload: Karte
+        assertTrue(com.jonasschnell.quickscope.logic.parseTask(jsonItem("bucket", """{"categories":[{"id":"c1","title":"A"}],"items":[]}""")) is com.jonasschnell.quickscope.logic.Task.Card)
+    }
+
+    @Test fun buildParsesAndChecksTheRow() {
+        val payload = """{"tokens":[{"id":"t1","text":"Eigen"},{"id":"t2","text":"kapital"},{"id":"t3","text":"quote"}],"order":["t1","t2","t3"]}"""
+        val task = com.jonasschnell.quickscope.logic.parseTask(jsonItem("build", payload)) as com.jonasschnell.quickscope.logic.Task.Build
+        val state = com.jonasschnell.quickscope.logic.BuildState.of(task)
+        assertTrue(state.shuffled.map { it.first } != listOf("t1", "t2", "t3"))   // nicht in Loesungsreihenfolge
+        assertEquals(null, state.check())                                          // unvollstaendig
+        state.tapChip("t2"); state.tapChip("t1"); state.tapChip("t3")
+        state.tapRow(0)                                                            // Tipp in der Zeile nimmt zurueck
+        assertEquals(listOf("t1", "t3"), state.row)
+        state.tapChip("t2")
+        assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Wrong, state.check())   // t1 t3 t2
+        assertEquals(1, state.mistakes)
+        assertFalse(state.done)
+        // zweiter Versuch falsch: Loesung wird gezeigt
+        assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Revealed, state.check())
+        assertEquals(listOf("t1", "t2", "t3"), state.row)
+        assertEquals(listOf("t1", "t3", "t2"), state.answerOrder())   // abgegebene Reihenfolge fuer das Backend
+        assertFalse(state.known)
+        // richtig im ersten Versuch
+        val s2 = com.jonasschnell.quickscope.logic.BuildState.of(task)
+        listOf("t1", "t2", "t3").forEach { s2.tapChip(it) }
+        assertEquals(com.jonasschnell.quickscope.logic.BuildResult.Right, s2.check())
+        assertTrue(s2.known)
+        assertEquals(listOf("t1", "t2", "t3"), s2.answerOrder())
+        // Antwort-Payload im Versand
+        val body = com.jonasschnell.quickscope.data.AppJson.encodeToString(com.jonasschnell.quickscope.data.AttemptRequest.serializer(), com.jonasschnell.quickscope.data.AttemptRequest("x1", "right", 900, null, "u", kotlinx.serialization.json.JsonArray(s2.answerOrder().map { kotlinx.serialization.json.JsonPrimitive(it) })))
+        assertTrue(body.contains("\"answer\":[\"t1\",\"t2\",\"t3\"]"))
+        assertTrue(com.jonasschnell.quickscope.logic.parseTask(jsonItem("build", """{"tokens":["a"],"order":["0"]}""")) is com.jonasschnell.quickscope.logic.Task.Card)
+    }
+
+    // --- Gemischte Runde: Lektionen zwischendurch ---
+
+    @Test fun mixedRoundLabelsRetryPlacementProgressAndOfflineOrder() {
+        val lesson = com.jonasschnell.quickscope.data.SessionLesson("L1", "T", listOf("a"), "t", null, 40)
+        val teach = com.jonasschnell.quickscope.logic.Task.Teach(com.jonasschnell.quickscope.logic.teachItem(lesson), lesson)
+        val q = { id: String, sec: Int -> com.jonasschnell.quickscope.logic.parseTask(com.jonasschnell.quickscope.data.Item(id = id, type = "card", estSeconds = sec)) }
+        // Knopf: "Weiter zum Test" nur, wenn danach eine Frage folgt
+        assertEquals("Weiter zum Test", com.jonasschnell.quickscope.logic.teachButtonLabel(q("a", 10)))
+        assertEquals("Weiter", com.jonasschnell.quickscope.logic.teachButtonLabel(teach))
+        assertEquals("Weiter", com.jonasschnell.quickscope.logic.teachButtonLabel(null))
+        // Retry rutscht nicht vor eine anstehende Lektion
+        val tasks = listOf(q("a", 10), q("b", 10), teach, q("c", 10), q("d", 10), q("e", 10))
+        assertEquals(3, com.jonasschnell.quickscope.logic.afterUpcomingLessons(tasks, 0, 2))   // gewuenscht vor der Lektion (Index 2) -> direkt dahinter
+        assertEquals(5, com.jonasschnell.quickscope.logic.afterUpcomingLessons(tasks, 0, 5))   // schon dahinter: unveraendert
+        assertEquals(1, com.jonasschnell.quickscope.logic.afterUpcomingLessons(listOf(q("a", 10), q("b", 10)), 0, 1))   // keine Lektion: unveraendert
+        // Fortschritt zaehlt Lektionen und Fragen gemeinsam, gewichtet nach estSeconds (Lektion 40 s)
+        val items = listOf(q("a", 10), teach, q("c", 30)).map { it.item }
+        assertEquals(0.125f, com.jonasschnell.quickscope.logic.sessionProgress(items, 1), 0.0001f)   // 10 von 80
+        assertEquals(0.625f, com.jonasschnell.quickscope.logic.sessionProgress(items, 2), 0.0001f)   // 50 von 80
+        // Offline: Reihenfolge des Pakets bleibt gemischt (nicht erst alle Lektionen)
+        val entries = listOf(
+            com.jonasschnell.quickscope.data.SessionEntry(lesson = lesson),
+            com.jonasschnell.quickscope.data.SessionEntry(item = com.jonasschnell.quickscope.data.Item(id = "q1", type = "card")),
+            com.jonasschnell.quickscope.data.SessionEntry(item = com.jonasschnell.quickscope.data.Item(id = "q2", type = "card")),
+            com.jonasschnell.quickscope.data.SessionEntry(lesson = lesson.copy(id = "L2")),
+            com.jonasschnell.quickscope.data.SessionEntry(item = com.jonasschnell.quickscope.data.Item(id = "q3", type = "card")),
+        )
+        val round = com.jonasschnell.quickscope.logic.offlineRound(com.jonasschnell.quickscope.logic.OfflinePack(entries, emptyList()), emptySet(), 10_000)
+        assertEquals(listOf("l:L1", "q:q1", "q:q2", "l:L2", "q:q3"), round.mapNotNull { com.jonasschnell.quickscope.logic.entryKey(it) })
+    }
 }

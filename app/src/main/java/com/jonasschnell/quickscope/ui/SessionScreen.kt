@@ -204,7 +204,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm, s.lessonsOnly, s.tasks.mapNotNull { (it as? Task.Teach)?.lesson }, if (s.lessonsOnly) ({ showChapters = true }) else null)
+                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, retry, mayAutoplay(s.autoplaySuppressedAt, s.index), !s.audio, vm, s.lessonsOnly, s.tasks.mapNotNull { (it as? Task.Teach)?.lesson }, if (s.lessonsOnly) ({ showChapters = true }) else null, com.jonasschnell.quickscope.logic.teachButtonLabel(s.tasks.getOrNull(s.index + 1)))
                 }
             }
         }
@@ -236,7 +236,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         }
     }
     // Feste Position unten: vor der Antwort "Weiss nicht" (klein, unauffaellig), danach "Weiter"; die Hoehe bleibt gleich
-    if (task is Task.Choice || task is Task.Cloze || task is Task.Spot || task is Task.Match || task is Task.Order) {
+    if (task is Task.Choice || task is Task.Cloze || task is Task.Spot || task is Task.Match || task is Task.Order || task is Task.Bucket || task is Task.Build) {
         Box(Modifier.fillMaxWidth().height(76.dp).padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
             if (s.feedback == null) {
                 HapticTextButton(onClick = vm::dontKnow) { Text("Weiß nicht", color = Muted, style = MaterialTheme.typography.labelLarge) }
@@ -249,7 +249,7 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
 
 /** Die Aufgabe je Typ. Lektionskarten und Loesungswege haben ihren eigenen "Weiter"-Knopf. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel, lessonsOnly: Boolean = false, runLessons: List<com.jonasschnell.quickscope.data.SessionLesson> = emptyList(), onChapterClick: (() -> Unit)? = null) {
+private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice, replayKey: Int, autoplay: Boolean, silent: Boolean, vm: SessionViewModel, lessonsOnly: Boolean = false, runLessons: List<com.jonasschnell.quickscope.data.SessionLesson> = emptyList(), onChapterClick: (() -> Unit)? = null, nextLabel: String = "Weiter zum Test") {
     val header = (task as? Task.Teach)?.let { com.jonasschnell.quickscope.logic.lessonHeader(it.lesson, runLessons, lessonsOnly) }
     val answered = feedback != null
     val revealed = neutral
@@ -257,12 +257,14 @@ private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: S
     when (task) {
         is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
-        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next, lessonsOnly = lessonsOnly, header = header, onChapterClick = onChapterClick, wasForward = { vm.lastMoveForward })
+        is Task.Teach -> TeachCard(task, examId, voice, replayKey, autoplay, silent, onHeard = vm::heard, onNext = vm::next, lessonsOnly = lessonsOnly, header = header, onChapterClick = onChapterClick, wasForward = { vm.lastMoveForward }, buttonLabel = nextLabel)
         is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
         is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
         is Task.Spot -> SpotTask(task, revealed, onAnswer)
         is Task.Match -> MatchTask(task, revealed, onAnswer)
         is Task.Order -> OrderTask(task, revealed, onAnswer)
+        is Task.Bucket -> BucketTask(task, revealed) { ok, payload -> vm.answer(ok, payload) }
+        is Task.Build -> BuildTask(task, revealed) { ok, payload -> vm.answer(ok, payload) }
     }
 }
 

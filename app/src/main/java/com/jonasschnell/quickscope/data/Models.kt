@@ -248,6 +248,8 @@ data class AttemptRequest(
     val itemId: String, val outcome: String, val ms: Int, val at: String? = null,
     /** Eindeutige Id je Antwort (UUID): schon verbuchte clientIds uebergeht der Server, so ist das erneute Senden wiederholbar. */
     val clientId: String? = null,
+    /** Nur bei bucket (itemId -> categoryId je Element) und build (Reihenfolge der Baustein-ids); sonst fehlt das Feld. */
+    val answer: kotlinx.serialization.json.JsonElement? = null,
 )
 
 @Serializable

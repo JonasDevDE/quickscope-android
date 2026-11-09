@@ -198,3 +198,15 @@ fun wavBytes(pcm: ShortArray, sampleRate: Int = FeedbackTuning.SAMPLE_RATE): Byt
 
 /** Ein richtig verbundenes Paar bei "Zuordnen" bekommt sofort ein Pling; falsch und aufgedeckt bleiben ohne Ton. */
 fun soundForMatch(result: MatchResult): List<Note>? = if (result == MatchResult.Right) Tones.correct else null
+
+/** Wiederholung einer falsch beantworteten Frage nie vor eine anstehende Lektion: liegt eine Lektionskarte im Fenster bis [at], kommt sie direkt danach. */
+fun afterUpcomingLessons(tasks: List<Task>, current: Int, at: Int): Int {
+    val lastTeach = ((current + 1) until minOf(at + 1, tasks.size)).lastOrNull { tasks[it] is Task.Teach } ?: return at
+    return minOf(maxOf(at, lastTeach + 1), tasks.size)
+}
+
+/** Knopf der Lektionskarte in der Runde: "Weiter zum Test" nur, wenn danach eine Frage folgt, sonst "Weiter". */
+fun teachButtonLabel(next: Task?): String = if (next != null && next !is Task.Teach && next !is Task.Lesson) "Weiter zum Test" else "Weiter"
+
+/** Einsortieren: ein richtig zugeordnetes Element bekommt sofort ein Pling; falsch und aufgedeckt bleiben ohne Ton. */
+fun soundForBucket(result: BucketResult?): List<Note>? = if (result == BucketResult.Right) Tones.correct else null
