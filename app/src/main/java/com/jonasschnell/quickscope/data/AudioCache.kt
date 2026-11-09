@@ -20,7 +20,7 @@ import java.io.File
 import java.io.IOException
 
 @Serializable
-data class AudioPrefetch(val itemIds: List<String>, val parts: List<String>)
+data class AudioPrefetch(val itemIds: List<String> = emptyList(), val parts: List<String> = emptyList(), val lessonIds: List<String>? = null)
 
 /** Cloud-Stimme nicht nutzbar (503, Limit oder nicht eingerichtet); [message] ist die kurze Backend-Meldung. */
 class AudioUnavailable(message: String) : IOException(message)
@@ -49,9 +49,27 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
         }
     }
 
-    private fun download(examId: String, itemId: String, part: VoicePart, target: File): File {
+    /** Lektions-Audio (Session-Lektionskarte): wie [fetch], aber von der Lektions-URL. */
+    suspend fun fetchLesson(examId: String, lessonId: String): File {
+        val target = File(dir, audioFileName(examId, "lesson_$lessonId", VoicePart.Question))
+        if (target.exists() && target.length() > 0) return target
+        val url = "${BuildConfig.BASE_URL}api/exams/$examId/lessons/$lessonId/audio"
+        val job = lock.withLock { running.getOrPut(target.name) { scope.async(Dispatchers.IO) { downloadUrl(url, target) } } }
+        try {
+            return job.await()
+        } finally {
+            lock.withLock { if (job.isCompleted) running.remove(target.name) }
+        }
+    }
+
+    /** Wird beim Start einer Runde abgewartet, damit das Aufraeumen der letzten Runde nie neue Downloads trifft. */
+    @Volatile var clearing: kotlinx.coroutines.Job? = null
+
+    private fun download(examId: String, itemId: String, part: VoicePart, target: File): File =
+        downloadUrl("${BuildConfig.BASE_URL}api/exams/$examId/items/$itemId/audio?part=${part.query}", target)
+
+    private fun downloadUrl(url: String, target: File): File {
         dir.mkdirs()
-        val url = "${BuildConfig.BASE_URL}api/exams/$examId/items/$itemId/audio?part=${part.query}"
         val tmp = File(dir, target.name + ".part")
         try {
             client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
@@ -95,6 +113,12 @@ class AudioCache(context: Context, private val client: OkHttpClient, private val
     suspend fun requestPrefetch(examId: String, itemIds: List<String>) {
         if (itemIds.isEmpty()) return
         runCatching { api.audioPrefetch(examId, AudioPrefetch(itemIds, VoicePart.entries.map { it.query })) }
+    }
+
+    /** Lektionen vorab erzeugen lassen (Hoerbuch und Session). */
+    suspend fun requestLessonPrefetch(examId: String, lessonIds: List<String>) {
+        if (lessonIds.isEmpty()) return
+        runCatching { api.audioPrefetch(examId, AudioPrefetch(lessonIds = lessonIds)) }
     }
 
     private fun prune() {

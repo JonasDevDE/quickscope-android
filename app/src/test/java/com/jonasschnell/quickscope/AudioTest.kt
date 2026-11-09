@@ -1,6 +1,9 @@
 package com.jonasschnell.quickscope
 
+import com.jonasschnell.quickscope.logic.CLOUD_WAIT_MS
 import com.jonasschnell.quickscope.logic.CardFlow
+import com.jonasschnell.quickscope.logic.shouldSpeakQuestion
+import com.jonasschnell.quickscope.logic.voiceSource
 import com.jonasschnell.quickscope.logic.CloudHealth
 import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.PrefetchPlanner
@@ -61,5 +64,19 @@ class AudioTest {
         f.reveal()
         assertEquals("known", f.answer(true))
         assertEquals("unknown", f.answer(false))
+    }
+
+    @Test fun speechStartsWheneverAnItemAppearsWithSoundOn() {
+        assertTrue(shouldSpeakQuestion(audioOn = true, feedback = null, isTeach = false))   // auch das erste Item
+        assertFalse(shouldSpeakQuestion(audioOn = false, feedback = null, isTeach = false))
+        assertFalse(shouldSpeakQuestion(audioOn = true, feedback = true, isTeach = false))   // schon beantwortet
+        assertFalse(shouldSpeakQuestion(audioOn = true, feedback = null, isTeach = true))    // Lektion spielt sich selbst
+    }
+
+    @Test fun slowAudioIsWaitedForThenDeviceVoiceTakesOver() {
+        assertEquals(VoiceKind.Cloud, voiceSource(0))                 // Audio schon da (Prefetch fertig)
+        assertEquals(VoiceKind.Cloud, voiceSource(CLOUD_WAIT_MS))     // wird noch rechtzeitig fertig: warten, dann spielen
+        assertEquals(VoiceKind.Device, voiceSource(CLOUD_WAIT_MS + 1)) // zu spaet: Geraetestimme statt verwerfen
+        assertEquals(VoiceKind.Device, voiceSource(null))              // nie fertig (Fehler/Offline)
     }
 }

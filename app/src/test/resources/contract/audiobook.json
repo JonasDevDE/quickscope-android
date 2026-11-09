@@ -1,0 +1,17 @@
+{
+  "items" : [ {
+    "lessonId" : "6af1fab18c04f9867dc69613",
+    "chapterId" : "6af1fab18c04f9867dc6960e",
+    "chapterTitle" : "Rechnen",
+    "title" : "Preis kalkulieren",
+    "estSeconds" : 42
+  }, {
+    "lessonId" : "6af1fab18c04f9867dc69614",
+    "chapterId" : "6af1fab18c04f9867dc69610",
+    "chapterTitle" : "Vertragsrecht",
+    "title" : "Vertrag entsteht",
+    "estSeconds" : 41
+  } ],
+  "totalSeconds" : 83,
+  "reason" : "Zuhören: 2 Lektionen, 1 Min."
+}

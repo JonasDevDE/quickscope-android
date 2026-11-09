@@ -1,7 +1,14 @@
 package com.jonasschnell.quickscope.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class Me(
@@ -28,6 +35,8 @@ data class Exam(
     val hoursLeft: Long = 0,
     val description: String? = null,
     val dailyMinutes: Int = 20,
+    /** Vorwissen: none, some, much (steuert Einstufung und Lektionen). */
+    val priorKnowledge: String = "some",
     val status: String = "empty",
     val mode: String? = null,
     val topicCount: Long = 0,
@@ -60,7 +69,7 @@ data class Source(val materialId: String? = null, val page: Int? = null)
 /** Lernaufgabe; typabhaengige Daten stehen in [payload] (bei mc/choice2/number zusaetzlich options/correctIndex). */
 @Serializable
 data class Item(
-    val id: String,
+    val id: String = "",
     val examId: String = "",
     val topicId: String = "",
     val type: String = "card",
@@ -89,6 +98,9 @@ data class Item(
 data class WeakTopic(val topicId: String = "", val title: String = "", val mastery: Double = 0.0)
 
 @Serializable
+data class Plan(val todayChapters: List<String> = emptyList(), val chaptersTotal: Int = 0, val chaptersHeard: Int = 0)
+
+@Serializable
 data class Projection(val minutes: Int = 0, val scoreAtExamPercent: Int = 0)
 
 @Serializable
@@ -112,13 +124,50 @@ data class Forecast(
     val showCheatsheetSuggestion: Boolean = false,
     /** Tage in Folge mit mindestens einer abgeschlossenen Runde (Backend, optional). */
     val streakDays: Int? = null,
+    val bestStreakDays: Int? = null,
+    /** Lernplan-Kurzinfo fuer die Heute-Ansicht. */
+    val plan: Plan? = null,
     val note: String = "Schätzung, keine Garantie",
 )
+
+/** Lektion als Element der Session (`type:"lesson"`); nicht zu verwechseln mit [Item.lesson] (Loesungsweg-Karte). */
+@Serializable
+data class SessionLesson(
+    val id: String,
+    val title: String = "",
+    val keyPoints: List<String> = emptyList(),
+    val ttsText: String = "",
+    val mnemonic: String? = null,
+    val estSeconds: Int = 60,
+)
+
+/** Ein Element der Session: entweder eine Aufgabe oder eine Lektion (streng ueber `type == "lesson"` unterschieden). */
+@Serializable(with = SessionEntrySerializer::class)
+data class SessionEntry(val item: Item? = null, val lesson: SessionLesson? = null)
+
+object SessionEntrySerializer : KSerializer<SessionEntry> {
+    override val descriptor: SerialDescriptor = JsonObject.serializer().descriptor
+
+    override fun deserialize(decoder: Decoder): SessionEntry {
+        val input = decoder as JsonDecoder
+        val obj = input.decodeJsonElement() as JsonObject
+        val type = (obj["type"] as? JsonPrimitive)?.contentOrNull
+        val json = input.json
+        return if (type == "lesson") {
+            val l = obj["lesson"] as? JsonObject ?: return SessionEntry()
+            SessionEntry(lesson = json.decodeFromJsonElement(SessionLesson.serializer(), l))
+        } else {
+            SessionEntry(item = json.decodeFromJsonElement(Item.serializer(), obj))
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: SessionEntry) = throw UnsupportedOperationException("nur lesen")
+}
 
 /** Antwort von GET session: die passende Runde fuer heute. */
 @Serializable
 data class LearnSession(
-    val items: List<Item> = emptyList(),
+    val items: List<SessionEntry> = emptyList(),
     val plannedSeconds: Int = 0,
     val kind: String = "daily",
     val reason: String = "",
@@ -126,13 +175,61 @@ data class LearnSession(
     val showCheatsheetSuggestion: Boolean = false,
     /** Index, ab dem die Abschlussrunde beginnt (so, wie das Backend sie liefert). */
     val finalRoundStart: Int? = null,
+) {
+    /** Nur die Aufgaben (ohne Lektionen). */
+    val quiz: List<Item> get() = items.mapNotNull { it.item }
+}
+
+/** Lektion der Lektionsliste (GET lessons). */
+@Serializable
+data class Lesson(
+    val id: String,
+    val examId: String = "",
+    val topicId: String = "",
+    val chapterId: String = "",
+    val title: String = "",
+    val keyPoints: List<String> = emptyList(),
+    val ttsText: String = "",
+    val mnemonic: String? = null,
+    val estSeconds: Int = 60,
+    val sourceType: String? = null,
+    val source: Source? = null,
+    val heard: Boolean = false,
+    val heardAt: String? = null,
 )
+
+@Serializable
+data class Chapter(
+    val chapterId: String,
+    val title: String = "",
+    val order: Int = 0,
+    val lessonCount: Int = 0,
+    val minutes: Int = 0,
+    /** new, heard, learning, solid */
+    val status: String = "new",
+    val mastery: Double = 0.0,
+)
+
+@Serializable
+data class AudiobookItem(
+    val lessonId: String,
+    val chapterId: String = "",
+    val chapterTitle: String = "",
+    val title: String = "",
+    val estSeconds: Int = 60,
+)
+
+@Serializable
+data class Audiobook(val items: List<AudiobookItem> = emptyList(), val totalSeconds: Int = 0, val reason: String = "")
+
+@Serializable
+data class HeardRequest(val fraction: Double)
 
 @Serializable
 data class AttemptRequest(val itemId: String, val outcome: String, val ms: Int, val at: String? = null)
 
 @Serializable
-data class AttemptsResponse(val forecast: Forecast, val doneSecondsToday: Int = 0)
+data class AttemptsResponse(val forecast: Forecast, val doneSecondsToday: Int = 0, val nextLessonId: String? = null)
 
 @Serializable
 data class Bullet(val topicId: String = "", val topic: String = "", val text: String = "")
@@ -160,6 +257,7 @@ data class ExamCreate(
     val time: String,
     val description: String? = null,
     val dailyMinutes: Int? = null,
+    val priorKnowledge: String? = null,
 )
 
 /** Teil-Aenderung: nur gesetzte Felder werden gesendet (explicitNulls = false). */
@@ -170,6 +268,7 @@ data class ExamUpdate(
     val time: String? = null,
     val description: String? = null,
     val dailyMinutes: Int? = null,
+    val priorKnowledge: String? = null,
 )
 
 /** Ein Wort im Vorlesetext: [start]/[end] sind Zeichenindizes (UTF-16, end exklusiv), Zeiten in Inhaltszeit der Audiodatei. */

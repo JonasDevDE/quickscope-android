@@ -1,7 +1,7 @@
 {
-  "timestamp" : "2026-11-09T16:37:12.227Z",
+  "timestamp" : "2026-11-09T16:54:11.343Z",
   "status" : 400,
   "error" : "Bad Request",
-  "message" : "Aufgaben: right oder wrong",
+  "message" : "Aufgaben: right, wrong oder dontknow",
   "path" : "/api/exams/e-daily/attempts"
 }

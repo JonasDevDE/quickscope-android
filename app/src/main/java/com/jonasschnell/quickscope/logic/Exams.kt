@@ -73,3 +73,32 @@ fun topicLabels(topics: List<com.jonasschnell.quickscope.data.Topic>): Map<Strin
         t.id to if (parent != null) "$parent › ${t.title}" else t.title
     }
 }
+
+/** Vorwissen: Auswahlwerte fuer die Prüfung (Schluessel des Backends). */
+val PRIOR_KEYS = listOf("none", "some", "much")
+
+fun priorLabel(key: String): String = when (key) {
+    "none" -> "Nichts"
+    "much" -> "Viel"
+    else -> "Etwas"
+}
+
+/** Kurzzeile zum Lernplan: "Heute: Rechnen und Vertragsrecht" bzw. "3 von 8 Kapiteln gehört"; null ohne Plan. */
+fun planLine(plan: com.jonasschnell.quickscope.data.Plan?): String? {
+    if (plan == null || plan.chaptersTotal <= 0) return null
+    val today = plan.todayChapters
+    return when {
+        today.size == 1 -> "Heute: ${today[0]}"
+        today.size == 2 -> "Heute: ${today[0]} und ${today[1]}"
+        today.size > 2 -> "Heute: ${today[0]}, ${today[1]} und ${today.size - 2} weitere"
+        else -> "${plan.chaptersHeard} von ${plan.chaptersTotal} Kapiteln gehört"
+    }
+}
+
+/**
+ * Soll eine Prognose-Zahl gezeigt werden? Nur bei fertiger Pruefung und wenn schon etwas beantwortet wurde
+ * (coveragePercent > 0). Davor besteht der Wert nur aus Vorannahmen und Ratewahrscheinlichkeit und springt, sobald sich
+ * Aufgaben oder Lektionen aendern; dann lieber ein ruhiger Platzhalter statt einer Zahl.
+ */
+fun forecastReliable(exam: com.jonasschnell.quickscope.data.Exam?, f: com.jonasschnell.quickscope.data.Forecast?): Boolean =
+    exam != null && f != null && exam.status == "ready" && f.coveragePercent > 0

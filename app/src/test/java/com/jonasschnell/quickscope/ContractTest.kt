@@ -2,6 +2,14 @@ package com.jonasschnell.quickscope
 
 import com.jonasschnell.quickscope.data.AppJson
 import com.jonasschnell.quickscope.data.AttemptsResponse
+import com.jonasschnell.quickscope.data.Audiobook
+import com.jonasschnell.quickscope.data.Chapter
+import com.jonasschnell.quickscope.data.Lesson
+import com.jonasschnell.quickscope.logic.AudiobookQueue
+import com.jonasschnell.quickscope.logic.forecastReliable
+import com.jonasschnell.quickscope.logic.planLine
+import com.jonasschnell.quickscope.logic.priorLabel
+import com.jonasschnell.quickscope.logic.taskOf
 import com.jonasschnell.quickscope.data.AudioTimings
 import com.jonasschnell.quickscope.data.WordTiming
 import com.jonasschnell.quickscope.logic.WordPos
@@ -115,12 +123,13 @@ class ContractTest {
 
     @Test fun forecasts() {
         val far = parse("forecast-far.json", Forecast.serializer())
-        assertEquals(30, far.scoreNowPercent)
+        assertEquals(35, far.scoreNowPercent)
+        assertEquals(0, far.coveragePercent)
         assertEquals(95, far.scoreAtExamPercent)
         assertEquals(21, far.daysLeft)
         assertEquals(494L, far.hoursLeft)
         assertEquals(3, far.weakTopics.size)
-        assertEquals("Zinsrechnung", far.weakTopics[0].title)
+        assertEquals("Vertragsrecht", far.weakTopics[0].title)
         assertEquals(0.1, far.weakTopics[0].mastery, 0.0001)
         assertEquals(listOf(10, 20, 30, 45, 60), far.projections.map { it.minutes })
         assertEquals(95, far.projections[1].scoreAtExamPercent)
@@ -212,13 +221,13 @@ class ContractTest {
     @Test fun diagnosticSessionAllTypes() {
         val s = parse("session-diagnostic.json", LearnSession.serializer())
         assertEquals("diagnostic", s.kind)
-        assertEquals(129, s.plannedSeconds)
-        assertEquals(11, s.items.size)
-        assertTrue(s.reason.startsWith("Einstufung: 11 Fragen"))
+        assertEquals(85, s.plannedSeconds)
+        assertEquals(8, s.quiz.size)
+        assertTrue(s.reason.startsWith("Einstufung: 8 Fragen"))
         assertNull(s.finalRoundStart)
         assertNotNull(s.forecast)
-        assertEquals(setOf("card", "cloze", "number", "match", "choice2", "mc", "order", "truefalse", "spot"), s.items.map { it.type }.toSet())
-        val tasks = s.items.associate { it.id to parseTask(it) }
+        assertEquals(setOf("card", "cloze", "number", "match", "choice2", "mc", "truefalse"), s.quiz.map { it.type }.toSet())
+        val tasks = s.quiz.associate { it.id to parseTask(it) }
         // jeder Typ wird als eigene Aufgabe erkannt, nie nur als Rueckfall-Karte
         assertTrue(tasks.getValue("i-card") is Task.Card)
         val cloze = tasks.getValue("i-cloze") as Task.Cloze
@@ -240,12 +249,7 @@ class ContractTest {
         val match = tasks.getValue("i-match") as Task.Match
         assertEquals(3, match.pairs.size)
         assertEquals("Selbstkosten" to "Herstellkosten + Verwaltung", match.pairs[0])
-        val order = tasks.getValue("i-order") as Task.Order
-        assertEquals(listOf("Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis"), order.steps)
-        val spot = tasks.getValue("i-spot") as Task.Spot
-        assertEquals(0, spot.falseIndex)
-        assertEquals(3, spot.statements.size)
-        val card = s.items.first { it.id == "i-card" }
+        val card = s.quiz.first { it.id == "i-card" }
         assertEquals("Steigen mit Betrag, Laufzeit.", card.explanation)
         assertEquals("material", card.sourceType)
         assertEquals("m-pdf", card.source?.materialId)
@@ -256,19 +260,24 @@ class ContractTest {
 
     @Test fun crashSessionLessonFinalRoundAndVariants() {
         val s = parse("session-crash.json", LearnSession.serializer())
-        assertEquals(19, s.items.size)
-        assertEquals(13, s.finalRoundStart)
+        assertEquals(13, s.quiz.size)
+        assertEquals(7, s.finalRoundStart)
         assertTrue(s.showCheatsheetSuggestion)
         assertEquals(65.0, s.forecast!!.expectedGainPercentThisSession!!, 0.0001)
         // Abschlussrunde wie geliefert, ohne Deduplizierung: dieselbe Aufgabe darf zweimal vorkommen
-        assertEquals(2, s.items.count { it.id == "i-tf" })
-        val lesson = s.items.first { it.lesson }
+        val crashTasks = s.quiz.associate { it.id to parseTask(it) }
+        val order = crashTasks.getValue("i-order") as Task.Order
+        assertEquals(listOf("Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis"), order.steps)
+        val spot = crashTasks.getValue("i-spot") as Task.Spot
+        assertEquals(0, spot.falseIndex)
+        assertEquals(3, spot.statements.size)
+        val lesson = s.quiz.first { it.lesson }
         val task = parseTask(lesson) as Task.Lesson
         assertEquals(3, task.steps.size)
         assertEquals("Faktor 1,0x merken", task.trick)
         assertTrue(lesson.fromExam)
         assertEquals("p-1", lesson.patternId)
-        val variant = s.items.first { it.id == "i-variant" }
+        val variant = s.quiz.first { it.id == "i-variant" }
         assertEquals("i-aisol", variant.variantOf)
         assertFalse(variant.aiSolution)
     }
@@ -276,12 +285,12 @@ class ContractTest {
     @Test fun dailySessionAndOver() {
         val d = parse("session-daily.json", LearnSession.serializer())
         assertEquals("daily", d.kind)
-        assertEquals(12, d.items.size)
+        assertEquals(12, d.quiz.size)
         assertNull(d.finalRoundStart)
         assertFalse(d.showCheatsheetSuggestion)
         val over = parse("session-over.json", LearnSession.serializer())
         assertEquals("over", over.kind)
-        assertTrue(over.items.isEmpty())
+        assertTrue(over.quiz.isEmpty())
         assertEquals("Die Prüfung ist vorbei.", over.reason)
         assertEquals(75, over.forecast!!.scoreNowPercent)
     }
@@ -296,7 +305,7 @@ class ContractTest {
         assertTrue(msg("error-415-legacy-format.json", 415)!!.contains(".docx"))
         assertEquals("Die Prüfung ist vorbei", msg("error-409-attempt-over.json", 409))
         assertEquals("Höchstens 20 Prüfungen je Nutzer", msg("error-409-exam-limit.json", 409))
-        assertTrue(msg("error-400-validation.json", 400)!!.startsWith("date"))
+        assertTrue(msg("error-400-validation.json", 400)!!.startsWith("name"))
         assertNotNull(msg("error-400-time.json", 400))
         assertNotNull(msg("error-400-attempt-outcome.json", 400))
         assertNotNull(msg("error-400-broken-pdf.json", 400))
@@ -319,5 +328,124 @@ class ContractTest {
         val first = (arr as kotlinx.serialization.json.JsonArray)[0].jsonObject
         assertEquals("p-1", first["id"]!!.jsonPrimitive.content)
         assertEquals("4", first["occurrences"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun lessonsChaptersAndAudiobook() {
+        val chapters = parse("chapters.json", ListSerializer(Chapter.serializer()))
+        assertEquals(2, chapters.size)
+        assertEquals("Rechnen", chapters[0].title)
+        assertEquals(1, chapters[0].order)
+        assertEquals(2, chapters[0].lessonCount)
+        assertEquals(2, chapters[0].minutes)
+        assertEquals("learning", chapters[0].status)
+        assertEquals(0.22, chapters[0].mastery, 0.0001)
+        assertEquals("new", chapters[1].status)
+        assertEquals(2, chapters[1].order)
+
+        val lessons = parse("lessons.json", ListSerializer(Lesson.serializer()))
+        assertEquals(3, lessons.size)
+        val first = lessons[0]
+        assertEquals("Zinsen verstehen", first.title)
+        assertEquals(4, first.keyPoints.size)
+        assertEquals("Zins = Preis für Geld", first.keyPoints[0])
+        assertTrue(first.ttsText.startsWith("Zinsen sind der Preis für geliehenes Geld."))
+        assertEquals("Zins = Miete für Geld", first.mnemonic)
+        assertEquals(48, first.estSeconds)
+        assertTrue(first.heard)
+        assertEquals("material", first.sourceType)
+        assertEquals("m-pdf", first.source?.materialId)
+        assertFalse(lessons[1].heard)
+        assertNull(lessons[1].heardAt)
+        assertEquals(2, parse("lessons-chapter.json", ListSerializer(Lesson.serializer())).size)
+
+        val book = parse("audiobook.json", Audiobook.serializer())
+        assertEquals(2, book.items.size)
+        assertEquals(83, book.totalSeconds)
+        assertEquals("Preis kalkulieren", book.items[0].title)
+        assertEquals("Rechnen", book.items[0].chapterTitle)
+        assertEquals(42, book.items[0].estSeconds)
+        assertEquals("Zuhören: 2 Lektionen, 1 Min.", book.reason)
+        // die Warteschlange folgt der Reihenfolge, haelt Grenzen und meldet die naechsten Lektionen fuer den Prefetch
+        val q = AudiobookQueue(book.items)
+        assertEquals(book.items[0].lessonId, q.current?.lessonId)
+        assertEquals(2, q.ahead().size)
+        assertTrue(q.next())
+        assertEquals(1, q.ahead().size)
+        assertTrue(q.next())
+        assertTrue(q.finished)
+        assertFalse(q.next())
+        assertTrue(q.previous())
+        assertEquals(41, q.remainingSeconds())
+        assertTrue(parse("audiobook-repeat.json", Audiobook.serializer()).items.isNotEmpty())
+        val t = parse("lesson-timings.json", AudioTimings.serializer())
+        assertTrue(t.words.isNotEmpty())
+        assertTrue(timingsMatch(t.text, t))
+    }
+
+    @Test fun sessionWithLessonElementsKeepsLessonAndQuestionApart() {
+        val s = parse("session-lesson.json", LearnSession.serializer())
+        assertEquals(14, s.items.size)
+        // type "lesson" ist eine Lektion, alles andere eine Aufgabe (auch wenn Item.lesson true ist)
+        assertNotNull(s.items[0].lesson)
+        assertNull(s.items[0].item)
+        assertEquals("Zinsen verstehen", s.items[0].lesson!!.title)
+        assertEquals(4, s.items[0].lesson!!.keyPoints.size)
+        assertEquals(48, s.items[0].lesson!!.estSeconds)
+        assertEquals("Zins = Miete für Geld", s.items[0].lesson!!.mnemonic)
+        assertEquals(3, s.items.count { it.lesson != null })
+        assertEquals(11, s.quiz.size)
+        val tasks = s.items.mapNotNull { taskOf(it) }
+        assertEquals(14, tasks.size)
+        assertTrue(tasks[0] is Task.Teach)
+        assertTrue(tasks[1] is Task.Card)
+        assertTrue(tasks[5] is Task.Teach)
+        assertEquals("lesson-${s.items[0].lesson!!.id}", tasks[0].item.id)
+        assertEquals(48, tasks[0].item.estSeconds)
+        assertEquals(3, tasks.count { it is Task.Teach })
+    }
+
+    @Test fun dontKnowResponseCarriesNextLesson() {
+        val r = parse("attempts-dontknow.json", AttemptsResponse.serializer())
+        assertEquals("6af1fab18c04f9867dc69612", r.nextLessonId)
+        assertEquals(55, r.forecast.scoreNowPercent)
+        assertEquals(2, r.forecast.streakDays)
+        assertEquals(3, r.forecast.bestStreakDays)
+        assertEquals(listOf("Rechnen", "Vertragsrecht"), r.forecast.plan?.todayChapters)
+        assertEquals(2, r.forecast.plan?.chaptersTotal)
+        assertEquals(0, r.forecast.plan?.chaptersHeard)
+        assertEquals("Heute: Rechnen und Vertragsrecht", planLine(r.forecast.plan))
+        assertNull(parse("attempts.json", AttemptsResponse.serializer()).nextLessonId)
+    }
+
+    @Test fun priorKnowledgeOnExams() {
+        val exams = exams()
+        assertTrue(exams.all { it.priorKnowledge == "some" })
+        assertEquals("Nichts", priorLabel("none"))
+        assertEquals("Etwas", priorLabel("some"))
+        assertEquals("Viel", priorLabel("much"))
+        assertEquals("Etwas", priorLabel("unbekannt"))
+    }
+
+    @Test fun lessonErrorMessagesAndEmptyHeardResponse() {
+        fun msg(file: String, code: Int): String? {
+            val body = raw(file).toResponseBody("application/json".toMediaType())
+            return backendMessage(HttpException(Response.error<Any>(code, body)))
+        }
+        assertEquals("fraction: 0 bis 1", msg("error-400-heard.json", 400))
+        assertEquals("Lektion nicht gefunden", msg("error-404-lesson.json", 404))
+        assertNotNull(msg("error-404-lesson-audio.json", 404))
+        // 204 ohne Body: die Datei ist leer
+        assertEquals("", raw("lesson-heard.json").trim())
+    }
+
+    @Test fun forecastOnlyShownWhenReliable() {
+        val far = parse("forecast-far.json", Forecast.serializer())       // 35 % nur aus Vorannahmen, nichts beantwortet
+        val ready = exams().first { it.id == "e-ready" }
+        assertFalse(forecastReliable(ready, far))
+        val answered = parse("forecast-confidence-low.json", Forecast.serializer())
+        assertTrue(forecastReliable(ready, answered))
+        assertFalse(forecastReliable(ready.copy(status = "processing"), answered))
+        assertFalse(forecastReliable(null, answered))
+        assertFalse(forecastReliable(ready, null))
     }
 }

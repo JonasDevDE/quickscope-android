@@ -4,22 +4,29 @@
   "daysLeft" : 0,
   "hoursLeft" : 0,
   "doneSecondsToday" : 0,
+  "streakDays" : 0,
+  "bestStreakDays" : 0,
   "weakTopics" : [ {
-    "topicId" : "6af1f6b79fee891876118e40",
+    "topicId" : "6af1fab18c04f9867dc6960d",
     "title" : "Zinsrechnung",
     "mastery" : 0.59
   }, {
-    "topicId" : "6af1f6b79fee891876118e43",
+    "topicId" : "6af1fab18c04f9867dc69610",
     "title" : "Vertragsrecht",
     "mastery" : 0.71
   }, {
-    "topicId" : "6af1f6b79fee891876118e42",
+    "topicId" : "6af1fab18c04f9867dc6960f",
     "title" : "Kalkulation",
     "mastery" : 0.92
   } ],
   "confidence" : "medium",
   "mode" : "crash",
   "coveragePercent" : 75,
+  "plan" : {
+    "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
+    "chaptersTotal" : 2,
+    "chaptersHeard" : 0
+  },
   "showCheatsheetSuggestion" : false,
   "note" : "Schätzung, keine Garantie"
 }

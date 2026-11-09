@@ -6,12 +6,13 @@
   "startsAt" : "2026-12-19T08:00:00Z",
   "hoursLeft" : 951,
   "description" : "Abitur Biologie, Schwerpunkt Genetik",
+  "priorKnowledge" : "none",
   "dailyMinutes" : 30,
   "status" : "processing",
   "mode" : "marathon",
   "topicCount" : 0,
   "itemCount" : 0,
   "materialCount" : 0,
-  "createdAt" : "2026-11-09T16:37:11.763444300Z",
+  "createdAt" : "2026-11-09T16:54:10.615817300Z",
   "daysLeft" : 40
 }

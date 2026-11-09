@@ -109,18 +109,37 @@ class FeedbackTest {
     }
 
     @Test fun synthesizedTonesAreShortQuietAndNonEmpty() {
-        for (notes in listOf(Tones.correct, Tones.medium, Tones.big, Tones.wrong, Tones.done)) {
+        for (notes in Tones.all) {
             val pcm = synth(notes)
             val expected = notes.sumOf { it.ms * FeedbackTuning.SAMPLE_RATE / 1000 }
             assertEquals(expected, pcm.size)
             val peak = pcm.maxOf { abs(it.toInt()) }
             assertTrue(peak > 1000)
             assertTrue(peak <= (FeedbackTuning.SFX_VOLUME * Short.MAX_VALUE).toInt() + 1)
-            assertTrue(pcm.size < FeedbackTuning.SAMPLE_RATE * 2) // unter 2 Sekunden
+            assertTrue(pcm.size < FeedbackTuning.SAMPLE_RATE * 2)
+            // ohne Knacken: erster und letzter Wert nahe Null
+            assertTrue(abs(pcm.first().toInt()) < 400)
+            assertTrue(abs(pcm.last().toInt()) < 400)
         }
-        // Richtig ist kuerzer/heller als der Abschlussklang, falsch ist tiefer
+        // das Pling ist sehr kurz (150 bis 250 ms) und aufsteigend
+        val pling = Tones.correct
+        assertEquals(2, pling.size)
+        assertTrue(pling.sumOf { it.ms } in 150..250)
+        assertTrue(pling[1].hz > pling[0].hz)
         assertTrue(synth(Tones.correct).size < synth(Tones.done).size)
-        assertTrue(Tones.wrong[0].hz < Tones.correct[0].hz)
-        assertTrue(Tones.medium.last().hz > Tones.correct.last().hz)
+    }
+
+    private fun outcome(correct: Boolean, streak: Int) =
+        com.jonasschnell.quickscope.logic.Outcome(correct, false, streak, streak, if (correct) 10 else 0, celebrationFor(streak), false)
+
+    @Test fun everyCorrectAnswerPlingsAndWrongOrDontKnowStaySilent() {
+        assertEquals(Tones.correct, com.jonasschnell.quickscope.logic.soundFor(outcome(true, 1)))
+        assertEquals(Tones.correct, com.jonasschnell.quickscope.logic.soundFor(outcome(true, 2)))
+        assertEquals(Tones.streak3, com.jonasschnell.quickscope.logic.soundFor(outcome(true, 3)))
+        assertEquals(Tones.medium, com.jonasschnell.quickscope.logic.soundFor(outcome(true, 5)))
+        assertEquals(Tones.big, com.jonasschnell.quickscope.logic.soundFor(outcome(true, 10)))
+        assertNull(com.jonasschnell.quickscope.logic.soundFor(outcome(false, 0)))
+        // Weiss nicht erzeugt gar kein Ergebnis (neutral) und damit keinen Ton
+        assertEquals("dontknow", com.jonasschnell.quickscope.logic.dontKnowOutcome())
     }
 }

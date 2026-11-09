@@ -32,8 +32,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Zum Veroeffentlichen eines Updates: versionCode um 1 erhoehen (und versionName anpassen), dann scripts/publish.sh.
-        versionCode = 6
-        versionName = "0.2.3"
+        versionCode = 7
+        versionName = "0.3.0"
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${config("GOOGLE_WEB_CLIENT_ID")}\"")
         // Adresse des Backends (mit abschliessendem Schraegstrich). Platzhalter, bis die echte Adresse in local.properties
@@ -106,6 +106,8 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play)
     implementation(libs.googleid)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.retrofit)

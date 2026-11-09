@@ -144,8 +144,6 @@ fun CorrectFx(fx: Fx, modifier: Modifier = Modifier) {
         Celebration.Big -> FeedbackTuning.BURST_BIG
     }
     Box(modifier.fillMaxSize()) {
-        // gruener Puls
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.2f * (1f - p.value).pow(2f) }.background(Accent))
         Burst(p, count, fx.id.toLong(), Modifier.fillMaxSize())
         // Haken mit Pop
         Canvas(Modifier.align(Alignment.Center).size(72.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; alpha = (1f - p.value * p.value).coerceIn(0f, 1f) }) {
@@ -180,15 +178,22 @@ fun CorrectFx(fx: Fx, modifier: Modifier = Modifier) {
     }
 }
 
-/** Sanfter, kurzer warmer Schimmer bei einer falschen Antwort (nie hart). */
+/**
+ * Vollflaechiger Farbschimmer ueber dem ganzen Bildschirm (auch hinter Status- und Navigationsleiste), klickdurchlaessig:
+ * gruen bei richtig (kurz, Alpha max 0.16), sehr sanftes Orange bei falsch. Beeinflusst das Layout nie.
+ */
 @Composable
-fun SoftFx(fx: Fx, modifier: Modifier = Modifier) {
+fun FullTint(fx: Fx, modifier: Modifier = Modifier) {
+    val correct = fx.outcome.correct
     val p = remember { Animatable(0f) }
     LaunchedEffect(fx.id) {
         p.snapTo(0f)
-        p.animateTo(1f, tween(600))
+        p.animateTo(1f, tween(if (correct) 380 else 450))
     }
-    Box(modifier.fillMaxSize().graphicsLayer { alpha = 0.10f * (1f - p.value) }.background(Soft))
+    val peak = if (correct) 0.16f else 0.07f
+    Box(
+        modifier.fillMaxSize().graphicsLayer { alpha = peak * sin(Math.PI.toFloat() * p.value) }.background(if (correct) Accent else Soft),
+    )
 }
 
 /** Banner "Thema sitzt: <Titel>" mit kleinem Burst; verschwindet nach 2,5 s von selbst. */

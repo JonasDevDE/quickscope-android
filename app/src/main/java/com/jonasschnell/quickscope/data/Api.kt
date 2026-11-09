@@ -35,6 +35,11 @@ interface QuickscopeApi {
     @POST("api/exams/{id}/materials")
     suspend fun uploadMaterial(@Path("id") id: String, @Part parts: List<MultipartBody.Part>): Material
 
+    @GET("api/exams/{id}/chapters") suspend fun chapters(@Path("id") id: String): List<Chapter>
+    @GET("api/exams/{id}/lessons") suspend fun lessons(@Path("id") id: String, @Query("chapterId") chapterId: String? = null): List<Lesson>
+    @GET("api/exams/{id}/audiobook") suspend fun audiobook(@Path("id") id: String, @Query("minutes") minutes: Int? = null, @Query("repeat") repeat: Boolean? = null): Audiobook
+    @POST("api/exams/{id}/lessons/{lessonId}/heard") suspend fun heard(@Path("id") id: String, @Path("lessonId") lessonId: String, @Body body: HeardRequest)
+
     @GET("api/exams/{id}/topics") suspend fun topics(@Path("id") id: String): List<Topic>
     @GET("api/exams/{id}/session") suspend fun session(@Path("id") id: String, @Query("minutes") minutes: Int? = null): LearnSession
     @POST("api/exams/{id}/attempts") suspend fun attempts(@Path("id") id: String, @Body body: List<AttemptRequest>): AttemptsResponse

@@ -41,6 +41,8 @@ import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.logic.examStart
 import com.jonasschnell.quickscope.logic.formatRemaining
+import com.jonasschnell.quickscope.logic.planLine
+import com.jonasschnell.quickscope.logic.forecastReliable
 import com.jonasschnell.quickscope.logic.isOver
 import com.jonasschnell.quickscope.logic.masteryPercent
 import com.jonasschnell.quickscope.logic.percentText
@@ -60,6 +62,7 @@ fun HomePage(
     state: UiState,
     loading: Boolean,
     onStart: (Exam, Int) -> Unit,
+    onListen: (Exam) -> Unit,
     onMaterial: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
     onRetry: () -> Unit,
@@ -83,7 +86,7 @@ fun HomePage(
             exam.status == "processing" -> ProcessingView()
             exam.status == "failed" -> FailedExamView(exam, onMaterial, onRetry)
             exam.status == "empty" -> EmptyExamView(exam, onMaterial)
-            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onCheatsheet)
+            else -> ReadyView(exam, state.activeForecast, dayStreak, onStart, onListen, onCheatsheet)
         }
     }
 }
@@ -157,7 +160,7 @@ private fun ReviewView(exam: Exam, forecast: Forecast?) {
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
     } else {
-        ForecastRing(forecast.scoreNowPercent)
+        if (forecast.coveragePercent > 0) ForecastRing(forecast.scoreNowPercent) else ForecastPlaceholder()
         Text("So warst du zuletzt vorbereitet (Schätzung)", color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
     Text("Prüfung vorbei", style = MaterialTheme.typography.titleMedium)
@@ -170,30 +173,26 @@ private fun ReadyView(
     forecast: Forecast?,
     dayStreak: Int?,
     onStart: (Exam, Int) -> Unit,
+    onListen: (Exam) -> Unit,
     onCheatsheet: (Exam) -> Unit,
 ) {
-    var picked by remember { mutableStateOf<String?>(null) }
     val minutes = remainingMinutes(exam.dailyMinutes, forecast?.doneSecondsToday ?: 0)
     if (forecast == null) {
         SkeletonBox(Modifier.size(220.dp), androidx.compose.foundation.shape.CircleShape)
         SkeletonLine(200.dp)
-    } else {
+    } else if (forecastReliable(exam, forecast)) {
         ForecastRing(forecast.scoreNowPercent)
         Text(projectionLine(forecast, exam.dailyMinutes), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+    } else {
+        // Noch keine belastbare Prognose: ruhiger Platzhalter statt einer Zahl
+        ForecastPlaceholder()
+        Text("Prognose nach der ersten Runde", style = MaterialTheme.typography.titleSmall, color = Muted, textAlign = TextAlign.Center)
     }
     Text(formatRemaining(examStart(exam), Instant.now()), color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    planLine(forecast?.plan)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
     if (dayStreak != null && dayStreak > 0) Text("$dayStreak ${if (dayStreak == 1) "Tag" else "Tage"}", color = Accent, style = MaterialTheme.typography.labelLarge)
     PrimaryButton(startLabel(minutes), { onStart(exam, minutes) })
-    if (forecast != null && forecast.weakTopics.isNotEmpty()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-            forecast.weakTopics.take(3).forEach { t ->
-                Pill(t.title.take(14), picked == t.topicId, { picked = if (picked == t.topicId) null else t.topicId })
-            }
-        }
-        forecast.weakTopics.firstOrNull { it.topicId == picked }?.let {
-            Text("${it.title}: ${masteryPercent(it.mastery)} %", color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-        }
-    }
+    if ((forecast?.plan?.chaptersTotal ?: 0) > 0) SecondaryButton("Zuhören", { onListen(exam) })
     if (forecast?.showCheatsheetSuggestion == true) {
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).hapticClickable { onCheatsheet(exam) }.padding(20.dp),
@@ -202,6 +201,18 @@ private fun ReadyView(
             Text("Letzte Runde: 5 Minuten lesen", style = MaterialTheme.typography.titleMedium)
             Text("Der Merkzettel mit dem Wichtigsten", color = Muted, style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+/** Leerer Ring ohne Zahl, solange es keine belastbare Prognose gibt. */
+@Composable
+private fun ForecastPlaceholder() {
+    Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = 16.dp.toPx()
+            drawArc(CardHigh, -90f, 360f, false, Offset(w / 2, w / 2), Size(size.width - w, size.height - w), style = Stroke(w, cap = StrokeCap.Round))
+        }
+        Text("–", style = MaterialTheme.typography.displaySmall.copy(fontSize = 52.sp, lineHeight = 56.sp), color = Muted)
     }
 }
 

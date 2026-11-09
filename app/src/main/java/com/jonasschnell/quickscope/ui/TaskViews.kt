@@ -1,5 +1,10 @@
 package com.jonasschnell.quickscope.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.ui.graphics.graphicsLayer
+import com.jonasschnell.quickscope.logic.MatchResult
+import com.jonasschnell.quickscope.logic.Tones
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -122,7 +128,7 @@ fun LessonTask(task: Task.Lesson, onDone: () -> Unit) {
 
 /** mc, choice2, number, truefalse: Optionen als grosse Flaechen; ein Tipp antwortet. Bei zwei Optionen auch Wisch. */
 @Composable
-fun ChoiceTask(task: Task.Choice, answered: Boolean, onAnswer: (Boolean) -> Unit) {
+fun ChoiceTask(task: Task.Choice, answered: Boolean, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
     var chosen by remember { mutableIntStateOf(-1) }
     fun pick(i: Int) {
         if (answered || chosen >= 0) return
@@ -133,7 +139,7 @@ fun ChoiceTask(task: Task.Choice, answered: Boolean, onAnswer: (Boolean) -> Unit
         QuestionText(task.item.question)
         task.options.forEachIndexed { i, text ->
             val state = when {
-                chosen < 0 -> 0
+                chosen < 0 && !revealed -> 0
                 i == task.correct -> 1
                 i == chosen -> 2
                 else -> 3
@@ -145,7 +151,7 @@ fun ChoiceTask(task: Task.Choice, answered: Boolean, onAnswer: (Boolean) -> Unit
 
 /** Lueckentext: der Satz mit Luecke, darunter die Wortbank als Chips. */
 @Composable
-fun ClozeTask(task: Task.Cloze, onAnswer: (Boolean) -> Unit) {
+fun ClozeTask(task: Task.Cloze, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
     var chosen by remember { mutableStateOf<String?>(null) }
     val filled = chosen ?: "_____"
     val text = if (task.text.contains("___")) task.text.replaceFirst(Regex("_{3,}"), filled) else "${task.text} $filled"
@@ -153,7 +159,7 @@ fun ClozeTask(task: Task.Cloze, onAnswer: (Boolean) -> Unit) {
         QuestionText(text)
         task.bank.forEach { word ->
             val state = when {
-                chosen == null -> 0
+                chosen == null && !revealed -> 0
                 word == task.answer -> 1
                 word == chosen -> 2
                 else -> 3
@@ -165,13 +171,13 @@ fun ClozeTask(task: Task.Cloze, onAnswer: (Boolean) -> Unit) {
 
 /** Fehler finden: Aussagen als Flaechen, Tipp auf die falsche. */
 @Composable
-fun SpotTask(task: Task.Spot, onAnswer: (Boolean) -> Unit) {
+fun SpotTask(task: Task.Spot, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
     var chosen by remember { mutableIntStateOf(-1) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         QuestionText(task.item.question.ifBlank { "Was ist falsch?" })
         task.statements.forEachIndexed { i, text ->
             val state = when {
-                chosen < 0 -> 0
+                chosen < 0 && !revealed -> 0
                 i == task.falseIndex -> 1
                 i == chosen -> 2
                 else -> 3
@@ -181,39 +187,59 @@ fun SpotTask(task: Task.Spot, onAnswer: (Boolean) -> Unit) {
     }
 }
 
-/** Zuordnen per Tippen: links waehlen, dann rechts; richtige Paare bleiben markiert. */
+private val PairColors = arrayOf(
+    Color(0xFFD4FF3A), Color(0xFF5EC8FF), Color(0xFFFF9F5A), Color(0xFFC59BFF), Color(0xFFFF7EB6), Color(0xFF7CFFB2),
+)
+
+/**
+ * Zuordnen per Tippen: links waehlen, dann rechts; jedes Paar wird sofort ausgewertet. Richtige Paare bleiben verbunden
+ * (je Paar eine eigene Farbe, mit Pling), falsche loesen sich mit kurzem Wackeln wieder (ohne Ton). Nach zwei Fehlversuchen
+ * wird das richtige Paar gezeigt. Alles passt ohne Scrollen und ohne Layoutsprung.
+ */
 @Composable
-fun MatchTask(task: Task.Match, onAnswer: (Boolean) -> Unit) {
+fun MatchTask(task: Task.Match, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
     val state = remember { MatchState.of(task) }
     var version by remember { mutableIntStateOf(0) }
     val haptics = LocalHaptics.current
+    val sfx = rememberSfx()
+    val shake = remember { Animatable(0f) }
+    var wrongLeft by remember { mutableStateOf<String?>(null) }
+    var wrongRight by remember { mutableStateOf<String?>(null) }
+    var wrongTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(revealed) { if (revealed) { state.revealAll(); version++ } }
+    LaunchedEffect(wrongTick) {
+        if (wrongTick == 0) return@LaunchedEffect
+        shake.snapTo(0f)
+        shake.animateTo(0f, keyframes { durationMillis = 300; 0f at 0; -10f at 50; 9f at 110; -6f at 170; 3f at 230; 0f at 300 })
+        wrongLeft = null
+        wrongRight = null
+    }
     @Suppress("UNUSED_EXPRESSION") version
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         QuestionText(task.item.question.ifBlank { "Zuordnen" })
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.lefts.forEach { left ->
-                    val s = when {
-                        left in state.matched -> 1
-                        state.selectedLeft == left -> 2
-                        else -> 0
-                    }
-                    MatchCell(left, s) {
-                        if (!state.done) { state.tapLeft(left); version++ }
-                    }
+                    val c = state.colorOf(left)
+                    MatchCell(
+                        left, if (c >= 0) PairColors[c % PairColors.size] else null, state.selectedLeft == left, wrongLeft == left, shake,
+                    ) { if (!state.done) { state.tapLeft(left); version++ } }
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.rights.forEach { right ->
-                    MatchCell(right, if (state.isRightMatched(right)) 1 else 0) {
+                    val c = state.colorOfRight(right)
+                    MatchCell(right, if (c >= 0) PairColors[c % PairColors.size] else null, false, wrongRight == right, shake) {
                         if (state.done) return@MatchCell
+                        val left = state.selectedLeft
                         when (state.tapRight(right)) {
-                            true -> haptics.confirm()
-                            false -> haptics.reject()
-                            null -> Unit
+                            MatchResult.Right -> { sfx.play(Tones.correct); haptics.confirm() }
+                            MatchResult.Revealed -> haptics.tick() // Paar wird gezeigt, ohne Ton
+                            MatchResult.Wrong -> { haptics.tick(); wrongLeft = left; wrongRight = right; wrongTick++ }
+                            MatchResult.None -> Unit
                         }
                         version++
-                        if (state.done) onAnswer(state.mistakes == 0)
+                        if (state.done) onAnswer(state.known)
                     }
                 }
             }
@@ -221,26 +247,33 @@ fun MatchTask(task: Task.Match, onAnswer: (Boolean) -> Unit) {
     }
 }
 
+/** Eine Zelle: [pairColor] gesetzt = Teil eines verbundenen Paares; [wrong] = kurzes Wackeln mit warmem Hauch. */
 @Composable
-private fun MatchCell(text: String, state: Int, onClick: () -> Unit) {
-    // state: 0 neutral, 1 gepaart, 2 gewaehlt
+private fun MatchCell(text: String, pairColor: Color?, selected: Boolean, wrong: Boolean, shake: Animatable<Float, *>, onClick: () -> Unit) {
+    val bg = when {
+        pairColor != null -> pairColor
+        wrong -> Soft.copy(alpha = 0.35f)
+        else -> CardHigh
+    }
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(RoundedCornerShape(20.dp))
-            .background(if (state == 1) Accent else CardHigh)
-            .let { if (state == 2) it.border(BorderStroke(2.dp, Accent), RoundedCornerShape(20.dp)) else it }
-            .hapticClickable(enabled = state != 1, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .graphicsLayer { translationX = if (wrong) shake.value else 0f }
+            .clip(RoundedCornerShape(20.dp)).background(bg)
+            .let { if (selected) it.border(BorderStroke(2.dp, Accent), RoundedCornerShape(20.dp)) else it }
+            .hapticClickable(enabled = pairColor == null, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center, color = if (state == 1) OnAccent else Color.White)
+        Text(text, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center, color = if (pairColor != null) Color.Black else Color.White)
     }
 }
 
 /** Reihenfolge per Tippen: die Schritte der Reihe nach antippen. */
 @Composable
-fun OrderTask(task: Task.Order, onAnswer: (Boolean) -> Unit) {
+fun OrderTask(task: Task.Order, revealed: Boolean, onAnswer: (Boolean) -> Unit) {
     val state = remember { OrderState.of(task) }
     var version by remember { mutableIntStateOf(0) }
     val haptics = LocalHaptics.current
+    LaunchedEffect(revealed) { if (revealed) { state.revealAll(); version++ } }
     @Suppress("UNUSED_EXPRESSION") version
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         QuestionText(task.item.question.ifBlank { "Reihenfolge" })
@@ -260,24 +293,5 @@ fun OrderTask(task: Task.Order, onAnswer: (Boolean) -> Unit) {
                 Text(step, style = MaterialTheme.typography.titleMedium, color = if (taken) OnAccent else Color.White)
             }
         }
-    }
-}
-
-/**
- * Sofortiges Feedback: bei falsch sanft ("Falsch" in warmem Orange) mit der richtigen Antwort in einer Zeile;
- * Erklaerung nur wenn vorhanden, klein. [again] = die Aufgabe kommt gleich nochmal. Ein Knopf "Weiter".
- */
-@Composable
-fun FeedbackPanel(task: Task, correct: Boolean, again: Boolean, onNext: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Card).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(if (correct) "Richtig" else "Falsch", color = if (correct) Accent else Soft, style = MaterialTheme.typography.titleMedium)
-        if (!correct) Text(correctText(task), style = MaterialTheme.typography.bodyLarge)
-        shortExplanation(task.item.explanation)?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall) }
-        // Loesungsweg (hoechstens 3 kurze Schritte) und Merkregel, wenn die Aufgabe einen mitbringt
-        lessonSteps(task.item).forEachIndexed { i, step -> Text("${i + 1}. $step", color = Muted, style = MaterialTheme.typography.bodySmall) }
-        task.item.trick?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodySmall) }
-        task.item.mnemonic?.let { Text(it, color = Accent, style = MaterialTheme.typography.bodySmall) }
-        if (!correct && again) Text("Kommt gleich nochmal", color = Muted, style = MaterialTheme.typography.bodySmall)
-        PrimaryButton("Weiter", onNext, Modifier.padding(top = 6.dp))
     }
 }

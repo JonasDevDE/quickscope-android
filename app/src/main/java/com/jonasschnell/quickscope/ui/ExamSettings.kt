@@ -32,7 +32,9 @@ import com.jonasschnell.quickscope.data.Exam
 import com.jonasschnell.quickscope.data.ExamUpdate
 import com.jonasschnell.quickscope.data.Material
 import com.jonasschnell.quickscope.logic.DAILY_MINUTE_CHOICES
+import com.jonasschnell.quickscope.logic.PRIOR_KEYS
 import com.jonasschnell.quickscope.logic.minutesChoiceLabel
+import com.jonasschnell.quickscope.logic.priorLabel
 import com.jonasschnell.quickscope.logic.formatExamWhen
 import com.jonasschnell.quickscope.logic.isInPast
 import com.jonasschnell.quickscope.ui.theme.Accent
@@ -45,7 +47,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** Einstellungen, die ein eigenes kleines Sheet oeffnen. */
-enum class ExamSetting { Material, Description, Name, When, Daily, Regenerate, Reset, Delete }
+enum class ExamSetting { Material, Description, Name, When, Daily, Prior, Regenerate, Reset, Delete }
 
 /** Pruefungs-Einstellungen: eine Zeile je Einstellung, jede oeffnet ein kleines Sheet; gespeichert wird automatisch. */
 @Composable
@@ -63,6 +65,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
             SettingsRow("Name", null, { sub = ExamSetting.Name }) { Value(exam.name) }
             SettingsRow("Datum und Uhrzeit", null, { sub = ExamSetting.When }) { Value(formatExamWhen(exam.date, exam.time)) }
             SettingsRow("Lernzeit pro Tag", null, { sub = ExamSetting.Daily }) { Value("${exam.dailyMinutes} min") }
+            SettingsRow("Vorwissen", null, { sub = ExamSetting.Prior }) { Value(priorLabel(exam.priorKnowledge)) }
             SettingsRow("Aufgaben neu erzeugen", null, { sub = ExamSetting.Regenerate }) {}
             SettingsRow("Fortschritt zurücksetzen", null, { sub = ExamSetting.Reset }) {}
             SettingsRow("Prüfung löschen", null, { sub = ExamSetting.Delete }) {}
@@ -72,6 +75,7 @@ fun ExamSettingsSheet(state: UiState, vm: AppViewModel, examId: String, startAt:
         ExamSetting.Name -> NameSheet(vm, exam) { sub = null }
         ExamSetting.When -> WhenSheet(vm, exam) { sub = null }
         ExamSetting.Daily -> DailySheet(state, vm, exam) { sub = null }
+        ExamSetting.Prior -> PriorSheet(vm, exam) { sub = null }
         ExamSetting.Regenerate -> AlertDialog(
             onDismissRequest = { sub = null },
             containerColor = Card,
@@ -150,6 +154,19 @@ private fun WhenSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
     QuickscopeSheet(onDismiss, "Datum und Uhrzeit", status = if (saved) "Gespeichert" else null) {
         WhenPicker(date, time, { date = it }, { time = it })
         if (past) Text("Dieser Zeitpunkt ist schon vorbei.", color = Danger, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** Vorwissen: drei Pills, Autosave. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PriorSheet(vm: AppViewModel, exam: Exam, onDismiss: () -> Unit) {
+    var value by remember { mutableStateOf(exam.priorKnowledge) }
+    val saved = AutoSave(value, true, instantKey = value) { v, _ -> vm.updateExam(exam.id, ExamUpdate(priorKnowledge = v)) }
+    QuickscopeSheet(onDismiss, "Vorwissen", status = if (saved) "Gespeichert" else null) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            PRIOR_KEYS.forEach { k -> Pill(priorLabel(k), value == k, { value = k }) }
+        }
     }
 }
 

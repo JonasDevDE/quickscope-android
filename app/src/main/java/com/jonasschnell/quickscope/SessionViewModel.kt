@@ -7,7 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.jonasschnell.quickscope.data.AttemptRequest
 import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.backendMessage
+import com.jonasschnell.quickscope.data.HeardRequest
+import com.jonasschnell.quickscope.data.SessionLesson
 import com.jonasschnell.quickscope.logic.FeedbackTracker
+import com.jonasschnell.quickscope.logic.dontKnowOutcome
+import com.jonasschnell.quickscope.logic.lessonInsertIndex
+import com.jonasschnell.quickscope.logic.taskOf
+import com.jonasschnell.quickscope.logic.teachItem
 import com.jonasschnell.quickscope.logic.Outcome
 import com.jonasschnell.quickscope.logic.Task
 import com.jonasschnell.quickscope.logic.newlySitting
@@ -15,7 +21,6 @@ import com.jonasschnell.quickscope.logic.nextDayStreak
 import com.jonasschnell.quickscope.logic.retryInsertIndex
 import com.jonasschnell.quickscope.logic.outcomeFor
 import com.jonasschnell.quickscope.logic.topicLabels
-import com.jonasschnell.quickscope.logic.parseTask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,6 +64,8 @@ data class SessionUi(
     val dayStreak: Int = 0,
     /** Ein Thema "sitzt" jetzt (Banner). */
     val sits: Sits? = null,
+    /** "Weiss nicht": neutrale Rueckmeldung (richtige Antwort markiert, keine Feier). */
+    val neutral: Boolean = false,
 ) {
     val current: Task? get() = tasks.getOrNull(index)
     val currentIsRetry: Boolean get() = isRetry.getOrElse(index) { false }
@@ -93,6 +100,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         _state.update { SessionUi(phase = SessionPhase.Loading, examId = examId, scoreBefore = scoreBefore, audio = store.audioMode) }
         viewModelScope.launch {
             try {
+                app.audioCache.clearing?.join() // Aufraeumen der letzten Runde abwarten
                 sync.flush(examId) // Altes zuerst, damit die Auswahl auf aktuellem Stand beruht
                 val s = api.session(examId, minutes)
                 val topicList = runCatching { api.topics(examId) }.getOrDefault(emptyList())
@@ -102,7 +110,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 topicTitles = topicList.associate { it.id to it.title }
                 prevMastery = topicList.filter { it.id in leafIds }.associate { it.id to it.mastery }
                 tracker = FeedbackTracker()
-                val tasks = s.items.map(::parseTask)
+                val tasks = s.items.mapNotNull(::taskOf)
+                val lessonIds = tasks.filterIsInstance<Task.Teach>().map { it.lesson.id }
+                if (lessonIds.isNotEmpty()) app.audioCache.requestLessonPrefetch(examId, lessonIds.take(3))
                 if (tasks.isEmpty()) {
                     _state.update { it.copy(phase = SessionPhase.Empty, reason = s.reason) }
                 } else {
@@ -127,6 +137,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val task = s.current ?: return
         if (s.feedback != null) return
         val ms = (SystemClock.elapsedRealtime() - shownAt).toInt().coerceIn(0, 10 * 60 * 1000)
+        if (task is Task.Teach) return
         if (task is Task.Lesson) {
             // Loesungsweg: wird als gelernt vermerkt, aber ohne Punkte und Feier
             sync.record(s.examId, AttemptRequest(task.item.id, outcomeFor(task, true), ms, Instant.now().toString()))
@@ -161,6 +172,46 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * "Weiss nicht": neutral. Sendet outcome "dontknow", markiert nur die richtige Antwort (keine Feier, Serie unveraendert).
+     * Liefert die Antwort eine nextLessonId, kommt diese Lektion als Naechstes in der Runde.
+     */
+    fun dontKnow() {
+        val s = _state.value
+        val task = s.current ?: return
+        if (s.feedback != null || task is Task.Card || task is Task.Lesson || task is Task.Teach) return
+        val ms = (SystemClock.elapsedRealtime() - shownAt).toInt().coerceIn(0, 10 * 60 * 1000)
+        _state.update { it.copy(feedback = false, neutral = true) }
+        if (s.currentIsRetry) return
+        sync.record(s.examId, AttemptRequest(task.item.id, dontKnowOutcome(), ms, Instant.now().toString()))
+        viewModelScope.launch {
+            val r = sync.flush(s.examId) ?: return@launch
+            r.nextLessonId?.let { insertLesson(s.examId, it) }
+        }
+    }
+
+    /** Lektion direkt nach der aktuellen Aufgabe einfuegen (nie doppelt). */
+    private suspend fun insertLesson(examId: String, lessonId: String) {
+        val l = runCatching { api.lessons(examId) }.getOrNull()?.firstOrNull { it.id == lessonId } ?: return
+        val card = SessionLesson(l.id, l.title, l.keyPoints, l.ttsText, l.mnemonic, l.estSeconds)
+        _state.update { st ->
+            val at = lessonInsertIndex(st.index, st.tasks, lessonId) ?: return@update st
+            val teach = Task.Teach(teachItem(card), card)
+            st.copy(
+                tasks = st.tasks.toMutableList().apply { add(at, teach) },
+                isRetry = st.isRetry.toMutableList().apply { add(at, false) },
+                finalRoundStart = st.finalRoundStart?.let { f -> if (at <= f) f + 1 else f },
+            )
+        }
+    }
+
+    /** Anteil einer Lektion melden, der gehoert wurde (ab 0.8 gilt sie als gehoert); Fehler sind unkritisch. */
+    fun heard(lessonId: String, fraction: Double) {
+        val examId = _state.value.examId
+        if (examId.isEmpty()) return
+        viewModelScope.launch { runCatching { api.heard(examId, lessonId, HeardRequest(fraction.coerceIn(0.0, 1.0))) } }
+    }
+
     /** Pruefen, ob durch die letzten Antworten ein Thema ueber die Schwelle gekommen ist ("Thema sitzt"). */
     private suspend fun checkSits(examId: String) {
         val now = SystemClock.elapsedRealtime()
@@ -187,15 +238,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             store.dayStreak = streakDays
             val seconds = ((SystemClock.elapsedRealtime() - startedAt) / 1000).toInt()
             _state.update {
-                it.copy(index = nextIndex, feedback = null, phase = SessionPhase.Done, scoreAfter = it.scoreBefore, elapsedSeconds = seconds, dayStreak = streakDays)
+                it.copy(index = nextIndex, feedback = null, neutral = false, phase = SessionPhase.Done, scoreAfter = it.scoreBefore, elapsedSeconds = seconds, dayStreak = streakDays)
             }
             viewModelScope.launch {
                 val f = sync.flush(s.examId)
-                if (f != null) _state.update { it.copy(forecastAfter = f, scoreAfter = f.scoreNowPercent) }
+                if (f != null) _state.update { it.copy(forecastAfter = f.forecast, scoreAfter = f.forecast.scoreNowPercent) }
             }
         } else {
             shownAt = SystemClock.elapsedRealtime()
-            _state.update { it.copy(index = nextIndex, feedback = null) }
+            _state.update { it.copy(index = nextIndex, feedback = null, neutral = false) }
         }
     }
 
@@ -208,7 +259,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     fun close() {
         val id = _state.value.examId
         _state.value = SessionUi(audio = store.audioMode)
-        viewModelScope.launch { app.audioCache.clear() }
+        app.audioCache.clearing = viewModelScope.launch { app.audioCache.clear() }
         if (id.isNotEmpty()) viewModelScope.launch { sync.flush(id) }
     }
 

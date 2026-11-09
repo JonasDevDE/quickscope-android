@@ -31,6 +31,7 @@ import com.jonasschnell.quickscope.logic.splitWords
 import com.jonasschnell.quickscope.logic.timingsMatch
 import com.jonasschnell.quickscope.logic.wordAtChar
 import com.jonasschnell.quickscope.logic.wordPosAt
+import com.jonasschnell.quickscope.logic.CLOUD_WAIT_MS
 import com.jonasschnell.quickscope.logic.CloudHealth
 import com.jonasschnell.quickscope.logic.SPEECH_SPEED
 import com.jonasschnell.quickscope.logic.PrefetchPlanner
@@ -42,6 +43,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
@@ -108,7 +110,7 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
         if (chooseVoice(health, SystemClock.elapsedRealtime()) == VoiceKind.Cloud) {
             try {
                 loading = true
-                val file = cache.fetch(examId, itemId, part)
+                val file = withTimeoutOrNull(CLOUD_WAIT_MS) { cache.fetch(examId, itemId, part) } ?: throw SlowCloud()
                 loading = false
                 val timings = if (part == VoicePart.Question && displayText != null) cache.timings(examId, itemId, part) else null
                 val usable = if (timings != null && displayText != null && timingsMatch(displayText, timings)) timings else null
@@ -141,11 +143,35 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
             } catch (e: Exception) {
                 loading = false
                 highlight = Highlight()
-                health.failed(SystemClock.elapsedRealtime())
+                if (e !is SlowCloud) health.failed(SystemClock.elapsedRealtime())
             }
         }
         usingDevice = true
         speakDevice(fallbackText, if (displayText == fallbackText) displayText else null)
+    }
+
+    /** Spielt eine Lektion (Session-Lektionskarte) ab; sonst wie [speak], ohne Hervorhebung. Rueckfall: Geraetestimme mit dem Lektionstext. */
+    suspend fun speakLesson(examId: String, lessonId: String, text: String) {
+        stop()
+        if (chooseVoice(health, SystemClock.elapsedRealtime()) == VoiceKind.Cloud) {
+            try {
+                loading = true
+                val file = withTimeoutOrNull(CLOUD_WAIT_MS) { cache.fetchLesson(examId, lessonId) } ?: throw SlowCloud()
+                loading = false
+                playFile(file)
+                health.ok()
+                usingDevice = false
+                return
+            } catch (e: CancellationException) {
+                loading = false
+                throw e
+            } catch (e: Exception) {
+                loading = false
+                if (e !is SlowCloud) health.failed(SystemClock.elapsedRealtime())
+            }
+        }
+        usingDevice = true
+        speakDevice(text, null)
     }
 
     fun stop() {
@@ -253,6 +279,9 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
         if (words.isNotEmpty()) highlight = highlight.copy(spoken = words.size, active = -1)
     }
 }
+
+/** Cloud-Audio war nach [CLOUD_WAIT_MS] noch nicht da: dieses Item liest die Geraetestimme (kein dauerhafter Ausfall). */
+private class SlowCloud : Exception()
 
 /** Zustand der Live-Hervorhebung fuer [text]; [spoken] Woerter sind fertig, [active] ist das aktuelle Wort (-1 = keins). */
 data class Highlight(val text: String? = null, val words: List<WordTiming> = emptyList(), val spoken: Int = 0, val active: Int = -1)

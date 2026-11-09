@@ -2,7 +2,7 @@
   "items" : [ {
     "id" : "i-card",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e40",
+    "topicId" : "6af1fab18c04f9867dc6960d",
     "type" : "card",
     "question" : "Zinsen?",
     "answer" : "Preis für Kapital",
@@ -22,7 +22,7 @@
   }, {
     "id" : "i-spot",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e43",
+    "topicId" : "6af1fab18c04f9867dc69610",
     "type" : "spot",
     "question" : "Fehler finden:",
     "answer" : "Verträge: immer Schriftform.",
@@ -41,9 +41,19 @@
     "lesson" : false,
     "ttsText" : "Fehler finden:"
   }, {
+    "type" : "lesson",
+    "lesson" : {
+      "id" : "6af1fab18c04f9867dc69613",
+      "title" : "Preis kalkulieren",
+      "keyPoints" : [ "Kosten, dann Gewinn", "Selbstkosten", "Skonto, Rabatt einrechnen" ],
+      "ttsText" : "Kalkulation heißt: Du rechnest aus, zu welchem Preis du etwas verkaufen musst. Du startest bei den Kosten. Zuerst kommen die Herstellkosten, also Material und Arbeit. Dazu kommen die Verwaltungs und Vertriebskosten. Das zusammen sind die Selbstkosten. Auf die Selbstkosten schlägst du den Gewinn auf. So entsteht der Barverkaufspreis. Dann geben Kunden meist Skonto und Rabatt. Beides musst du schon vorher einrechnen, sonst bleibt dir weniger Gewinn. Der Preis im Katalog ist der Listenpreis. Ein Beispiel: Hundert Euro Selbstkosten und zehn Prozent Gewinn ergeben hundertzehn Euro. Merk dir die Reihenfolge: Kosten, Gewinn, Skonto, Rabatt.",
+      "mnemonic" : "Kosten, Gewinn, Skonto, Rabatt",
+      "estSeconds" : 42
+    }
+  }, {
     "id" : "i-order",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e42",
+    "topicId" : "6af1fab18c04f9867dc6960f",
     "type" : "order",
     "question" : "Kalkulation, Reihenfolge:",
     "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
@@ -61,9 +71,60 @@
     "lesson" : false,
     "ttsText" : "Kalkulation, Reihenfolge:"
   }, {
+    "id" : "i-match",
+    "examId" : "e-ready",
+    "topicId" : "6af1fab18c04f9867dc6960f",
+    "type" : "match",
+    "question" : "Zuordnen:",
+    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
+    "payload" : {
+      "pairs" : [ {
+        "right" : "Herstellkosten + Verwaltung",
+        "left" : "Selbstkosten"
+      }, {
+        "right" : "Preis vor Rabatt",
+        "left" : "Listenpreis"
+      }, {
+        "right" : "Preis vor Skonto",
+        "left" : "Zielpreis"
+      } ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 19,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zuordnen:"
+  }, {
+    "id" : "i-cloze",
+    "examId" : "e-ready",
+    "topicId" : "6af1fab18c04f9867dc6960f",
+    "type" : "cloze",
+    "question" : "Selbstkosten + ___ = Verkaufspreis.",
+    "answer" : "Gewinn",
+    "payload" : {
+      "text" : "Selbstkosten + ___ = Verkaufspreis.",
+      "bank" : [ "Gewinn", "Skonto", "Rabatt" ],
+      "answer" : "Gewinn"
+    },
+    "difficulty" : 3,
+    "estSeconds" : 12,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Selbstkosten + Lücke = Verkaufspreis."
+  }, {
     "id" : "i-aisol",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e40",
+    "topicId" : "6af1fab18c04f9867dc6960d",
     "type" : "number",
     "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
     "answer" : "1.081,60 €",
@@ -88,7 +149,7 @@
   }, {
     "id" : "i-ai",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e43",
+    "topicId" : "6af1fab18c04f9867dc69610",
     "type" : "card",
     "question" : "Verbrauchsgüterkauf?",
     "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
@@ -100,38 +161,9 @@
     "lesson" : false,
     "ttsText" : "Verbrauchsgüterkauf?"
   }, {
-    "id" : "i-match",
-    "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e42",
-    "type" : "match",
-    "question" : "Zuordnen:",
-    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
-    "payload" : {
-      "pairs" : [ {
-        "left" : "Selbstkosten",
-        "right" : "Herstellkosten + Verwaltung"
-      }, {
-        "left" : "Listenpreis",
-        "right" : "Preis vor Rabatt"
-      }, {
-        "left" : "Zielpreis",
-        "right" : "Preis vor Skonto"
-      } ]
-    },
-    "difficulty" : 3,
-    "estSeconds" : 19,
-    "source" : {
-      "materialId" : "m-pdf"
-    },
-    "sourceType" : "material",
-    "fromExam" : false,
-    "aiSolution" : false,
-    "lesson" : false,
-    "ttsText" : "Zuordnen:"
-  }, {
     "id" : "i-lesson",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e40",
+    "topicId" : "6af1fab18c04f9867dc6960d",
     "type" : "card",
     "question" : "So geht: Zinseszins berechnen",
     "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
@@ -151,7 +183,7 @@
   }, {
     "id" : "i-choice2",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e43",
+    "topicId" : "6af1fab18c04f9867dc69610",
     "type" : "choice2",
     "question" : "Transportrisiko: Käufer oder Verkäufer?",
     "answer" : "Käufer",
@@ -170,31 +202,9 @@
     "lesson" : false,
     "ttsText" : "Transportrisiko: Käufer oder Verkäufer?"
   }, {
-    "id" : "i-cloze",
-    "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e42",
-    "type" : "cloze",
-    "question" : "Selbstkosten + ___ = Verkaufspreis.",
-    "answer" : "Gewinn",
-    "payload" : {
-      "text" : "Selbstkosten + ___ = Verkaufspreis.",
-      "bank" : [ "Gewinn", "Skonto", "Rabatt" ],
-      "answer" : "Gewinn"
-    },
-    "difficulty" : 3,
-    "estSeconds" : 12,
-    "source" : {
-      "materialId" : "m-pdf"
-    },
-    "sourceType" : "material",
-    "fromExam" : false,
-    "aiSolution" : false,
-    "lesson" : false,
-    "ttsText" : "Selbstkosten + Lücke = Verkaufspreis."
-  }, {
     "id" : "i-number",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e40",
+    "topicId" : "6af1fab18c04f9867dc6960d",
     "type" : "number",
     "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
     "answer" : "30 €",
@@ -215,7 +225,7 @@
   }, {
     "id" : "i-tf",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e43",
+    "topicId" : "6af1fab18c04f9867dc69610",
     "type" : "truefalse",
     "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
     "answer" : "wahr",
@@ -232,7 +242,7 @@
   }, {
     "id" : "i-mc",
     "examId" : "e-ready",
-    "topicId" : "6af1f6b79fee891876118e40",
+    "topicId" : "6af1fab18c04f9867dc6960d",
     "type" : "mc",
     "question" : "Jahreszins-Formel?",
     "answer" : "K × p / 100",
@@ -249,9 +259,9 @@
     "lesson" : false,
     "ttsText" : "Jahreszins-Formel?"
   } ],
-  "plannedSeconds" : 149,
+  "plannedSeconds" : 191,
   "kind" : "daily",
-  "reason" : "Heute: 6 Wiederholungen und 6 neue Fragen, 3 Themen.",
+  "reason" : "Erst hören: Preis kalkulieren, dann Fragen.",
   "forecast" : {
     "scoreNowPercent" : 55,
     "scoreAtExamPercent" : 95,
@@ -274,16 +284,18 @@
     "daysLeft" : 10,
     "hoursLeft" : 230,
     "doneSecondsToday" : 0,
+    "streakDays" : 2,
+    "bestStreakDays" : 3,
     "weakTopics" : [ {
-      "topicId" : "6af1f6b79fee891876118e40",
+      "topicId" : "6af1fab18c04f9867dc6960d",
       "title" : "Zinsrechnung",
       "mastery" : 0.58
     }, {
-      "topicId" : "6af1f6b79fee891876118e43",
+      "topicId" : "6af1fab18c04f9867dc69610",
       "title" : "Vertragsrecht",
       "mastery" : 0.54
     }, {
-      "topicId" : "6af1f6b79fee891876118e42",
+      "topicId" : "6af1fab18c04f9867dc6960f",
       "title" : "Kalkulation",
       "mastery" : 0.39
     } ],
@@ -295,6 +307,11 @@
       "coveragePercent" : 95,
       "scorePercent" : 80
     } ],
+    "plan" : {
+      "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
+      "chaptersTotal" : 2,
+      "chaptersHeard" : 0
+    },
     "showCheatsheetSuggestion" : false,
     "note" : "Schätzung, keine Garantie"
   },

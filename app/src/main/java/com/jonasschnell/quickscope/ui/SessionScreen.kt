@@ -13,6 +13,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.jonasschnell.quickscope.logic.Celebration
 import com.jonasschnell.quickscope.logic.Tones
+import com.jonasschnell.quickscope.logic.shouldSpeakQuestion
+import com.jonasschnell.quickscope.logic.soundFor
 import com.jonasschnell.quickscope.logic.floor5
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,7 +70,8 @@ import kotlinx.coroutines.launch
 fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
     BackHandler { onClose() }
-    Column(Modifier.fillMaxSize().background(Black).statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
+    Box(Modifier.fillMaxSize().background(Black)) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
         when (s.phase) {
             SessionPhase.Running -> RunningView(s, vm, onClose)
             SessionPhase.Done -> DoneView(s, onClose)
@@ -84,6 +87,9 @@ fun SessionScreen(vm: SessionViewModel, onRetry: () -> Unit, onClose: () -> Unit
             SessionPhase.Empty -> MessageView("Gerade nichts zu lernen", s.reason.ifBlank { "Komm später wieder." }, "Fertig", onClose, null, null)
             SessionPhase.Error -> MessageView("Das hat nicht geklappt", s.message ?: "Unbekannter Fehler", "Nochmal", onRetry, "Schließen", onClose)
         }
+    }
+    // Vollflaechiger Tint ueber allem (auch Status- und Navigationsleiste), klickdurchlaessig, ohne Layout-Einfluss
+    if (s.phase == SessionPhase.Running && s.feedback != null) s.fx?.let { FullTint(it) }
     }
 }
 
@@ -117,7 +123,7 @@ private fun MessageView(title: String, text: String, primary: String, onPrimary:
 @Composable
 private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose: () -> Unit) {
     val task = s.current ?: return
-    val voice = if (s.audio) rememberVoice() else null
+    val voice = if (s.audio || task is Task.Teach) rememberVoice() else null
     val haptics = LocalHaptics.current
     val sfx = rememberSfx()
     val shake = remember { Animatable(0f) }
@@ -128,21 +134,23 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         if (s.audio) voice?.prefetch(s.examId, ids, s.index)
     }
     // Audio-Modus: nur die Frage vorlesen (nie Antwort oder Rueckmeldung)
-    LaunchedEffect(s.index, s.audio, s.feedback != null) {
-        if (voice != null && s.feedback == null) voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task), displayText = task.item.question)
+    LaunchedEffect(s.index, s.audio, s.feedback != null, voice) {
+        if (task is Task.Teach) return@LaunchedEffect // Lektionskarte spielt sich selbst ab
+        if (voice != null && shouldSpeakQuestion(s.audio, s.feedback, task is Task.Teach)) voice.speak(s.examId, task.item.id, VoicePart.Question, audioPrompt(task), displayText = task.item.question)
         else voice?.stop()
     }
     // Rueckmeldung: Ton und Haptik; richtig deutlich groesser als falsch
     LaunchedEffect(s.fx?.id) {
         val o = s.fx?.outcome ?: return@LaunchedEffect
         if (o.correct) {
+            soundFor(o)?.let(sfx::play)
             when (o.celebration) {
-                Celebration.Small -> { sfx.play(Tones.correct); haptics.celebrate(0) }
-                Celebration.Medium -> { sfx.play(Tones.medium); haptics.celebrate(1) }
-                Celebration.Big -> { sfx.play(Tones.big); haptics.celebrate(2) }
+                Celebration.Small -> haptics.celebrate(0)
+                Celebration.Medium -> haptics.celebrate(1)
+                Celebration.Big -> haptics.celebrate(2)
             }
         } else {
-            sfx.play(Tones.wrong)
+            // falsch: kein Ton, nur ein leichtes Tick und das sanfte Wackeln
             haptics.tick()
             shake.animateTo(0f, keyframes {
                 durationMillis = 340
@@ -159,10 +167,10 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
         delay(
             when {
                 task is Task.Card -> if (fb) 1000L else 1500L
+                s.neutral -> 2200L
                 lessonSteps(task.item).isNotEmpty() -> 4500L
-                fb && task.item.explanation.isNullOrBlank() && task.item.mnemonic.isNullOrBlank() -> 1100L
-                fb -> 2400L
-                else -> 3200L
+                fb -> 1400L
+                else -> 2200L
             },
         )
         vm.next()
@@ -180,41 +188,48 @@ private fun ColumnScope.RunningView(s: SessionUi, vm: SessionViewModel, onClose:
     if (s.inFinalRound) Text("Abschlussrunde", color = Accent, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
     Box(Modifier.weight(1f).fillMaxWidth()) {
         Column(
-            Modifier.fillMaxSize().graphicsLayer { translationX = shake.value }.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.Center,
+            Modifier.fillMaxSize().graphicsLayer { translationX = shake.value }.verticalScroll(rememberScrollState()).padding(top = 16.dp),
+            verticalArrangement = Arrangement.Top,
         ) {
             key(s.index) {
-                if (s.currentIsRetry) Text("Gleich nochmal", color = Accent, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 s.topics[task.item.topicId]?.let {
                     Text(it, color = Muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 CompositionLocalProvider(LocalHighlight provides (voice?.highlight ?: Highlight())) {
-                    TaskBody(task, s.feedback, vm)
+                    TaskBody(task, s.feedback, s.neutral, s.examId, voice, vm)
                 }
-                // Karten zeigen die Antwort schon selbst; alle anderen Typen zeigen die Rueckmeldung mit der richtigen Antwort
-                if (task !is Task.Card) s.feedback?.let { Spacer(Modifier.height(16.dp)); FeedbackPanel(task, it, again = !s.currentIsRetry, onNext = vm::next) }
             }
         }
-        s.fx?.takeIf { s.feedback != null }?.let { fx ->
-            if (fx.outcome.correct) CorrectFx(fx) else SoftFx(fx)
-        }
+        s.fx?.takeIf { s.feedback != null }?.let { fx -> if (fx.outcome.correct) CorrectFx(fx) }
         s.sits?.let { SitsBanner(it, Modifier.align(Alignment.TopCenter)) }
+    }
+    // Feste Position unten: vor der Antwort "Weiss nicht" (klein, unauffaellig), danach "Weiter"; die Hoehe bleibt gleich
+    if (task is Task.Choice || task is Task.Cloze || task is Task.Spot || task is Task.Match || task is Task.Order) {
+        Box(Modifier.fillMaxWidth().height(76.dp).padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
+            if (s.feedback == null) {
+                HapticTextButton(onClick = vm::dontKnow) { Text("Weiß nicht", color = Muted, style = MaterialTheme.typography.labelLarge) }
+            } else {
+                PrimaryButton("Weiter", vm::next)
+            }
+        }
     }
 }
 
-/** Die Aufgabe je Typ. Loesungswege gehen direkt weiter, alle anderen zeigen erst die Rueckmeldung. */
+/** Die Aufgabe je Typ. Lektionskarten und Loesungswege haben ihren eigenen "Weiter"-Knopf. */
 @Composable
-private fun TaskBody(task: Task, feedback: Boolean?, vm: SessionViewModel) {
+private fun TaskBody(task: Task, feedback: Boolean?, neutral: Boolean, examId: String, voice: Voice?, vm: SessionViewModel) {
     val answered = feedback != null
+    val revealed = neutral
     val onAnswer: (Boolean) -> Unit = { ok -> vm.answer(ok) }
     when (task) {
         is Task.Card -> CardTask(task, onAnswer)
         is Task.Lesson -> LessonTask(task) { vm.answer(true); vm.next() }
-        is Task.Choice -> ChoiceTask(task, answered, onAnswer)
-        is Task.Cloze -> ClozeTask(task, onAnswer)
-        is Task.Spot -> SpotTask(task, onAnswer)
-        is Task.Match -> MatchTask(task, onAnswer)
-        is Task.Order -> OrderTask(task, onAnswer)
+        is Task.Teach -> if (voice != null) TeachCard(task, examId, voice, onHeard = vm::heard, onNext = vm::next)
+        is Task.Choice -> ChoiceTask(task, answered, revealed, onAnswer)
+        is Task.Cloze -> ClozeTask(task, revealed, onAnswer)
+        is Task.Spot -> SpotTask(task, revealed, onAnswer)
+        is Task.Match -> MatchTask(task, revealed, onAnswer)
+        is Task.Order -> OrderTask(task, revealed, onAnswer)
     }
 }
 

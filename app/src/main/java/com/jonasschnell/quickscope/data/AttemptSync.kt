@@ -18,14 +18,14 @@ class AttemptSync(private val api: QuickscopeApi, val queue: AttemptQueue) {
 
     fun hasPending(examId: String) = queue.pending(examId).isNotEmpty()
 
-    /** Sendet alles Vorgemerkte; liefert die neue Prognose oder null (nichts zu senden oder kein Netz). */
-    suspend fun flush(examId: String): Forecast? = mutex.withLock {
+    /** Sendet alles Vorgemerkte; liefert die Antwort (Prognose, ggf. nextLessonId) oder null (nichts zu senden oder kein Netz). */
+    suspend fun flush(examId: String): AttemptsResponse? = mutex.withLock {
         val batch = queue.pending(examId)
         if (batch.isEmpty()) return@withLock null
         try {
             val response = api.attempts(examId, batch)
             queue.removeSent(examId, batch.size)
-            response.forecast
+            response
         } catch (e: CancellationException) {
             throw e
         } catch (e: HttpException) {

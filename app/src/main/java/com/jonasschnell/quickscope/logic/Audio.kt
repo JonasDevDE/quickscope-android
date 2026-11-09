@@ -65,3 +65,19 @@ fun filesToPrune(files: List<Pair<String, Pair<Long, Long>>>, maxBytes: Long): L
     }
     return out
 }
+
+/** So lange wird auf die Cloud-Stimme gewartet (Audio laedt noch), danach liest die Geraetestimme statt zu verwerfen. */
+const val CLOUD_WAIT_MS = 8_000L
+
+/**
+ * Soll die Frage jetzt vorgelesen werden? Immer wenn ein Item sichtbar wird und der Ton an ist (auch das erste, auch nach
+ * Drehen/App-Wechsel), solange noch nicht geantwortet wurde. Lektionskarten spielen sich selbst ab.
+ */
+fun shouldSpeakQuestion(audioOn: Boolean, feedback: Boolean?, isTeach: Boolean): Boolean = audioOn && feedback == null && !isTeach
+
+/**
+ * Wettlauf "Audio bereit" gegen "Item sichtbar": war das Audio nach [readyAfterMs] fertig (null = noch nicht), wird es
+ * abgespielt, sonst nach dem Timeout die Geraetestimme. Nie still verwerfen.
+ */
+fun voiceSource(readyAfterMs: Long?, waitMs: Long = CLOUD_WAIT_MS): VoiceKind =
+    if (readyAfterMs != null && readyAfterMs <= waitMs) VoiceKind.Cloud else VoiceKind.Device

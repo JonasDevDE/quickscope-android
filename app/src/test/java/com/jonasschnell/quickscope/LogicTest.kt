@@ -6,6 +6,7 @@ import com.jonasschnell.quickscope.data.Forecast
 import com.jonasschnell.quickscope.data.Item
 import com.jonasschnell.quickscope.data.Projection
 import com.jonasschnell.quickscope.logic.AttemptQueue
+import com.jonasschnell.quickscope.logic.MatchResult
 import com.jonasschnell.quickscope.logic.MatchState
 import com.jonasschnell.quickscope.logic.OrderState
 import com.jonasschnell.quickscope.logic.QueueStorage
@@ -164,17 +165,56 @@ class LogicTest {
         assertEquals("wrong", outcomeFor(tf, false))
     }
 
-    @Test fun matchStateCountsMistakesAndFinishes() {
-        val s = MatchState(listOf("a", "b"), listOf("2", "1"), mapOf("a" to "1", "b" to "2"))
-        assertNull(s.tapRight("1"))
+    @Test fun matchEvaluatesEachPairAtOnce() {
+        val s = MatchState(listOf("a", "b", "c"), listOf("3", "1", "2"), mapOf("a" to "1", "b" to "2", "c" to "3"))
+        assertEquals(MatchResult.None, s.tapRight("1"))               // ohne Auswahl links passiert nichts
         s.tapLeft("a")
-        assertEquals(false, s.tapRight("2"))
-        s.tapLeft("a")
-        assertEquals(true, s.tapRight("1"))
-        s.tapLeft("b")
-        assertEquals(true, s.tapRight("2"))
-        assertTrue(s.done)
+        assertEquals(MatchResult.Wrong, s.tapRight("2"))              // falsch: Verbindung loest sich, Fehler zaehlt
         assertEquals(1, s.mistakes)
+        assertFalse("a" in s.matched)
+        assertNull(s.selectedLeft)
+        s.tapLeft("a")
+        assertEquals(MatchResult.Right, s.tapRight("1"))              // richtig: bleibt verbunden, eigene Farbe
+        assertTrue("a" in s.matched)
+        assertEquals(0, s.colorOf("a"))
+        assertEquals(0, s.colorOfRight("1"))
+        s.tapLeft("b")
+        assertEquals(MatchResult.Right, s.tapRight("2"))
+        assertEquals(1, s.colorOf("b"))
+        assertFalse(s.done)
+        s.tapLeft("c")
+        assertEquals(MatchResult.Right, s.tapRight("3"))
+        assertTrue(s.done)
+        assertFalse(s.known)                                          // ein Fehler: nicht gewusst
+    }
+
+    @Test fun matchRevealsPairAfterTwoWrongTries() {
+        val s = MatchState(listOf("a", "b"), listOf("2", "1"), mapOf("a" to "1", "b" to "2"))
+        s.tapLeft("a"); assertEquals(MatchResult.Wrong, s.tapRight("2"))
+        s.tapLeft("a"); assertEquals(MatchResult.Revealed, s.tapRight("2"))
+        assertEquals(setOf("a"), s.revealed)
+        assertTrue("a" in s.matched)                                  // richtiges Paar wird gezeigt
+        assertEquals(2, s.mistakes)
+        s.tapLeft("b"); assertEquals(MatchResult.Right, s.tapRight("2"))
+        assertTrue(s.done)
+        assertFalse(s.known)                                          // aufgedeckt: gilt als nicht gewusst
+    }
+
+    @Test fun matchWithoutMistakesIsKnown() {
+        val s = MatchState(listOf("a", "b"), listOf("2", "1"), mapOf("a" to "1", "b" to "2"))
+        s.tapLeft("a"); s.tapRight("1")
+        s.tapLeft("b"); s.tapRight("2")
+        assertTrue(s.done)
+        assertTrue(s.known)
+        // erneut tippen auf ein verbundenes Paar aendert nichts
+        s.tapLeft("a")
+        assertNull(s.selectedLeft)
+    }
+
+    @Test fun matchTapSelectedLeftAgainClearsSelection() {
+        val s = MatchState(listOf("a", "b"), listOf("2", "1"), mapOf("a" to "1", "b" to "2"))
+        s.tapLeft("a"); s.tapLeft("a")
+        assertNull(s.selectedLeft)
     }
 
     @Test fun orderStateNeedsRightSequence() {
@@ -202,7 +242,9 @@ class LogicTest {
                 put("bank", kotlinx.serialization.json.JsonArray(listOf("Gewinn", "Skonto").map { kotlinx.serialization.json.JsonPrimitive(it) }))
                 put("answer", kotlinx.serialization.json.JsonPrimitive("Gewinn"))
             }))
-        assertEquals("Plus Lücke ergibt Preis.", audioPrompt(cloze))
+        assertEquals("Plus , ergibt Preis.", audioPrompt(cloze))
+        assertFalse(audioPrompt(cloze).contains("Lücke"))
+        assertFalse(audioPrompt(cloze).contains("_"))
     }
 
     @Test fun progressFollowsEstimatedSeconds() {

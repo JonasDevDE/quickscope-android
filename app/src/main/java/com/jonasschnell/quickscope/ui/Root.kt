@@ -72,6 +72,7 @@ private sealed interface Overlay {
     data object NewExam : Overlay
     data class Settings(val examId: String, val start: ExamSetting? = null) : Overlay
     data class Cheat(val examId: String) : Overlay
+    data class Audiobook(val examId: String) : Overlay
 }
 
 @Composable
@@ -150,6 +151,7 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
                     HomePage(
                         state, loading = !ready || !state.examsLoaded,
                         onStart = { exam, minutes -> sessionVm.start(exam.id, minutes, state.activeForecast?.scoreNowPercent) },
+                        onListen = { overlay = Overlay.Audiobook(it.id) },
                         onMaterial = { overlay = Overlay.Settings(it.id, ExamSetting.Material) },
                         onCheatsheet = { overlay = Overlay.Cheat(it.id) },
                         onRetry = vm::refreshExamsNow,
@@ -175,6 +177,17 @@ private fun QuickscopeRootContent(vm: AppViewModel, sessionVm: SessionViewModel,
             Overlay.NewExam -> Box(Modifier.fillMaxSize().statusBarsPadding()) { NewExamFlow(vm, onClose = dismiss) }
             is Overlay.Settings -> ExamSettingsSheet(state, vm, o.examId, o.start, dismiss)
             is Overlay.Cheat -> CheatsheetSheet(vm, o.examId, dismiss)
+            is Overlay.Audiobook -> {
+                val exam = state.exams.firstOrNull { it.id == o.examId }
+                AudiobookScreen(
+                    o.examId, exam?.dailyMinutes ?: 20,
+                    onQuestions = {
+                        overlay = null
+                        exam?.let { e -> sessionVm.start(e.id, com.jonasschnell.quickscope.logic.remainingMinutes(e.dailyMinutes, state.activeForecast?.doneSecondsToday ?: 0), state.activeForecast?.scoreNowPercent) }
+                    },
+                    onClose = dismiss,
+                )
+            }
         }
         if (session.phase != SessionPhase.Closed) {
             val exam = state.exams.firstOrNull { it.id == session.examId }

@@ -135,17 +135,32 @@ object Tones {
     private const val C6 = 1046.5
     private const val E6 = 1318.5
     private const val G6 = 1568.0
+    private const val C7 = 2093.0
 
-    /** Richtig: heller aufsteigender Dreiklang. */
-    val correct = listOf(Note(C5, 70), Note(E5, 70), Note(G5, 150))
-    /** 5 in Folge: hoeher und laenger. */
+    /** Richtig: kurzes helles "Pling", zwei aufsteigende Toene (grosse Terz), ca. 200 ms. */
+    val correct = listOf(Note(C6, 80), Note(E6, 120))
+    /** Serie von 3: etwas hoeher (Quinte). */
+    val streak3 = listOf(Note(E6, 80), Note(G6, 120))
+    /** 5 in Folge: kleine Fanfare. */
     val medium = listOf(Note(E5, 70), Note(G5, 70), Note(C6, 70), Note(E6, 190))
     /** 10 in Folge: noch hoeher, mit Schluss-Glanz. */
     val big = listOf(Note(G5, 70), Note(C6, 70), Note(E6, 70), Note(G6, 110), Note(E6, 60), Note(G6, 230))
-    /** Falsch: weicher tiefer Ton, leicht abfallend. */
-    val wrong = listOf(Note(220.0, 200, glideTo = 175.0))
     /** Abschlussklang: aufsteigende Tonleiter-Fanfare. */
     val done = listOf(Note(C5, 90), Note(E5, 90), Note(G5, 90), Note(C6, 110), Note(G5, 70), Note(C6, 120), Note(E6, 320))
+
+    val all = listOf(correct, streak3, medium, big, done)
+}
+
+/**
+ * Welcher Ton zu welchem Ergebnis: jede richtige Antwort bekommt sofort ein Pling (bei 3er-Serien etwas hoeher,
+ * bei 5er/10er eine kleine Fanfare); falsche Antworten und "Weiss nicht" bleiben ohne Ton.
+ */
+fun soundFor(outcome: Outcome): List<Note>? = when {
+    !outcome.correct -> null
+    outcome.streak > 0 && outcome.streak % FeedbackTuning.BIG_EVERY == 0 -> Tones.big
+    outcome.streak > 0 && outcome.streak % FeedbackTuning.MEDIUM_EVERY == 0 -> Tones.medium
+    outcome.streak > 0 && outcome.streak % 3 == 0 -> Tones.streak3
+    else -> Tones.correct
 }
 
 /** Erzeugt 16-Bit-PCM (mono): Sinus mit kurzem Anschlag und weichem Abklingen, [volume] 0..1 der Vollaussteuerung. */

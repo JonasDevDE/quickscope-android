@@ -1,0 +1,535 @@
+{
+  "text" : "Zinsen sind der Preis für geliehenes Geld. Wer Geld verleiht, bekommt Zinsen. Wer sich Geld leiht, zahlt sie. Drei Dinge bestimmen die Höhe: das Kapital, der Zinssatz und die Zeit. Das Kapital ist der Betrag, um den es geht. Der Zinssatz sagt, wie viel Prozent pro Jahr dazukommen. Ein Beispiel: Tausend Euro bei drei Prozent bringen nach einem Jahr dreißig Euro Zinsen. Die Formel dafür lautet Kapital mal Zinssatz geteilt durch hundert. Bleiben die Zinsen auf dem Konto, werden sie im nächsten Jahr mitverzinst. Das nennt man Zinseszins. Merk dir: Zins ist die Miete für Geld. Je mehr Geld und je länger, desto höher die Miete.",
+  "durationMs" : 2200,
+  "words" : [ {
+    "start" : 0,
+    "end" : 6,
+    "fromMs" : 200,
+    "toMs" : 218
+  }, {
+    "start" : 7,
+    "end" : 11,
+    "fromMs" : 218,
+    "toMs" : 228
+  }, {
+    "start" : 12,
+    "end" : 15,
+    "fromMs" : 228,
+    "toMs" : 238
+  }, {
+    "start" : 16,
+    "end" : 21,
+    "fromMs" : 238,
+    "toMs" : 248
+  }, {
+    "start" : 22,
+    "end" : 25,
+    "fromMs" : 248,
+    "toMs" : 257
+  }, {
+    "start" : 26,
+    "end" : 36,
+    "fromMs" : 257,
+    "toMs" : 293
+  }, {
+    "start" : 37,
+    "end" : 42,
+    "fromMs" : 293,
+    "toMs" : 311
+  }, {
+    "start" : 43,
+    "end" : 46,
+    "fromMs" : 311,
+    "toMs" : 321
+  }, {
+    "start" : 47,
+    "end" : 51,
+    "fromMs" : 321,
+    "toMs" : 331
+  }, {
+    "start" : 52,
+    "end" : 61,
+    "fromMs" : 331,
+    "toMs" : 355
+  }, {
+    "start" : 62,
+    "end" : 69,
+    "fromMs" : 355,
+    "toMs" : 374
+  }, {
+    "start" : 70,
+    "end" : 77,
+    "fromMs" : 374,
+    "toMs" : 401
+  }, {
+    "start" : 78,
+    "end" : 81,
+    "fromMs" : 401,
+    "toMs" : 410
+  }, {
+    "start" : 82,
+    "end" : 86,
+    "fromMs" : 410,
+    "toMs" : 420
+  }, {
+    "start" : 87,
+    "end" : 91,
+    "fromMs" : 420,
+    "toMs" : 430
+  }, {
+    "start" : 92,
+    "end" : 98,
+    "fromMs" : 430,
+    "toMs" : 445
+  }, {
+    "start" : 99,
+    "end" : 104,
+    "fromMs" : 445,
+    "toMs" : 456
+  }, {
+    "start" : 105,
+    "end" : 109,
+    "fromMs" : 456,
+    "toMs" : 473
+  }, {
+    "start" : 110,
+    "end" : 114,
+    "fromMs" : 473,
+    "toMs" : 483
+  }, {
+    "start" : 115,
+    "end" : 120,
+    "fromMs" : 483,
+    "toMs" : 501
+  }, {
+    "start" : 121,
+    "end" : 130,
+    "fromMs" : 501,
+    "toMs" : 529
+  }, {
+    "start" : 131,
+    "end" : 134,
+    "fromMs" : 529,
+    "toMs" : 538
+  }, {
+    "start" : 135,
+    "end" : 140,
+    "fromMs" : 538,
+    "toMs" : 561
+  }, {
+    "start" : 141,
+    "end" : 144,
+    "fromMs" : 561,
+    "toMs" : 571
+  }, {
+    "start" : 145,
+    "end" : 153,
+    "fromMs" : 571,
+    "toMs" : 601
+  }, {
+    "start" : 154,
+    "end" : 157,
+    "fromMs" : 601,
+    "toMs" : 610
+  }, {
+    "start" : 158,
+    "end" : 166,
+    "fromMs" : 610,
+    "toMs" : 630
+  }, {
+    "start" : 167,
+    "end" : 170,
+    "fromMs" : 630,
+    "toMs" : 639
+  }, {
+    "start" : 171,
+    "end" : 174,
+    "fromMs" : 639,
+    "toMs" : 649
+  }, {
+    "start" : 175,
+    "end" : 180,
+    "fromMs" : 649,
+    "toMs" : 667
+  }, {
+    "start" : 181,
+    "end" : 184,
+    "fromMs" : 667,
+    "toMs" : 676
+  }, {
+    "start" : 185,
+    "end" : 192,
+    "fromMs" : 676,
+    "toMs" : 703
+  }, {
+    "start" : 193,
+    "end" : 196,
+    "fromMs" : 703,
+    "toMs" : 712
+  }, {
+    "start" : 197,
+    "end" : 200,
+    "fromMs" : 712,
+    "toMs" : 721
+  }, {
+    "start" : 201,
+    "end" : 208,
+    "fromMs" : 721,
+    "toMs" : 744
+  }, {
+    "start" : 209,
+    "end" : 211,
+    "fromMs" : 744,
+    "toMs" : 752
+  }, {
+    "start" : 212,
+    "end" : 215,
+    "fromMs" : 752,
+    "toMs" : 761
+  }, {
+    "start" : 216,
+    "end" : 218,
+    "fromMs" : 761,
+    "toMs" : 770
+  }, {
+    "start" : 219,
+    "end" : 224,
+    "fromMs" : 770,
+    "toMs" : 788
+  }, {
+    "start" : 225,
+    "end" : 228,
+    "fromMs" : 788,
+    "toMs" : 798
+  }, {
+    "start" : 229,
+    "end" : 237,
+    "fromMs" : 798,
+    "toMs" : 818
+  }, {
+    "start" : 238,
+    "end" : 243,
+    "fromMs" : 818,
+    "toMs" : 832
+  }, {
+    "start" : 244,
+    "end" : 247,
+    "fromMs" : 832,
+    "toMs" : 841
+  }, {
+    "start" : 248,
+    "end" : 252,
+    "fromMs" : 841,
+    "toMs" : 851
+  }, {
+    "start" : 253,
+    "end" : 260,
+    "fromMs" : 851,
+    "toMs" : 870
+  }, {
+    "start" : 261,
+    "end" : 264,
+    "fromMs" : 870,
+    "toMs" : 879
+  }, {
+    "start" : 265,
+    "end" : 269,
+    "fromMs" : 879,
+    "toMs" : 889
+  }, {
+    "start" : 270,
+    "end" : 281,
+    "fromMs" : 889,
+    "toMs" : 933
+  }, {
+    "start" : 282,
+    "end" : 285,
+    "fromMs" : 933,
+    "toMs" : 942
+  }, {
+    "start" : 286,
+    "end" : 295,
+    "fromMs" : 942,
+    "toMs" : 969
+  }, {
+    "start" : 296,
+    "end" : 303,
+    "fromMs" : 969,
+    "toMs" : 988
+  }, {
+    "start" : 304,
+    "end" : 308,
+    "fromMs" : 988,
+    "toMs" : 1005
+  }, {
+    "start" : 309,
+    "end" : 312,
+    "fromMs" : 1005,
+    "toMs" : 1014
+  }, {
+    "start" : 313,
+    "end" : 317,
+    "fromMs" : 1014,
+    "toMs" : 1024
+  }, {
+    "start" : 318,
+    "end" : 325,
+    "fromMs" : 1024,
+    "toMs" : 1043
+  }, {
+    "start" : 326,
+    "end" : 333,
+    "fromMs" : 1043,
+    "toMs" : 1062
+  }, {
+    "start" : 334,
+    "end" : 338,
+    "fromMs" : 1062,
+    "toMs" : 1072
+  }, {
+    "start" : 339,
+    "end" : 344,
+    "fromMs" : 1072,
+    "toMs" : 1090
+  }, {
+    "start" : 345,
+    "end" : 349,
+    "fromMs" : 1090,
+    "toMs" : 1350
+  }, {
+    "start" : 350,
+    "end" : 357,
+    "fromMs" : 1350,
+    "toMs" : 1368
+  }, {
+    "start" : 358,
+    "end" : 362,
+    "fromMs" : 1368,
+    "toMs" : 1385
+  }, {
+    "start" : 363,
+    "end" : 370,
+    "fromMs" : 1385,
+    "toMs" : 1411
+  }, {
+    "start" : 371,
+    "end" : 374,
+    "fromMs" : 1411,
+    "toMs" : 1420
+  }, {
+    "start" : 375,
+    "end" : 381,
+    "fromMs" : 1420,
+    "toMs" : 1437
+  }, {
+    "start" : 382,
+    "end" : 387,
+    "fromMs" : 1437,
+    "toMs" : 1454
+  }, {
+    "start" : 388,
+    "end" : 394,
+    "fromMs" : 1454,
+    "toMs" : 1472
+  }, {
+    "start" : 395,
+    "end" : 402,
+    "fromMs" : 1472,
+    "toMs" : 1498
+  }, {
+    "start" : 403,
+    "end" : 406,
+    "fromMs" : 1498,
+    "toMs" : 1506
+  }, {
+    "start" : 407,
+    "end" : 415,
+    "fromMs" : 1506,
+    "toMs" : 1526
+  }, {
+    "start" : 416,
+    "end" : 423,
+    "fromMs" : 1526,
+    "toMs" : 1544
+  }, {
+    "start" : 424,
+    "end" : 429,
+    "fromMs" : 1544,
+    "toMs" : 1554
+  }, {
+    "start" : 430,
+    "end" : 438,
+    "fromMs" : 1554,
+    "toMs" : 1581
+  }, {
+    "start" : 439,
+    "end" : 446,
+    "fromMs" : 1581,
+    "toMs" : 1599
+  }, {
+    "start" : 447,
+    "end" : 450,
+    "fromMs" : 1599,
+    "toMs" : 1608
+  }, {
+    "start" : 451,
+    "end" : 457,
+    "fromMs" : 1608,
+    "toMs" : 1626
+  }, {
+    "start" : 458,
+    "end" : 461,
+    "fromMs" : 1626,
+    "toMs" : 1635
+  }, {
+    "start" : 462,
+    "end" : 465,
+    "fromMs" : 1635,
+    "toMs" : 1644
+  }, {
+    "start" : 466,
+    "end" : 472,
+    "fromMs" : 1644,
+    "toMs" : 1665
+  }, {
+    "start" : 473,
+    "end" : 479,
+    "fromMs" : 1665,
+    "toMs" : 1683
+  }, {
+    "start" : 480,
+    "end" : 483,
+    "fromMs" : 1683,
+    "toMs" : 1691
+  }, {
+    "start" : 484,
+    "end" : 486,
+    "fromMs" : 1691,
+    "toMs" : 1700
+  }, {
+    "start" : 487,
+    "end" : 495,
+    "fromMs" : 1700,
+    "toMs" : 1719
+  }, {
+    "start" : 496,
+    "end" : 500,
+    "fromMs" : 1719,
+    "toMs" : 1728
+  }, {
+    "start" : 501,
+    "end" : 513,
+    "fromMs" : 1728,
+    "toMs" : 1765
+  }, {
+    "start" : 514,
+    "end" : 517,
+    "fromMs" : 1765,
+    "toMs" : 1773
+  }, {
+    "start" : 518,
+    "end" : 523,
+    "fromMs" : 1773,
+    "toMs" : 1784
+  }, {
+    "start" : 524,
+    "end" : 527,
+    "fromMs" : 1784,
+    "toMs" : 1793
+  }, {
+    "start" : 528,
+    "end" : 539,
+    "fromMs" : 1793,
+    "toMs" : 1828
+  }, {
+    "start" : 540,
+    "end" : 544,
+    "fromMs" : 1828,
+    "toMs" : 1838
+  }, {
+    "start" : 545,
+    "end" : 549,
+    "fromMs" : 1838,
+    "toMs" : 1853
+  }, {
+    "start" : 550,
+    "end" : 554,
+    "fromMs" : 1853,
+    "toMs" : 1862
+  }, {
+    "start" : 555,
+    "end" : 558,
+    "fromMs" : 1862,
+    "toMs" : 1871
+  }, {
+    "start" : 559,
+    "end" : 562,
+    "fromMs" : 1871,
+    "toMs" : 1880
+  }, {
+    "start" : 563,
+    "end" : 568,
+    "fromMs" : 1880,
+    "toMs" : 1897
+  }, {
+    "start" : 569,
+    "end" : 572,
+    "fromMs" : 1897,
+    "toMs" : 1906
+  }, {
+    "start" : 573,
+    "end" : 578,
+    "fromMs" : 1906,
+    "toMs" : 1924
+  }, {
+    "start" : 579,
+    "end" : 581,
+    "fromMs" : 1924,
+    "toMs" : 1932
+  }, {
+    "start" : 582,
+    "end" : 586,
+    "fromMs" : 1932,
+    "toMs" : 1941
+  }, {
+    "start" : 587,
+    "end" : 591,
+    "fromMs" : 1941,
+    "toMs" : 1951
+  }, {
+    "start" : 592,
+    "end" : 595,
+    "fromMs" : 1951,
+    "toMs" : 1960
+  }, {
+    "start" : 596,
+    "end" : 598,
+    "fromMs" : 1960,
+    "toMs" : 1968
+  }, {
+    "start" : 599,
+    "end" : 606,
+    "fromMs" : 1968,
+    "toMs" : 1990
+  }, {
+    "start" : 607,
+    "end" : 612,
+    "fromMs" : 1990,
+    "toMs" : 2007
+  }, {
+    "start" : 613,
+    "end" : 618,
+    "fromMs" : 2007,
+    "toMs" : 2024
+  }, {
+    "start" : 619,
+    "end" : 622,
+    "fromMs" : 2024,
+    "toMs" : 2033
+  }, {
+    "start" : 623,
+    "end" : 629,
+    "fromMs" : 2033,
+    "toMs" : 2050
+  } ]
+}
