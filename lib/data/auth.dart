@@ -241,6 +241,17 @@ class AuthManager {
         completer.complete(current);
         return current;
       }
+      // Wenn ein frisch ausgestelltes, noch gueltiges Google-JWT vom Backend mit 401
+      // abgelehnt wurde (z.B. GOOGLE_CLIENT_ID-Mismatch auf dem Server), nicht sofort
+      // erneut das interaktive One-Tap-Sheet oeffnen, sondern abbrechen.
+      if (rejected != null && !_isSession(rejected) && !_isExpired(rejected)) {
+        _token = null;
+        try {
+          await _secrets.delete(key: _keyToken);
+        } catch (_) {}
+        completer.complete(null);
+        return null;
+      }
       if (rejected != null && _isSession(rejected) && current == rejected) {
         _token = null;
         try {

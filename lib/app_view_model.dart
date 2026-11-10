@@ -554,6 +554,8 @@ class AppViewModel extends ChangeNotifier {
                 phase: Phase.needsLogin,
                 loginBusy: false,
                 serverStarting: false,
+                loginError:
+                    'Server hat das Anmelde-Token abgelehnt (HTTP 401 – GOOGLE_CLIENT_ID auf dem Backend stimmt nicht mit der App überein).',
               ),
             );
           } else {
