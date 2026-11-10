@@ -86,10 +86,24 @@ jobs:
           echo "Using version: $NAME, build: $BN"
 
       - name: Build Release APK
-        run: flutter build apk --release --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}"
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+        run: |
+          DART_DEFINES=()
+          [ -n "$GOOGLE_WEB_CLIENT_ID" ] && DART_DEFINES+=("--dart-define=GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID")
+          [ -n "$BASE_URL" ] && DART_DEFINES+=("--dart-define=BASE_URL=$BASE_URL")
+          flutter build apk --release --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}" "${DART_DEFINES[@]}"
 
       - name: Build Release App Bundle (AAB)
-        run: flutter build appbundle --release --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}"
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+        run: |
+          DART_DEFINES=()
+          [ -n "$GOOGLE_WEB_CLIENT_ID" ] && DART_DEFINES+=("--dart-define=GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID")
+          [ -n "$BASE_URL" ] && DART_DEFINES+=("--dart-define=BASE_URL=$BASE_URL")
+          flutter build appbundle --release --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}" "${DART_DEFINES[@]}"
 
       - name: Create / Update GitHub Release
         uses: softprops/action-gh-release@v2
