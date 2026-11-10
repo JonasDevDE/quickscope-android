@@ -1,0 +1,122 @@
+name: Build & Release Android
+
+on:
+  push:
+    branches:
+      - main
+      - feature/flutter
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/build-android.yml'
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Build number override (optional)'
+        required: false
+        type: string
+        default: ''
+      build_name:
+        description: 'Version name (e.g. 0.6.2)'
+        required: false
+        type: string
+        default: '0.6.2'
+
+jobs:
+  build-android:
+    name: Build Quickscope Android APK & AAB
+    runs-on: [self-hosted, runner-server]
+    permissions:
+      contents: write
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: false
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Flutter Tests
+        run: flutter test
+
+      - name: Setup Keystore & Signing Properties
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+            {
+              echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+              echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}"
+              echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}"
+              echo "storeFile=upload-keystore.jks"
+            } > android/key.properties
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 configured, building with default signing config."
+          fi
+
+      - name: Determine Version and Build Number
+        id: versioning
+        run: |
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BN="${{ github.event.inputs.build_number }}"
+          else
+            BN=$(( ${{ github.run_number }} + 10 ))
+          fi
+          NAME="${{ github.event.inputs.build_name || '0.6.2' }}"
+          echo "BUILD_NUMBER=$BN" >> $GITHUB_ENV
+          echo "BUILD_NAME=$NAME" >> $GITHUB_ENV
+          echo "Using version: $NAME, build: $BN"
+
+      - name: Build Release APK
+        run: flutter build apk --release --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}"
+
+      - name: Build Release App Bundle (AAB)
+        run: flutter build appbundle --release --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}"
+
+      - name: Create / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ env.BUILD_NAME }}-${{ env.BUILD_NUMBER }}"
+          name: "Quickscope v${{ env.BUILD_NAME }}-${{ env.BUILD_NUMBER }}"
+          body: "Automated Android release build #${{ env.BUILD_NUMBER }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Play Store Credentials
+        id: playstore_check
+        env:
+          PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+        run: |
+          if [ -n "$PLAY_STORE_JSON_KEY" ]; then
+            echo "has_key=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_key=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to Google Play (Internal Test)
+        if: steps.playstore_check.outputs.has_key == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          packageName: com.jonasschnell.quickscope
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

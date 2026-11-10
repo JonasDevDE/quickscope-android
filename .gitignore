@@ -40,5 +40,9 @@ app.*.map.json
 /local.properties
 *.jks
 *.keystore
+**/key.properties
+*.p12
+*.mobileprovision
+*.ipa
 .kotlin/
 captures/

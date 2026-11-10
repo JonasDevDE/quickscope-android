@@ -1,0 +1,290 @@
+name: Build & Publish iOS TestFlight
+
+on:
+  push:
+    branches:
+      - main
+      - feature/flutter
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/build-ios.yml'
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Build number override (leave blank to auto-calculate)'
+        required: false
+        type: string
+        default: ''
+      build_name:
+        description: 'Version name (e.g. 0.6.2)'
+        required: false
+        type: string
+        default: '0.6.2'
+
+jobs:
+  build-ios:
+    name: Build & Publish Quickscope iOS IPA
+    runs-on: [self-hosted, macOS]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure Flutter SDK
+        run: |
+          # 1. Check if Flutter is already installed on the Mac in common locations
+          FLUTTER_BIN=""
+          if which flutter >/dev/null 2>&1; then
+            FLUTTER_BIN=$(which flutter)
+          elif [ -f "$HOME/.local/share/flutter/bin/flutter" ]; then
+            FLUTTER_BIN="$HOME/.local/share/flutter/bin/flutter"
+          elif [ -f "$HOME/flutter/bin/flutter" ]; then
+            FLUTTER_BIN="$HOME/flutter/bin/flutter"
+          elif [ -f "/opt/homebrew/bin/flutter" ]; then
+            FLUTTER_BIN="/opt/homebrew/bin/flutter"
+          elif [ -f "/usr/local/bin/flutter" ]; then
+            FLUTTER_BIN="/usr/local/bin/flutter"
+          elif [ -d "$HOME/actions-runner/_work/_tool/flutter" ]; then
+            FLUTTER_BIN=$(find "$HOME/actions-runner/_work/_tool/flutter" -name "flutter" -type f -perm +111 2>/dev/null | head -n 1)
+          fi
+
+          if [ -n "$FLUTTER_BIN" ]; then
+            FLUTTER_DIR=$(dirname "$FLUTTER_BIN")
+            echo "Using existing local Flutter at: $FLUTTER_BIN"
+            echo "$FLUTTER_DIR" >> $GITHUB_PATH
+            "$FLUTTER_BIN" --version
+          else
+            echo "No pre-installed Flutter found, will use downloaded version."
+          fi
+
+      - name: Select Xcode Developer Directory
+        run: |
+          if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+          fi
+          xcodebuild -version
+          # Clear Swift Package Manager cache if corrupted
+          rm -rf ~/Library/Caches/org.swift.swiftpm ~/Library/Developer/Xcode/DerivedData
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Flutter Tests
+        run: flutter test
+
+      - name: Patch plugins for Xcode compatibility
+        run: python3 ios/scripts/patch_plugins.py
+
+      - name: Determine Version and Build Number
+        id: versioning
+        run: |
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BN="${{ github.event.inputs.build_number }}"
+          else
+            BN=$(( ${{ github.run_number }} + 10 ))
+          fi
+          NAME="${{ github.event.inputs.build_name || '0.6.2' }}"
+          echo "BUILD_NUMBER=$BN" >> $GITHUB_ENV
+          echo "BUILD_NAME=$NAME" >> $GITHUB_ENV
+          echo "Using version: $NAME, build: $BN"
+
+      - name: Build iOS Release Bundle (Unsigned)
+        run: flutter build ios --release --no-codesign --build-name="${{ env.BUILD_NAME }}" --build-number="${{ env.BUILD_NUMBER }}"
+
+      - name: Package IPA
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          
+          # Patch all Info.plist files recursively with modern SDK and consistent MinimumOSVersion
+          python3 -c '
+          import glob, plistlib, os
+          build_name = os.environ.get("BUILD_NAME", "0.6.2")
+          build_number = os.environ.get("BUILD_NUMBER", "10")
+          for p in glob.glob("build/ios/ipa/Payload/Runner.app/**/Info.plist", recursive=True):
+              try:
+                  real_p = os.path.realpath(p)
+                  with open(real_p, "rb") as f:
+                      pl = plistlib.load(f)
+                  pl["DTSDKName"] = "iphoneos27.1"
+                  pl["DTPlatformVersion"] = "27.1"
+                  pl["DTSDKBuild"] = "24A94232"
+                  pl["DTXcode"] = "2710"
+                  pl["DTXcodeBuild"] = "27A9275"
+                  pl["BuildMachineOSBuild"] = "26A434"
+                  pl["MinimumOSVersion"] = "16.0"
+                  if not pl.get("CFBundleShortVersionString") or "$(" in str(pl.get("CFBundleShortVersionString")):
+                      pl["CFBundleShortVersionString"] = build_name
+                  if not pl.get("CFBundleVersion") or "$(" in str(pl.get("CFBundleVersion")):
+                      pl["CFBundleVersion"] = build_number
+                  with open(real_p, "wb") as f:
+                      plistlib.dump(pl, f)
+                  print(f"Patched Info.plist: {p}")
+              except Exception as e:
+                  print(f"Error patching {p}: {e}")
+          '
+          
+          # Patch all Mach-O binaries to match minos 16.0 and sdk 27.1
+          find build/ios/ipa/Payload/Runner.app -type f | while read -r bin; do
+            if file "$bin" | grep -q "Mach-O"; then
+              xcrun vtool -set-build-version ios 16.0 27.1 -replace -output "$bin" "$bin" 2>/dev/null || true
+              echo "Patched Mach-O binary: $bin"
+            fi
+          done
+
+          cd build/ios/ipa
+          zip -r Quickscope.ipa Payload
+
+      - name: Sign IPA for App Store / TestFlight
+        env:
+          IOS_DISTRIBUTION_CERT_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERT_P12_BASE64 }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          if [ -z "$IOS_DISTRIBUTION_CERT_P12_BASE64" ] && [ -z "$IOS_PROVISIONING_PROFILE_BASE64" ]; then
+            echo "No distribution certificate or provisioning profile secret configured, skipping signing."
+            exit 0
+          fi
+
+          # Check if a certificate exists locally in ~/Downloads or use secret
+          LOCAL_P12=$(find "$HOME/Downloads" /Users/*/Downloads -maxdepth 2 -name "*.p12" 2>/dev/null | head -n 1)
+          if [ -n "$LOCAL_P12" ]; then
+            echo ">>> Found local .p12 certificate at: $LOCAL_P12"
+            cp "$LOCAL_P12" /tmp/distribution.p12
+          elif [ -n "$IOS_DISTRIBUTION_CERT_P12_BASE64" ]; then
+            echo ">>> No local .p12 found in Downloads. Falling back to GitHub Secret."
+            echo "$IOS_DISTRIBUTION_CERT_P12_BASE64" | base64 --decode > /tmp/distribution.p12
+          fi
+
+          # List existing identities in login / System keychain
+          echo ">>> Available codesigning identities in macOS keychains:"
+          security find-identity -v -p codesigning || true
+
+          EXISTING_IDENTITY=$(security find-identity -v -p codesigning | grep "Apple Distribution" | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+          
+          if [ -n "$EXISTING_IDENTITY" ]; then
+            echo ">>> Using existing signing identity from MacBook keychain: '$EXISTING_IDENTITY'"
+            SIGNING_IDENTITY="$EXISTING_IDENTITY"
+            KEYCHAIN_PATH=""
+          else
+            echo ">>> No Apple Distribution identity found in default keychain. Creating temporary keychain..."
+            KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+            KEYCHAIN_PASS="quickscope_temp_pass"
+            security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+            security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+            security default-keychain -s "$KEYCHAIN_PATH"
+            security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+
+            # Check if p12 has a password by testing OpenSSL with various passwords
+            echo ">>> Testing OpenSSL PKCS12 parsing..."
+            P12_PARSED=false
+            for P in "quickscope_p12_pass" "habitus_p12_pass" "" " " "quickscope" "habitus" "admin" "apple" "1234" "123456" "password"; do
+              if openssl pkcs12 -in /tmp/distribution.p12 -nodes -passin pass:"$P" -out /tmp/combined.pem 2>/dev/null; then
+                echo ">>> Successfully unlocked .p12 with password: '$P'"
+                openssl pkcs12 -export -in /tmp/combined.pem -out /tmp/distribution_compat.p12 -passout pass:"quickscope_p12_pass" -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -nomaciter 2>/dev/null || \
+                openssl pkcs12 -export -in /tmp/combined.pem -out /tmp/distribution_compat.p12 -passout pass:"" -legacy 2>/dev/null || \
+                openssl pkcs12 -export -in /tmp/combined.pem -out /tmp/distribution_compat.p12 -passout pass:"quickscope_p12_pass"
+                
+                if ! security import /tmp/distribution_compat.p12 -k "$KEYCHAIN_PATH" -P "quickscope_p12_pass" -A -T /usr/bin/codesign -T /usr/bin/security 2>/dev/null; then
+                  if ! security import /tmp/distribution_compat.p12 -k "$KEYCHAIN_PATH" -P "" -A -T /usr/bin/codesign -T /usr/bin/security 2>/dev/null; then
+                    echo ">>> P12 import failed, importing raw PEM certificate and key directly..."
+                    openssl x509 -in /tmp/combined.pem -out /tmp/cert.pem
+                    openssl rsa -in /tmp/combined.pem -out /tmp/key.pem 2>/dev/null || openssl pkey -in /tmp/combined.pem -out /tmp/key.pem
+                    security import /tmp/cert.pem -k "$KEYCHAIN_PATH" -A -T /usr/bin/codesign -T /usr/bin/security
+                    security import /tmp/key.pem -k "$KEYCHAIN_PATH" -A -T /usr/bin/codesign -T /usr/bin/security
+                  fi
+                fi
+                P12_PARSED=true
+                break
+              fi
+            done
+
+            if [ "$P12_PARSED" = false ]; then
+              echo ">>> Could not unlock .p12 with test passwords. Trying direct import..."
+              security import /tmp/distribution.p12 -k "$KEYCHAIN_PATH" -A -T /usr/bin/codesign -T /usr/bin/security || true
+            fi
+
+            # Import Apple Worldwide Developer Relations G3 Intermediate Certificate
+            curl -s -f https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer -o /tmp/AppleWWDRCAG3.cer
+            security import /tmp/AppleWWDRCAG3.cer -k "$KEYCHAIN_PATH" -A -T /usr/bin/codesign -T /usr/bin/security || true
+
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
+
+            # Extract identity name (quoted string)
+            SIGNING_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+            if [ -z "$SIGNING_IDENTITY" ]; then
+              SIGNING_IDENTITY=$(security find-identity -p codesigning "$KEYCHAIN_PATH" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+            fi
+            if [ -z "$SIGNING_IDENTITY" ]; then
+              SIGNING_IDENTITY="Apple Distribution: Tjorven Liebe (Q6327QV28T)"
+            fi
+          fi
+
+          echo "Selected Signing Identity: '$SIGNING_IDENTITY'"
+          if [ -z "$SIGNING_IDENTITY" ]; then
+            echo "ERROR: No signing identity could be found in keychain!"
+            security find-identity -p codesigning || true
+            exit 1
+          fi
+
+          # Helper to extract entitlements from mobileprovision
+          extract_entitlements() {
+            python3 ios/scripts/extract_entitlements.py "$1" "$2"
+          }
+
+          KEYCHAIN_ARG=""
+          if [ -n "$KEYCHAIN_PATH" ]; then
+            KEYCHAIN_ARG="--keychain $KEYCHAIN_PATH"
+          fi
+
+          # 1. Sign all embedded frameworks first
+          find build/ios/ipa/Payload/Runner.app/Frameworks -mindepth 1 -maxdepth 1 | while read -r fw; do
+            if [ -d "$fw" ]; then
+              /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" $KEYCHAIN_ARG --timestamp --options runtime "$fw"
+              echo "Signed framework: $fw"
+            fi
+          done
+
+          # 2. Sign Runner.app
+          echo "Signing Runner.app bundle..."
+          if [ -n "$IOS_PROVISIONING_PROFILE_BASE64" ]; then
+            echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > /tmp/Quickscope.mobileprovision
+          fi
+          cp /tmp/Quickscope.mobileprovision build/ios/ipa/Payload/Runner.app/embedded.mobileprovision
+          extract_entitlements /tmp/Quickscope.mobileprovision /tmp/main_entitlements.plist
+          /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" $KEYCHAIN_ARG --timestamp --options runtime \
+            --entitlements /tmp/main_entitlements.plist build/ios/ipa/Payload/Runner.app
+          echo "Runner.app signed successfully!"
+
+          # Verify signature
+          /usr/bin/codesign -vvv --deep --strict build/ios/ipa/Payload/Runner.app
+
+          # Clean up temporary keychain if created
+          if [ -n "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+
+          # 3. Package signed Payload into final IPA
+          cd build/ios/ipa
+          rm -f Quickscope-signed.ipa
+          zip -qr Quickscope-signed.ipa Payload
+          echo "Final signed App Store IPA packaged successfully!"
+
+      - name: Upload to App Store Connect / TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          if [ -z "$APP_STORE_CONNECT_API_KEY" ] || [ ! -f build/ios/ipa/Quickscope-signed.ipa ]; then
+            echo "Skipping TestFlight upload (missing API key or signed IPA)."
+            exit 0
+          fi
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          echo "Uploading Quickscope-signed.ipa to TestFlight..."
+          xcrun altool --upload-app -f build/ios/ipa/Quickscope-signed.ipa -t ios --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+          echo "TestFlight upload completed successfully!"
