@@ -12,7 +12,20 @@
           "package_name": "com.jonasschnell.quickscope"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "583865549790-qo2l7k2elf8pdcu3hisvdqj2gg2urmj4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jonasschnell.quickscope",
+            "certificate_hash": "6bdba4fa8c5ba3c7d5b02560f06fe04306355069"
+          }
+        },
+        {
+          "client_id": "583865549790-v58o5eu75ltkm8a7ugn8trd1o3p1bfic.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDdGxcy76ztxhCCkiuOSpmRq5fobyLsIA4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "583865549790-v58o5eu75ltkm8a7ugn8trd1o3p1bfic.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
