@@ -83,7 +83,7 @@ class Network {
       headers.remove('X-App-Version');
       return headers;
     }
-    headers['X-App-Version'] = AppConfig.versionCode.toString();
+    headers['X-App-Version'] = AppConfig.reportedVersionCode.toString();
     final t = overrideToken ?? auth.token;
     if (t != null && t.isNotEmpty) {
       headers['Authorization'] = 'Bearer $t';
@@ -92,6 +92,7 @@ class Network {
   }
 
   void _checkUpgrade(Uri url, int statusCode) {
+    if (AppConfig.disableAutoUpdate) return;
     if (statusCode == 426 &&
         isApiHost(url) &&
         !url.path.startsWith('/api/app/')) {

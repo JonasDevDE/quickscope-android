@@ -29,7 +29,7 @@ subprojects {
 
     if (project.name == "app") {
         val extraDefines = mutableListOf<String>()
-        listOf("GOOGLE_WEB_CLIENT_ID", "BASE_URL").forEach { key ->
+        listOf("GOOGLE_WEB_CLIENT_ID", "BASE_URL", "DISABLE_AUTO_UPDATE").forEach { key ->
             val value = resolveConfig(key)
             if (value != null) {
                 val encoded = Base64.getEncoder().encodeToString("$key=$value".toByteArray(Charsets.UTF_8))

@@ -78,7 +78,8 @@ class Updater {
 
   Updater(this._prefs, this._network, this._api) {
     forced = ValueNotifier<bool>(
-      _prefs.getInt(_keyForcedAt) == AppConfig.versionCode,
+      !AppConfig.disableAutoUpdate &&
+          _prefs.getInt(_keyForcedAt) == AppConfig.versionCode,
     );
     status = ValueNotifier<UpdateStatus>(const UpdateIdle());
     _initDir();
@@ -88,6 +89,11 @@ class Updater {
     try {
       final temp = await getTemporaryDirectory();
       _dir = Directory('${temp.path}/updates');
+      if (AppConfig.disableAutoUpdate) {
+        _clearReady();
+        _clearForced();
+        return;
+      }
       final code = _prefs.getInt(_keyCode) ?? 0;
       if (code > AppConfig.versionCode && _apkFile(code).existsSync()) {
         status.value = UpdateReady(
@@ -126,6 +132,7 @@ class Updater {
 
   /// Sofort sperren und die Update-Pruefung ohne Drosselung anstossen.
   void markForced() {
+    if (AppConfig.disableAutoUpdate) return;
     if (!forced.value) {
       _prefs.setInt(_keyForcedAt, AppConfig.versionCode);
       forced.value = true;
@@ -137,11 +144,16 @@ class Updater {
 
   /// Automatische Pruefung beim App-Start; hoechstens alle paar Stunden.
   void checkInBackground({bool ignoreThrottle = false}) {
+    if (AppConfig.disableAutoUpdate) return;
     unawaited(_enqueueCheck(manual: false, ignoreThrottle: ignoreThrottle));
   }
 
   /// Manuelle Suche aus dem Profil: zeigt Fortschritt und Fehler.
   void checkManually() {
+    if (AppConfig.disableAutoUpdate) {
+      status.value = const UpdateUpToDate();
+      return;
+    }
     unawaited(_enqueueCheck(manual: true, ignoreThrottle: true));
   }
 
@@ -168,6 +180,12 @@ class Updater {
     required bool manual,
     required bool ignoreThrottle,
   }) async {
+    if (AppConfig.disableAutoUpdate) {
+      _clearReady();
+      _clearForced();
+      status.value = const UpdateUpToDate();
+      return;
+    }
     final before = status.value;
     var newerKnown = false;
     if (before is UpdateInstalling || before is UpdatePreparing) return;

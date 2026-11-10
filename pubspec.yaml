@@ -1,7 +1,7 @@
 name: quickscope
 description: "Quickscope – Lern-App für Prüfungsvorbereitung für Leute mit wenig Zeit."
 publish_to: 'none'
-version: 0.6.2+28
+version: 0.6.3+29
 
 environment:
   sdk: ^3.8.0

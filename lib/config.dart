@@ -20,8 +20,18 @@ class AppConfig {
     defaultValue: '',
   );
 
-  static const int versionCode = 28;
-  static const String versionName = '0.6.2';
+  static const int versionCode = 29;
+  static const String versionName = '0.6.3';
+
+  /// Entwickler-Flag (`--dart-define=DISABLE_AUTO_UPDATE=true`), um den Auto-Updater
+  /// und den Server-Versionszwang beim lokalen Flashen zu umgehen.
+  static const bool disableAutoUpdate = bool.fromEnvironment(
+    'DISABLE_AUTO_UPDATE',
+    defaultValue: false,
+  );
+
+  static int get reportedVersionCode =>
+      disableAutoUpdate ? 999999 : versionCode;
 
   static String get normalizedBaseUrl =>
       baseUrl.endsWith('/') ? baseUrl : '$baseUrl/';

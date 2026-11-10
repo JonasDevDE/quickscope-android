@@ -154,7 +154,7 @@ class AudioClient {
           uri.port == _base.port)
       ? {
           'Authorization': 'Bearer ${_auth.token ?? ''}',
-          'X-App-Version': AppConfig.versionCode.toString(),
+          'X-App-Version': AppConfig.reportedVersionCode.toString(),
         }
       : const {};
 
