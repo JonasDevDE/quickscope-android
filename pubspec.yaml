@@ -24,7 +24,7 @@ dependencies:
   cached_network_image: ^3.4.1
   just_audio: ^0.9.42
   audio_session: ^0.1.23
-  record: ^5.2.0
+  record: ^7.1.2
   image_picker: ^1.1.2
   file_picker: ^8.1.7
   open_filex: ^4.6.0
