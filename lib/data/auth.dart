@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_one_tap_sign_in/google_one_tap_sign_in.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../logic/security.dart';
 
 sealed class SignInResult {
@@ -89,12 +92,65 @@ class AuthManager {
 
   bool _isSession(String t) => t.startsWith('bst_');
 
+  static String? _extractPictureFromJwt(String? token) {
+    if (token == null || !token.contains('.')) return null;
+    try {
+      final parts = token.split('.');
+      if (parts.length >= 2) {
+        final normalized = base64Url.normalize(parts[1]);
+        final payloadString = utf8.decode(base64Url.decode(normalized));
+        final map = jsonDecode(payloadString);
+        if (map is Map && map.containsKey('picture')) {
+          return map['picture']?.toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Google-Anmeldung: Auf Android ausschliesslich per Google One Tap (ohne Backup-Login).
   Future<SignInResult> signIn() async {
     if (!isConfigured) {
       return const SignInFailure(
         'Google-Client-ID fehlt. Bitte GOOGLE_WEB_CLIENT_ID setzen und neu bauen.',
       );
     }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final signInData = await GoogleOneTapSignIn.handleSignIn(
+          webClientId: serverClientId,
+        );
+        if (signInData.isOk && signInData.data != null) {
+          final data = signInData.data!;
+          final idToken = (data.idToken ?? data.googleIdToken)?.toString();
+          if (idToken == null || idToken.isEmpty) {
+            return const SignInFailure('One Tap lieferte kein Google-ID-Token.');
+          }
+          await _store(idToken);
+          final photoUrl = _extractPictureFromJwt(idToken);
+          if (photoUrl != null && photoUrl.isNotEmpty) {
+            await _prefs.setString(_keyPicture, photoUrl);
+          }
+          return const SignInSuccess();
+        }
+        final statusStr = signInData.status.toString().toLowerCase();
+        if (statusStr.contains('cancel') || statusStr.contains('dismiss')) {
+          return const SignInCancelled();
+        }
+        return const SignInFailure(
+          'Kein Google-Konto gefunden oder One-Tap-Anmeldung fehlgeschlagen.',
+        );
+      } catch (e) {
+        final msg = e.toString();
+        if (msg.contains('CANCELED') || msg.contains('16')) {
+          return const SignInCancelled();
+        }
+        return SignInFailure('One-Tap-Anmeldung fehlgeschlagen: $e');
+      }
+    }
+
+    // iOS Google Sign-In
     try {
       final account = await _googleSignIn.signIn();
       if (account == null) return const SignInCancelled();
@@ -113,8 +169,50 @@ class AuthManager {
     }
   }
 
+  /// Apple-Anmeldung fuer iOS.
+  Future<SignInResult> signInWithApple() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final idToken = credential.identityToken;
+      if (idToken == null || idToken.isEmpty) {
+        return const SignInFailure('Apple-Anmeldung lieferte kein Identity-Token.');
+      }
+      await _store(idToken);
+      return const SignInSuccess();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return const SignInCancelled();
+      }
+      return SignInFailure('Apple-Anmeldung fehlgeschlagen: ${e.message}');
+    } catch (e) {
+      return SignInFailure('Apple-Anmeldung fehlgeschlagen: $e');
+    }
+  }
+
   Future<String?> _refreshSilently() async {
     if (!isConfigured) return null;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final signInData = await GoogleOneTapSignIn.handleSignIn(
+          webClientId: serverClientId,
+        );
+        if (signInData.isOk && signInData.data != null) {
+          final idToken =
+              (signInData.data!.idToken ?? signInData.data!.googleIdToken)
+                  ?.toString();
+          if (idToken != null && idToken.isNotEmpty) {
+            await _store(idToken);
+            return idToken;
+          }
+        }
+      } catch (_) {}
+      return null;
+    }
     try {
       final account = await _googleSignIn.signInSilently();
       if (account == null) return null;

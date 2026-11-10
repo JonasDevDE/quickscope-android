@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../app_view_model.dart';
 import '../logic/exams.dart';
@@ -461,6 +462,18 @@ class _LoginSheet extends StatelessWidget {
                 .textTheme
                 .bodyMedium
                 ?.copyWith(color: AppColors.danger),
+          ),
+        if (defaultTargetPlatform == TargetPlatform.iOS)
+          PrimaryButton(
+            state.loginBusy ? 'Einen Moment' : 'Mit Apple anmelden',
+            enabled: !state.loginBusy,
+            onPressed: () {
+              if (online) {
+                vm.signInWithApple();
+              } else {
+                vm.needInternet();
+              }
+            },
           ),
         PrimaryButton(
           state.loginBusy ? 'Einen Moment' : 'Mit Google anmelden',

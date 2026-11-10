@@ -6,11 +6,17 @@ import 'dart:io';
 class AppConfig {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    defaultValue: 'https://quickscope.invalid/',
+    defaultValue: 'http://fast-hawk.cloudgate.darkstone.de:40029/',
   );
 
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
+    defaultValue:
+        '792487328287-1qjj1ugt3qgj7v0bukrou8e3qc9h7i2j.apps.googleusercontent.com',
+  );
+
+  static const String googleIosClientId = String.fromEnvironment(
+    'GOOGLE_IOS_CLIENT_ID',
     defaultValue: '',
   );
 

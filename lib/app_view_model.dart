@@ -381,11 +381,15 @@ class AppViewModel extends ChangeNotifier {
     }());
   }
 
-  void signIn() {
+  void signIn() => _performSignIn(() => _app.auth.signIn());
+
+  void signInWithApple() => _performSignIn(() => _app.auth.signInWithApple());
+
+  void _performSignIn(Future<SignInResult> Function() action) {
     final gen = ++_loadGeneration;
     unawaited(() async {
       _updateState(_state.copyWith(loginBusy: true, clearLoginError: true));
-      final result = await _app.auth.signIn();
+      final result = await action();
       if (gen != _loadGeneration) return;
       switch (result) {
         case SignInSuccess():

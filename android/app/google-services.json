@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "583865549790",
+    "project_id": "groovy-ceiling-448622-h9",
+    "storage_bucket": "groovy-ceiling-448622-h9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:583865549790:android:9dbd28e54633c6f65b534f",
+        "android_client_info": {
+          "package_name": "com.jonasschnell.quickscope"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdGxcy76ztxhCCkiuOSpmRq5fobyLsIA4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
