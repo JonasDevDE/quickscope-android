@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Baut das signierte Release-APK und veroeffentlicht es als Update auf dem Quickscope-Backend (Git Bash).
+# Baut das signierte Flutter-Release-APK und veroeffentlicht es als Update auf dem Quickscope-Backend (Git Bash).
 # Nutzung: scripts/publish.sh ["Release-Notizen"]
 # Schluessel: Env-Var QUICKSCOPE_PUBLISH_KEY, sonst Datei ../.publish-key (relativ zu android/). Wird nie ausgegeben.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE="${QUICKSCOPE_PUBLISH_BASE:-https://quickscope.invalid/api/app}"
-GRADLE_FILE="$REPO/app/build.gradle.kts"
+PUBSPEC="$REPO/pubspec.yaml"
 NOTES="${1:-${QUICKSCOPE_RELEASE_NOTES:-}}"
 
-VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$GRADLE_FILE" | head -n1)"
-VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$GRADLE_FILE" | head -n1)"
-if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
-  echo "Fehler: versionCode/versionName konnten nicht aus app/build.gradle.kts gelesen werden." >&2
+# Flutter-Stand: Version aus pubspec.yaml (version: NAME+CODE), einzige Quelle.
+PUBVER="$(sed -n 's/^version:[[:space:]]*//p' "$PUBSPEC" | head -n1 | tr -d '\r ')"
+VERSION_NAME="${PUBVER%%+*}"
+VERSION_CODE="${PUBVER#*+}"
+if [ -z "$VERSION_NAME" ] || ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
+  echo "Fehler: version (NAME+CODE) konnte nicht aus pubspec.yaml gelesen werden." >&2
   exit 1
 fi
 
@@ -34,10 +36,23 @@ if [ -z "${JAVA_HOME:-}" ]; then
   export JAVA_HOME
 fi
 
-echo "Baue Version $VERSION_NAME (versionCode $VERSION_CODE) ..."
-(cd "$REPO" && ./gradlew assembleRelease -q)
+if [ ! -f "$REPO/android/key.properties" ]; then
+  echo "Fehler: android/key.properties fehlt. Release-APKs werden nie mit dem Debug-Key veroeffentlicht." >&2
+  exit 1
+fi
+FLUTTER_BIN="${FLUTTER:-flutter}"
+command -v "$FLUTTER_BIN" >/dev/null 2>&1 || { echo "Fehler: flutter nicht gefunden (PATH oder Env-Var FLUTTER setzen)." >&2; exit 1; }
 
-APK="$REPO/app/build/outputs/apk/release/app-release.apk"
+# Optionale dart-defines aus der Umgebung (Defaults stehen in lib/config.dart).
+DEFINES=()
+[ -n "${GOOGLE_WEB_CLIENT_ID:-}" ] && DEFINES+=("--dart-define=GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID")
+[ -n "${GOOGLE_IOS_CLIENT_ID:-}" ] && DEFINES+=("--dart-define=GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID")
+[ -n "${BASE_URL:-}" ] && DEFINES+=("--dart-define=BASE_URL=$BASE_URL")
+
+echo "Baue Version $VERSION_NAME (versionCode $VERSION_CODE) ..."
+(cd "$REPO" && "$FLUTTER_BIN" build apk --release ${DEFINES[@]+"${DEFINES[@]}"})
+
+APK="$REPO/build/app/outputs/flutter-apk/app-release.apk"
 [ -f "$APK" ] || { echo "Fehler: APK nicht gefunden: $APK" >&2; exit 1; }
 
 SIZE="$(stat -c%s "$APK" 2>/dev/null || wc -c < "$APK")"
@@ -55,7 +70,7 @@ CURL_CONFIG_W="$(cygpath -m "$CURL_CONFIG" 2>/dev/null || echo "$CURL_CONFIG")"
 
 fail_http() { # $1 = Schritt, $2 = HTTP-Code
   case "$2" in
-    409) echo "Fehler: Version $VERSION_CODE existiert bereits. Bitte versionCode (und versionName) in app/build.gradle.kts erhoehen." >&2 ;;
+    409) echo "Fehler: Version $VERSION_CODE existiert bereits. Bitte version in pubspec.yaml und AppConfig (lib/config.dart) erhoehen." >&2 ;;
     403) echo "Fehler: Ungueltiger Veroeffentlichungsschluessel (HTTP 403)." >&2 ;;
     *) echo "Fehler bei '$1': Server antwortete mit HTTP $2." >&2; head -c 300 "$RESPONSE" >&2; echo >&2 ;;
   esac
@@ -87,7 +102,7 @@ if [ -z "$CHUNK_SIZE" ] || [ "$CHUNK_SIZE" -gt 786432 ]; then CHUNK_SIZE=786432;
 cp "$CURL_CONFIG" "$WORK/.curlcfg"
 split -b "$CHUNK_SIZE" -d -a 5 "$APK" "$WORK/chunk_"
 cd "$WORK"
-TOTAL="$(ls chunk_* | wc -l | tr -d ' ')"
+TOTAL="$(ls chunk_* | wc -l | tr -d '\r ')"
 INDEX=0
 for PART in chunk_*; do
   ATTEMPT=1

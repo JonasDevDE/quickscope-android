@@ -1,11 +1,57 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
 *.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio / Gradle
+/android/app/debug
+/android/app/profile
+/android/app/release
 .gradle/
 /local.properties
-/.idea/
-/build/
-/app/build/
-.DS_Store
 *.jks
 *.keystore
+**/key.properties
+*.p12
+*.mobileprovision
+*.ipa
 .kotlin/
 captures/
+Pods/
+**/Pods/
+*.p8
+.env
+.env.*
+**/google-services.json
+**/GoogleService-Info.plist
+android/key.properties
+android/local.properties

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Alles ist https-pflichtig, mit einer Ausnahme: Das Backend ist derzeit nur über einen Port ohne Zertifikat
-     erreichbar, deshalb ist für genau diesen einen Host http erlaubt. Entfernen, sobald das Backend https bietet. -->
-<network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">fast-hawk.cloudgate.darkstone.de</domain>
-    </domain-config>
-</network-security-config>
