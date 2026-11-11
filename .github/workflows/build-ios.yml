@@ -30,6 +30,8 @@ jobs:
   build-ios:
     name: Build & Publish Quickscope iOS IPA
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -236,6 +238,17 @@ jobs:
           rm -f Quickscope-signed.ipa
           zip -qr Quickscope-signed.ipa Payload
           echo "Final signed App Store IPA packaged successfully!"
+
+      - name: Create / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ env.BUILD_NAME }}-${{ env.BUILD_NUMBER }}"
+          name: "Quickscope v${{ env.BUILD_NAME }}-${{ env.BUILD_NUMBER }}"
+          body: "Automated release build #${{ env.BUILD_NUMBER }}"
+          files: |
+            build/ios/ipa/Quickscope.ipa
+            build/ios/ipa/Quickscope-signed.ipa
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to App Store Connect / TestFlight
         env:
