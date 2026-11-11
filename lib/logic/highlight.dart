@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../data/models.dart';
 
 /// Stand der Hervorhebung: [spoken] Woerter sind fertig gesprochen, [active] ist das aktuelle Wort (-1 = gerade keins).
@@ -47,6 +49,38 @@ bool timingsMatch(String display, AudioTimings t) {
     prevEnd = w.end;
   }
   return true;
+}
+
+/// Holt die Wortzeiten (Einzelabruf): bei Fehler, Leere oder Abweichung bis zu [maxAttempts] Versuche,
+/// Wartezeit 700 ms * Versuch. Jeder Fehlversuch geht an [onFail]. [cancelled] bricht ab (Wiedergabe beendet).
+Future<AudioTimings?> fetchMatchingTimings(
+  Future<AudioTimings?> Function() fetch,
+  String displayText, {
+  int maxAttempts = 3,
+  Duration unit = const Duration(milliseconds: 700),
+  bool Function()? cancelled,
+  void Function(String msg)? onFail,
+}) async {
+  for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (cancelled?.call() ?? false) return null;
+    AudioTimings? got;
+    try {
+      got = await fetch();
+    } catch (_) {
+      got = null;
+    }
+    if (got == null) {
+      onFail?.call('Wortzeiten Versuch $attempt: keine Antwort');
+    } else if (timingsMatch(displayText, got)) {
+      return got;
+    } else {
+      onFail?.call(
+        'Wortzeiten Versuch $attempt: passen nicht (Text ${got.text.length} vs ${displayText.length} Zeichen, ${got.words.length} Woerter)',
+      );
+    }
+    await Future<void>.delayed(unit * attempt);
+  }
+  return null;
 }
 
 /// Woerter eines Textes ohne Zeiten (fuer die Geraetestimme, die nur Zeichenpositionen meldet).

@@ -301,10 +301,13 @@ class Voice extends ChangeNotifier {
     Timer? ticker;
     if (timings != null && displayText != null) {
       unawaited(() async {
-        final t = await timings();
-        if (t == null || !timingsMatch(displayText, t) || !machine.isCurrent(gen)) {
-          return;
-        }
+        final t = await fetchMatchingTimings(
+          timings,
+          displayText,
+          cancelled: () => !machine.isCurrent(gen),
+          onFail: (m) => AppLog.d('Voice', '$label: $m'),
+        );
+        if (t == null || !machine.isCurrent(gen)) return;
         _highlight = Highlight(text: t.text, words: t.words, spoken: 0, active: -1);
         notifyListeners();
         ticker = Timer.periodic(const Duration(milliseconds: 40), (timer) {

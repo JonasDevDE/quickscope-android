@@ -83,4 +83,75 @@ void main() {
     expect(wordAtChar(w, 9), 2);
     expect(wordAtChar(w, 14), -1);
   });
+
+  group('fetchMatchingTimings', () {
+    const good = AudioTimings(text: text, words: words);
+    const bad = AudioTimings(text: 'anderer Text', words: words);
+    const unit = Duration(milliseconds: 1);
+
+    test('wiederholt bei fehlender Antwort und Abweichung, max. 3 Mal', () async {
+      var calls = 0;
+      final fails = <String>[];
+      final r = await fetchMatchingTimings(
+        () async {
+          calls++;
+          return calls == 1 ? null : (calls == 2 ? bad : good);
+        },
+        text,
+        unit: unit,
+        onFail: fails.add,
+      );
+      expect(r, good);
+      expect(calls, 3);
+      expect(fails.length, 2);
+      expect(fails[0], contains('keine Antwort'));
+      expect(fails[1], contains('passen nicht'));
+    });
+
+    test('gibt nach 3 Fehlversuchen auf', () async {
+      var calls = 0;
+      final fails = <String>[];
+      final r = await fetchMatchingTimings(
+        () async {
+          calls++;
+          throw Exception('x');
+        },
+        text,
+        unit: unit,
+        onFail: fails.add,
+      );
+      expect(r, isNull);
+      expect(calls, 3);
+      expect(fails.length, 3);
+    });
+
+    test('Erfolg beim ersten Versuch ohne Wiederholung', () async {
+      var calls = 0;
+      final r = await fetchMatchingTimings(
+        () async {
+          calls++;
+          return good;
+        },
+        text,
+        unit: unit,
+      );
+      expect(r, good);
+      expect(calls, 1);
+    });
+
+    test('Abbruch stoppt weitere Versuche', () async {
+      var calls = 0;
+      final r = await fetchMatchingTimings(
+        () async {
+          calls++;
+          return null;
+        },
+        text,
+        unit: unit,
+        cancelled: () => calls >= 1,
+      );
+      expect(r, isNull);
+      expect(calls, 1);
+    });
+  });
 }

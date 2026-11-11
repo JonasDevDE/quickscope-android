@@ -218,6 +218,20 @@ class _NewExamFlowState extends State<NewExamFlow> {
                           NewExamPage.material => [
                               const _PageTitle('Material hinzufügen'),
                               const SizedBox(height: 16),
+                              // Weiter/Überspringen ganz oben, damit es nie aus dem Bild rutscht; Material ist optional
+                              if (_jobs.isEmpty)
+                                SecondaryButton(
+                                  'Überspringen',
+                                  onPressed: () =>
+                                      setState(() => _page = p + 1),
+                                )
+                              else
+                                PrimaryButton(
+                                  'Weiter',
+                                  onPressed: () =>
+                                      setState(() => _page = p + 1),
+                                ),
+                              const SizedBox(height: 16),
                               MaterialAddButtons(
                                 onJobs: (j) =>
                                     setState(() => _jobs = [..._jobs, ...j]),
@@ -260,11 +274,6 @@ class _NewExamFlowState extends State<NewExamFlow> {
                                   ],
                                 ),
                               ],
-                              const SizedBox(height: 24),
-                              PrimaryButton(
-                                _jobs.isEmpty ? 'Überspringen' : 'Weiter',
-                                onPressed: () => setState(() => _page = p + 1),
-                              ),
                             ],
                           NewExamPage.description => [
                               const _PageTitle('Kurz beschreiben?'),
