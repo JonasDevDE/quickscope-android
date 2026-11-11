@@ -141,6 +141,8 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                     }
                     NewExamPage.Material -> {
                         PageTitle("Material hinzufügen")
+                        // Weiter/Überspringen ganz oben, damit es nie aus dem Bild rutscht; Material ist optional
+                        if (jobs.isEmpty()) SecondaryButton("Überspringen", { page = p + 1 }) else PrimaryButton("Weiter", { page = p + 1 })
                         MaterialAddButtons(onJobs = { jobs = jobs + it })
                         jobs.forEachIndexed { i, job ->
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -148,8 +150,6 @@ fun NewExamFlow(vm: AppViewModel, onClose: (() -> Unit)?, modifier: Modifier = M
                                 Text("✕", color = Muted, modifier = Modifier.hapticClickable { jobs = jobs.filterIndexed { j, _ -> j != i } }.padding(8.dp))
                             }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        PrimaryButton(if (jobs.isEmpty()) "Überspringen" else "Weiter", { page = p + 1 })
                     }
                     NewExamPage.Description -> {
                         PageTitle("Kurz beschreiben?")

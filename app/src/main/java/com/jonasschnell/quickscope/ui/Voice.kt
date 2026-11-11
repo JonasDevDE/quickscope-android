@@ -209,7 +209,18 @@ class Voice(private val context: Context, private val scope: CoroutineScope) {
         com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Stream laeuft nach ${SystemClock.elapsedRealtime() - t0} ms")
         // Wortzeiten live parallel holen; passen sie nicht exakt zum angezeigten Text, wird nicht hervorgehoben
         val ticker = if (timings != null && displayText != null) launch {
-            val t = runCatching { timings() }.getOrNull()?.takeIf { timingsMatch(displayText, it) } ?: return@launch
+            // Wortzeiten sind ein Einzelabruf: bei Fehler/Leere/Abweichung bis zu 3 Mal versuchen, solange der Ton noch laeuft; jeder Fehlschlag wird protokolliert
+            var found: AudioTimings? = null
+            for (attempt in 1..3) {
+                val got = runCatching { timings() }.getOrNull()
+                when {
+                    got == null -> com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Wortzeiten Versuch $attempt: keine Antwort")
+                    timingsMatch(displayText, got) -> { found = got; break }
+                    else -> com.jonasschnell.quickscope.data.AppLog.d("Voice", "$label: Wortzeiten Versuch $attempt: passen nicht (Text ${got.text.length} vs ${displayText.length} Zeichen, ${got.words.size} Woerter)")
+                }
+                delay(700L * attempt)
+            }
+            val t = found ?: return@launch
             highlight = Highlight(t.text, t.words, 0, -1)
             while (isActive) {
                 val p = player
