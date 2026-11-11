@@ -28,7 +28,33 @@ int remainingMinutes(int dailyMinutes, int doneSecondsToday) =>
     math.max(3, dailyMinutes - doneSecondsToday ~/ 60);
 
 /// Hauptknopf auf Heute: ohne Zeitangabe.
-const String startLabel = 'Starten';
+const String startLabel = 'Heute vorbereiten';
+
+/// Sekunden -> grobe Minuten (aufgerundet auf 5 ab 10 Min, sonst auf ganze Minuten, mind. 1).
+int roundNeedMinutes(int seconds) {
+  final m = (seconds + 59) ~/ 60;
+  if (m <= 0) return 1;
+  return m < 10 ? m : ((m + 4) ~/ 5) * 5;
+}
+
+/// "Noch ca. 25 Min bis zur Prüfung nötig, heute empfohlen: 29 Min". Null, wenn Daten fehlen.
+String? formatiereZeitbedarf(TimeNeed? t) {
+  if (t == null) return null;
+  final need = t.needSeconds;
+  final rec = t.recommendedMinutesToday;
+  if (need == null || need <= 0 || rec == null || rec <= 0) return null;
+  return 'Noch ca. ${roundNeedMinutes(need)} Min bis zur Prüfung nötig, heute empfohlen: $rec Min';
+}
+
+const String zeitKnappHinweis =
+    'Zeit ist knapp – wir üben die Kernthemen zuerst';
+
+String? zeitKnappText(TimeNeed? t) => t?.tight == true ? zeitKnappHinweis : null;
+
+/// "Abruf: 40 % – selbst gewusst, nicht nur erkannt". Null ohne Wert.
+String? abrufText(int? recallPercent) => recallPercent == null
+    ? null
+    : 'Abruf: ${percentText(recallPercent)} – selbst gewusst, nicht nur erkannt';
 
 /// Zahl im Ring: ohne belastbare Prognose/Wissensstand "0 %" (nie ein Strich), sonst die Zahl in 5er-Schritten.
 int ringPercentOrZero(Exam? exam, Forecast? f) =>

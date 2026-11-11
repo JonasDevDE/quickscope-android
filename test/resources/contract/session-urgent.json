@@ -1,0 +1,505 @@
+{
+  "items" : [ {
+    "id" : "i-lesson",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "card",
+    "question" : "So geht: Zinseszins berechnen",
+    "answer" : "1) Faktor: 1 + p/100 2) Faktor hoch Laufzeit 3) Mal Kapital",
+    "solutionSteps" : [ "Faktor: 1 + p/100", "Faktor hoch Laufzeit", "Mal Kapital" ],
+    "trick" : "Faktor 1,0x merken",
+    "difficulty" : 2,
+    "estSeconds" : 20,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "lesson" : true,
+    "ttsText" : "So geht: Zinseszins berechnen"
+  }, {
+    "id" : "i-variant",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "number",
+    "question" : "500 € zu 2 %, 3 Jahre Zinseszins?",
+    "answer" : "530,60 €",
+    "payload" : {
+      "options" : [ "560 €", "510 €", "530,60 €", "530 €" ],
+      "correctIndex" : 2
+    },
+    "solutionSteps" : [ "500 × 1,02", "hoch 3", "= 530,60" ],
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "source" : {
+      "materialId" : "m-exam"
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : false,
+    "patternId" : "p-1",
+    "variantOf" : "i-aisol",
+    "lesson" : false,
+    "ttsText" : "500 € zu 2 %, 3 Jahre Zinseszins?"
+  }, {
+    "id" : "i-choice2",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f9",
+    "type" : "choice2",
+    "question" : "Transportrisiko: Käufer oder Verkäufer?",
+    "answer" : "Käufer",
+    "payload" : {
+      "options" : [ "Verkäufer", "Käufer" ],
+      "correctIndex" : 1
+    },
+    "difficulty" : 3,
+    "estSeconds" : 7,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Transportrisiko: Käufer oder Verkäufer?"
+  }, {
+    "id" : "i-aisol",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "number",
+    "question" : "1.000 € zu 4 %, 2 Jahre Zinseszins?",
+    "answer" : "1.081,60 €",
+    "payload" : {
+      "options" : [ "1.040 €", "1.081,60 €", "1.160 €", "1.080 €" ],
+      "correctIndex" : 1
+    },
+    "solutionSteps" : [ "1000 × 1,04", "× 1,04", "= 1081,60" ],
+    "trick" : "Faktor zweimal",
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-exam",
+      "page" : 1
+    },
+    "sourceType" : "material",
+    "fromExam" : true,
+    "aiSolution" : true,
+    "patternId" : "p-1",
+    "lesson" : false,
+    "ttsText" : "1.000 € zu 4 %, 2 Jahre Zinseszins?"
+  }, {
+    "id" : "i-urg1",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f8",
+    "type" : "card",
+    "question" : "Begriff Nummer 1?",
+    "answer" : "Definition 1",
+    "difficulty" : 3,
+    "estSeconds" : 9,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Begriff Nummer 1?"
+  }, {
+    "id" : "i-number",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "number",
+    "question" : "Zins: 1.000 € bei 3 %, 1 Jahr?",
+    "answer" : "30 €",
+    "payload" : {
+      "options" : [ "30 €", "300 €", "0,3 €", "3 €" ],
+      "correctIndex" : 0
+    },
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zins: 1.000 € bei 3 %, 1 Jahr?"
+  }, {
+    "id" : "i-tf",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f9",
+    "type" : "truefalse",
+    "question" : "Mündlicher Vertrag: grundsätzlich gültig.",
+    "answer" : "wahr",
+    "difficulty" : 3,
+    "estSeconds" : 7,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Mündlicher Vertrag: grundsätzlich gültig."
+  }, {
+    "id" : "i-mc",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "mc",
+    "question" : "Jahreszins-Formel?",
+    "answer" : "K × p / 100",
+    "options" : [ "K × p / 100", "p × 100", "K / p", "K + p" ],
+    "correctIndex" : 0,
+    "difficulty" : 3,
+    "estSeconds" : 11,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Jahreszins-Formel?"
+  }, {
+    "id" : "i-urg101",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f9",
+    "type" : "card",
+    "question" : "Begriff Nummer 101?",
+    "answer" : "Definition 101",
+    "difficulty" : 3,
+    "estSeconds" : 9,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Begriff Nummer 101?"
+  }, {
+    "id" : "i-cloze",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f8",
+    "type" : "cloze",
+    "question" : "Selbstkosten + ___ = Verkaufspreis.",
+    "answer" : "Gewinn",
+    "payload" : {
+      "text" : "Selbstkosten + ___ = Verkaufspreis.",
+      "bank" : [ "Gewinn", "Skonto", "Rabatt" ],
+      "answer" : "Gewinn"
+    },
+    "difficulty" : 3,
+    "estSeconds" : 12,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Selbstkosten + – = Verkaufspreis."
+  }, {
+    "id" : "i-card",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "card",
+    "question" : "Zinsen?",
+    "answer" : "Preis für Kapital",
+    "explanation" : "Steigen mit Betrag, Laufzeit.",
+    "mnemonic" : "Zins = Miete für Geld",
+    "difficulty" : 1,
+    "estSeconds" : 8,
+    "source" : {
+      "materialId" : "m-pdf",
+      "page" : 2
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zinsen?"
+  }, {
+    "id" : "i-spot",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f9",
+    "type" : "spot",
+    "question" : "Fehler finden:",
+    "answer" : "Verträge: immer Schriftform.",
+    "payload" : {
+      "statements" : [ "Verträge: immer Schriftform.", "Angebot: verbindlich.", "Schweigen: meist keine Zustimmung." ],
+      "falseIndex" : 0
+    },
+    "difficulty" : 3,
+    "estSeconds" : 16,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Fehler finden:"
+  }, {
+    "id" : "i-build",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "build",
+    "question" : "Bau die Zinsformel.",
+    "answer" : "Z = K × p / 100",
+    "payload" : {
+      "tokens" : [ {
+        "id" : "t5",
+        "text" : "p"
+      }, {
+        "id" : "t3",
+        "text" : "K"
+      }, {
+        "id" : "t6",
+        "text" : "/"
+      }, {
+        "id" : "t1",
+        "text" : "Z"
+      }, {
+        "id" : "t2",
+        "text" : "="
+      }, {
+        "id" : "t7",
+        "text" : "100"
+      }, {
+        "id" : "t4",
+        "text" : "×"
+      } ],
+      "solution" : [ "t1", "t2", "t3", "t4", "t5", "t6", "t7" ],
+      "solutions" : [ [ "t1", "t2", "t3", "t4", "t5", "t6", "t7" ] ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 21,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Bau die Zinsformel."
+  }, {
+    "id" : "i-ai",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f9",
+    "type" : "card",
+    "question" : "Verbrauchsgüterkauf?",
+    "answer" : "Kauf beweglicher Sache: Verbraucher von Unternehmer",
+    "difficulty" : 3,
+    "estSeconds" : 10,
+    "sourceType" : "ai_knowledge",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Verbrauchsgüterkauf?"
+  }, {
+    "id" : "i-order",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f8",
+    "type" : "order",
+    "question" : "Kalkulation, Reihenfolge:",
+    "answer" : "Selbstkosten → Gewinnzuschlag → Barverkaufspreis → Listenpr…",
+    "payload" : {
+      "steps" : [ "Selbstkosten", "Gewinnzuschlag", "Barverkaufspreis", "Listenpreis" ],
+      "items" : [ {
+        "id" : "s3",
+        "text" : "Barverkaufspreis"
+      }, {
+        "id" : "s4",
+        "text" : "Listenpreis"
+      }, {
+        "id" : "s2",
+        "text" : "Gewinnzuschlag"
+      }, {
+        "id" : "s1",
+        "text" : "Selbstkosten"
+      } ],
+      "solution" : [ "s1", "s2", "s3", "s4" ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 18,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Kalkulation, Reihenfolge:"
+  }, {
+    "id" : "i-urg0",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "card",
+    "question" : "Begriff Nummer 0?",
+    "answer" : "Definition 0",
+    "difficulty" : 3,
+    "estSeconds" : 9,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Begriff Nummer 0?"
+  }, {
+    "id" : "i-match",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f8",
+    "type" : "match",
+    "question" : "Zuordnen:",
+    "answer" : "Selbstkosten – Herstellkosten + Verwaltung; Listenpreis – P…",
+    "payload" : {
+      "pairs" : [ {
+        "right" : "Herstellkosten + Verwaltung",
+        "left" : "Selbstkosten"
+      }, {
+        "right" : "Preis vor Rabatt",
+        "left" : "Listenpreis"
+      }, {
+        "right" : "Preis vor Skonto",
+        "left" : "Zielpreis"
+      } ],
+      "left" : [ {
+        "id" : "l1",
+        "text" : "Selbstkosten"
+      }, {
+        "id" : "l2",
+        "text" : "Listenpreis"
+      }, {
+        "id" : "l3",
+        "text" : "Zielpreis"
+      } ],
+      "right" : [ {
+        "id" : "r2",
+        "text" : "Preis vor Rabatt"
+      }, {
+        "id" : "r3",
+        "text" : "Preis vor Skonto"
+      }, {
+        "id" : "r1",
+        "text" : "Herstellkosten + Verwaltung"
+      } ],
+      "solution" : {
+        "l1" : "r1",
+        "l2" : "r2",
+        "l3" : "r3"
+      }
+    },
+    "difficulty" : 3,
+    "estSeconds" : 19,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Zuordnen:"
+  }, {
+    "id" : "i-bucket",
+    "examId" : "e-ready",
+    "topicId" : "6af3437cda40db4690b7d9f6",
+    "type" : "bucket",
+    "question" : "Was gehört wohin?",
+    "answer" : "Kosten: Kreditzins, Gebühr, Tilgung; Ertrag: Sparzins, Divi…",
+    "payload" : {
+      "categories" : [ {
+        "id" : "c1",
+        "label" : "Kosten"
+      }, {
+        "id" : "c2",
+        "label" : "Ertrag"
+      } ],
+      "items" : [ {
+        "id" : "b4",
+        "text" : "Dividende",
+        "categoryId" : "c2"
+      }, {
+        "id" : "b3",
+        "text" : "Sparzins",
+        "categoryId" : "c2"
+      }, {
+        "id" : "b1",
+        "text" : "Kreditzins",
+        "categoryId" : "c1"
+      }, {
+        "id" : "b5",
+        "text" : "Tilgung",
+        "categoryId" : "c1"
+      }, {
+        "id" : "b2",
+        "text" : "Gebühr",
+        "categoryId" : "c1"
+      } ]
+    },
+    "difficulty" : 3,
+    "estSeconds" : 24,
+    "source" : {
+      "materialId" : "m-pdf"
+    },
+    "sourceType" : "material",
+    "fromExam" : false,
+    "aiSolution" : false,
+    "lesson" : false,
+    "ttsText" : "Was gehört wohin?"
+  } ],
+  "plannedSeconds" : 231,
+  "kind" : "daily",
+  "reason" : "Zeit wird knapp: die Aufgaben mit dem größten Punktplus pro Sekunde. Empfohlen heute: 29 Minuten.",
+  "forecast" : {
+    "daysLeft" : 1,
+    "hoursLeft" : 13,
+    "doneSecondsToday" : 0,
+    "streakDays" : 0,
+    "bestStreakDays" : 0,
+    "weakTopics" : [ {
+      "topicId" : "6af3437cda40db4690b7d9f6",
+      "title" : "Zinsrechnung",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af3437cda40db4690b7d9f9",
+      "title" : "Vertragsrecht",
+      "mastery" : 0.1
+    }, {
+      "topicId" : "6af3437cda40db4690b7d9f8",
+      "title" : "Kalkulation",
+      "mastery" : 0.1
+    } ],
+    "confidence" : "none",
+    "mode" : "crash",
+    "coveragePercent" : 0,
+    "plan" : {
+      "todayChapters" : [ "Rechnen", "Vertragsrecht" ],
+      "chaptersTotal" : 2,
+      "chaptersHeard" : 0,
+      "plannedMinutes" : 5
+    },
+    "showCheatsheetSuggestion" : false,
+    "time" : {
+      "needSeconds" : 1354,
+      "remainingTimeToExamSeconds" : 50398,
+      "recommendedMinutesToday" : 29,
+      "coveragePercentAtBudget" : 50,
+      "tight" : true,
+      "note" : "Schätzung, keine Garantie"
+    },
+    "note" : "Schätzung, keine Garantie"
+  },
+  "showCheatsheetSuggestion" : false,
+  "finalRoundStart" : -21,
+  "budget" : {
+    "dailyMinutes" : 10,
+    "usedMinutesToday" : 0,
+    "remainingMinutes" : 10
+  }
+}

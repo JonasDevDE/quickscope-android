@@ -118,7 +118,7 @@ void main() {
     expect(beforeAfterLine(51, 52), 'Prognose 50 %');
     expect(remainingMinutes(30, 600), 20);
     expect(remainingMinutes(10, 3000), 3);
-    expect(startLabel, 'Starten');
+    expect(startLabel, 'Heute vorbereiten');
   });
 
   test('queueKeepsAttemptsUntilSent', () {

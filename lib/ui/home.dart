@@ -301,6 +301,30 @@ class _ReadyView extends StatelessWidget {
             ),
           ],
         ],
+        if (abrufText(forecast?.recallPercent) != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            abrufText(forecast!.recallPercent)!,
+            textAlign: TextAlign.center,
+            style: theme.bodySmall?.copyWith(color: AppColors.muted),
+          ),
+        ],
+        if (formatiereZeitbedarf(forecast?.time) != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            formatiereZeitbedarf(forecast!.time)!,
+            textAlign: TextAlign.center,
+            style: theme.bodySmall?.copyWith(color: AppColors.muted),
+          ),
+        ],
+        if (zeitKnappText(forecast?.time) != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            zeitKnappText(forecast!.time)!,
+            textAlign: TextAlign.center,
+            style: theme.bodyMedium?.copyWith(color: AppColors.accent),
+          ),
+        ],
         const SizedBox(height: 24),
         if (forecast?.showCheatsheetSuggestion == true && !open) ...[
           GestureDetector(

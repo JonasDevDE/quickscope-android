@@ -506,6 +506,43 @@ class Milestone {
       };
 }
 
+/// Zeitbedarf bis zur Pruefung (Forecast.time); alle Felder tolerant/optional.
+class TimeNeed {
+  final int? needSeconds;
+  final int? remainingTimeToExamSeconds;
+  final int? recommendedMinutesToday;
+  final int? coveragePercentAtBudget;
+  final bool tight;
+
+  const TimeNeed({
+    this.needSeconds,
+    this.remainingTimeToExamSeconds,
+    this.recommendedMinutesToday,
+    this.coveragePercentAtBudget,
+    this.tight = false,
+  });
+
+  factory TimeNeed.fromJson(Map<String, dynamic> json) => TimeNeed(
+        needSeconds: _asIntOrNull(json['needSeconds']),
+        remainingTimeToExamSeconds:
+            _asIntOrNull(json['remainingTimeToExamSeconds']),
+        recommendedMinutesToday: _asIntOrNull(json['recommendedMinutesToday']),
+        coveragePercentAtBudget: _asIntOrNull(json['coveragePercentAtBudget']),
+        tight: _asBool(json['tight']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        if (needSeconds != null) 'needSeconds': needSeconds,
+        if (remainingTimeToExamSeconds != null)
+          'remainingTimeToExamSeconds': remainingTimeToExamSeconds,
+        if (recommendedMinutesToday != null)
+          'recommendedMinutesToday': recommendedMinutesToday,
+        if (coveragePercentAtBudget != null)
+          'coveragePercentAtBudget': coveragePercentAtBudget,
+        'tight': tight,
+      };
+}
+
 class Forecast {
   final int scoreNowPercent;
   final int scoreAtExamPercent;
@@ -525,6 +562,8 @@ class Forecast {
   final Plan? plan;
   final String note;
   final int? knowledgePercent;
+  final int? recallPercent;
+  final TimeNeed? time;
 
   const Forecast({
     this.scoreNowPercent = 0,
@@ -545,6 +584,8 @@ class Forecast {
     this.plan,
     this.note = 'Schätzung, keine Garantie',
     this.knowledgePercent,
+    this.recallPercent,
+    this.time,
   });
 
   factory Forecast.fromJson(Map<String, dynamic> json) => Forecast(
@@ -584,6 +625,10 @@ class Forecast {
             : null,
         note: _asString(json['note'], 'Schätzung, keine Garantie'),
         knowledgePercent: _asIntOrNull(json['knowledgePercent']),
+        recallPercent: _asIntOrNull(json['recallPercent']),
+        time: json['time'] is Map
+            ? TimeNeed.fromJson(Map<String, dynamic>.from(json['time'] as Map))
+            : null,
       );
 
   Map<String, dynamic> toJson() => {
@@ -606,6 +651,8 @@ class Forecast {
         if (plan != null) 'plan': plan!.toJson(),
         'note': note,
         if (knowledgePercent != null) 'knowledgePercent': knowledgePercent,
+        if (recallPercent != null) 'recallPercent': recallPercent,
+        if (time != null) 'time': time!.toJson(),
       };
 }
 
@@ -732,6 +779,7 @@ class LearnSession {
   final bool showCheatsheetSuggestion;
   final int? finalRoundStart;
   final Budget? budget;
+  final int? topicsCovered;
 
   const LearnSession({
     this.items = const [],
@@ -742,6 +790,7 @@ class LearnSession {
     this.showCheatsheetSuggestion = false,
     this.finalRoundStart,
     this.budget,
+    this.topicsCovered,
   });
 
   List<Item> get quiz => items.map((e) => e.item).whereType<Item>().toList();
@@ -764,6 +813,7 @@ class LearnSession {
         budget: json['budget'] is Map
             ? Budget.fromJson(Map<String, dynamic>.from(json['budget'] as Map))
             : null,
+        topicsCovered: _asIntOrNull(json['topicsCovered']),
       );
 }
 
