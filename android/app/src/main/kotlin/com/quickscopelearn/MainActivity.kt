@@ -1,4 +1,4 @@
-package com.jonasschnell.quickscope
+package com.quickscopelearn
 
 import io.flutter.embedding.android.FlutterActivity
 

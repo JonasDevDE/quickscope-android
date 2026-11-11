@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:583865549790:android:9dbd28e54633c6f65b534f",
         "android_client_info": {
-          "package_name": "com.jonasschnell.quickscope"
+          "package_name": "com.quickscopelearn"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "583865549790-qo2l7k2elf8pdcu3hisvdqj2gg2urmj4.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.jonasschnell.quickscope",
+            "package_name": "com.quickscopelearn",
             "certificate_hash": "6bdba4fa8c5ba3c7d5b02560f06fe04306355069"
           }
         },

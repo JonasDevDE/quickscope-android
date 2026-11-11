@@ -14,7 +14,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.jonasschnell.quickscope"
+    namespace = "com.quickscopelearn"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -34,7 +34,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.jonasschnell.quickscope"
+        applicationId = "com.quickscopelearn"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
