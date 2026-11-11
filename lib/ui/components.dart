@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide CloseButton;
 import 'package:intl/intl.dart';
+import '../config.dart';
 import '../logic/exams.dart';
 import 'brand_mark.dart';
 import 'haptics.dart';
@@ -36,6 +37,8 @@ class UserAvatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
+              // Bild-CDNs (Google) bekommen wie in der nativen App nur einen beschreibenden User-Agent, nie Token
+              headers: {'User-Agent': AppConfig.userAgent},
               errorBuilder: (_, __, ___) => _initialText(context, initial),
             )
           : _initialText(context, initial),
