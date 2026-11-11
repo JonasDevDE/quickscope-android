@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
       - feature/flutter
     paths:
       - 'lib/**'
@@ -20,20 +21,17 @@ on:
         type: string
         default: ''
       build_name:
-        description: 'Version name (e.g. 0.6.2)'
+        description: 'Version name (e.g. 0.6.3)'
         required: false
         type: string
-        default: '0.6.2'
+        default: '0.6.3'
 
 jobs:
   build-android:
     name: Build Quickscope Android APK & AAB
-    runs-on: [self-hosted, runner-server]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      ANDROID_HOME: /opt/android-sdk
-      ANDROID_SDK_ROOT: /opt/android-sdk
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -43,12 +41,13 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: false
+          cache: true
 
       - name: Install Dependencies
         run: flutter pub get
@@ -80,7 +79,7 @@ jobs:
           else
             BN=$(( ${{ github.run_number }} + 10 ))
           fi
-          NAME="${{ github.event.inputs.build_name || '0.6.2' }}"
+          NAME="${{ github.event.inputs.build_name || '0.6.3' }}"
           echo "BUILD_NUMBER=$BN" >> $GITHUB_ENV
           echo "BUILD_NAME=$NAME" >> $GITHUB_ENV
           echo "Using version: $NAME, build: $BN"
