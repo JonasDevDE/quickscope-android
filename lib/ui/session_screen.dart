@@ -328,6 +328,8 @@ class _RunningViewState extends State<_RunningView>
   void dispose() {
     _autoNextTimer?.cancel();
     _shakeCtrl.dispose();
+    // zurueck zur Startseite: Vorlesen darf nicht weiterlaufen
+    AppServices.instance.voice.stop();
     super.dispose();
   }
 
