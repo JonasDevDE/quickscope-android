@@ -55,10 +55,16 @@ jobs:
         id: versioning
         run: |
           PUBVER=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n1 | tr -d '\r ')
-          BN="${{ github.event.inputs.build_number }}"
           NAME="${{ github.event.inputs.build_name }}"
-          [ -z "$BN" ] && BN="${PUBVER#*+}"
           [ -z "$NAME" ] && NAME="${PUBVER%%+*}"
+          
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BN="${{ github.event.inputs.build_number }}"
+          else
+            # Apple TestFlight erfordert streng aufsteigende Build-Nummern (zuletzt Build 32 hochgeladen)
+            # github.run_number (z.Zt. 9) + Offset 30 garantiert immer > 32 bei jedem Push
+            BN=$(( ${{ github.run_number }} + 30 ))
+          fi
           echo "BUILD_NUMBER=$BN" >> $GITHUB_ENV
           echo "BUILD_NAME=$NAME" >> $GITHUB_ENV
           echo "Using version: $NAME, build: $BN"
