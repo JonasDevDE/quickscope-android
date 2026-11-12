@@ -23,7 +23,7 @@ class AppConfig {
 
   // Muss zu pubspec.yaml (version: NAME+CODE) passen; test/version_test.dart prueft das.
   static const int versionCode = 33;
-  static const String versionName = '0.7.1';
+  static const String versionName = '0.7.2';
 
   /// Entwickler-Flag (`--dart-define=DISABLE_AUTO_UPDATE=true`), um den Auto-Updater
   /// und den Server-Versionszwang beim lokalen Flashen zu umgehen.

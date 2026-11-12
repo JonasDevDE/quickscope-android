@@ -295,11 +295,13 @@ class _TeachCardState extends State<TeachCard> {
             widget.buttonLabel,
             onPressed: () {
               widget.voice.stop();
-              final fraction =
-                  heardFraction(_elapsedMs, _durationMs, _finished);
-              if (fraction > 0.05) {
-                widget.onHeard(lesson.id, fraction);
-              }
+              // "Weiter zum Test" heisst: Lektion ist durch (gelesen, gehoert oder bekannt). Sie gilt als gehoert und
+              // kommt nicht in jeder Runde wieder; ohne Meldung blieb sie "ungehoert".
+              final played = heardFraction(_elapsedMs, _durationMs, _finished);
+              widget.onHeard(
+                lesson.id,
+                played < heardThreshold ? heardThreshold : played,
+              );
               widget.onNext();
             },
           ),
